@@ -20,18 +20,20 @@ function foodCanvas(kind, size = 54) {
 
 function careLine(label, iso, okH, badWord) {
   const hrs = hoursSince(iso);
-  const tone = hrs > okH * 2 ? 'bad' : hrs > okH ? 'meh' : 'ok';
-  return h(`div.care.${tone}`, h('span', label), h('span.mono', iso ? ago(iso) : 'never'), tone !== 'ok' ? h('span.tag', badWord) : null);
+  const fill = Math.max(0.06, 1 - hrs / (okH * 2.5));
+  const ok = hrs <= okH;
+  return h(`div.meter${ok ? '.ok' : ''}`, h('span.mono', label), h('b', iso ? ago(iso) : 'never'),
+    h('div.bar', h('span', { style: { width: `${Math.round(fill * 100)}%` } })), ok ? null : h('span.tag', badWord));
 }
 
 export function feedSheet(app) {
   const them = app.them(); const w = them?.worm || {};
-  const s = sheet(`Tend to ${w.name || 'their worm'}`, [
-    h('div.cares', careLine('Fed', them?.fed_at, 20, 'hungry'), careLine('Misted', them?.misted_at, 18, 'dry'), careLine('Petted', them?.petted_at, 12, 'lonely')),
-    h('p.small.muted', 'Pick a crumb. It lands in your pocket and they get told what you fed them.'),
+  const s = sheet(`Feed ${w.name || 'them'}`, [
+    h('div.meters', careLine('Fed', them?.fed_at, 20, 'hungry'), careLine('Misted', them?.misted_at, 18, 'dry'), careLine('Petted', them?.petted_at, 12, 'lonely')),
+    h('h3', 'Pick a crumb'),
     h('div.foods', Object.entries(FOODS).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(an?|a bit of|a bite of) /, ''))))),
-    btn([icon('mist'), ' Mist them'], () => { s.close(); app.mist(); }, 'ghost wide'),
-    h('p.small.muted.center', 'Tip: stroke the worm to pet it. Tap its head to boop.'),
+    btn([icon('mist'), ' Mist them'], () => { s.close(); app.mist(); }, 'primary wide'),
+    h('p.small.muted.center', 'Stroke the worm to pet it. Tap its head to boop.'),
   ]);
 }
 
@@ -68,7 +70,7 @@ export async function todaySheet(app) {
     while (full.has(new Date(d * 86400000).toISOString().slice(0, 10))) { streak++; d--; }
 
     const slot = (who, thumb, state, onTap) => h(`div.slot.${state}`, { onclick: onTap },
-      thumb ? h('img', { src: thumb, alt: '' }) : h('div.dirt', state === 'buried' ? h('span', 'buried') : state === 'empty-me' ? [icon('cam'), h('span', 'Take yours')] : h('span', 'not yet')),
+      thumb ? h('img', { src: thumb, alt: '' }) : h('div.dirt', state === 'buried' ? [icon('peek'), h('span', 'Buried')] : state === 'empty-me' ? [icon('cam'), h('span', 'Take yours')] : h('span', 'Not yet')),
       h('span.who', who));
 
     const myPhoto = slot('You', t.my_thumb, t.my_thumb ? 'done' : 'empty-me', () => {
@@ -100,7 +102,7 @@ export async function todaySheet(app) {
       }, 'primary'));
     const theirAnswer = t.their_answer
       ? h('div.answer', h('span.who', them), h('p', t.their_answer))
-      : h('div.answer.buried', h('span.who', them), h('p', t.their_answered ? 'Buried. Answer to dig it up.' : 'Hasn\'t dug yet.'));
+      : t.their_answered ? h('div.answer.buried', h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
 
     const layers = rows.filter((r) => r.day !== today).map((r) => {
       const open = h('div.layer-body', { hidden: true },
@@ -109,7 +111,7 @@ export async function todaySheet(app) {
         r.their_answer ? h('p', h('b', them + ': '), r.their_answer) : null,
         h('div.row', r.my_thumb ? h('img.mini', { src: r.my_thumb, onclick: () => viewFull(app, r.my_photo, r.my_thumb) }) : null, r.their_thumb ? h('img.mini', { src: r.their_thumb, onclick: () => viewFull(app, r.their_photo, r.their_thumb) }) : null));
       return h('div.layer', { onclick: (e) => { if (e.target.tagName !== 'IMG') open.hidden = !open.hidden; } },
-        h('div.layer-head', h('span.mono', prettyDay(r.day)), h('span.dots', r.my_answer && r.their_answer ? '●' : '○', r.my_thumb && r.their_thumb ? '●' : '○')), open);
+        h('div.layer-head', h('span', prettyDay(r.day)), h('span.dots', r.my_answer && r.their_answer ? '●' : '○', r.my_thumb && r.their_thumb ? '●' : '○')), open);
     });
 
     body.replaceChildren(...[
@@ -119,8 +121,7 @@ export async function todaySheet(app) {
       h('h3', 'Question of the day'),
       h('p.question', q),
       answerBox, theirAnswer,
-      layers.length ? h('h3', 'The layers') : null,
-      layers.length ? h('p.small.muted', 'Every day you both dig settles into the soil.') : null,
+      layers.length ? h('h3', 'Earlier') : null,
       h('div.layers', layers),
     ].filter(Boolean));
   };
@@ -139,39 +140,28 @@ export function usSheet(app) {
   const S = app.S, me = app.me(), them = app.them(), hole = S.hole || {};
   const units = store('settings')?.units || app.defaultUnits();
   const pct = hole.tunnel_km ? Math.min(1, hole.dug_km / hole.tunnel_km) : 0;
-  const W = 320, y = 70;
-  const tunnel = h('div.tunnel', { html: `
-    <svg viewBox="0 0 ${W} 130" preserveAspectRatio="none">
-      <defs><pattern id="soil" width="8" height="8" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#6B4A35"/><circle cx="2" cy="3" r="1" fill="#5A3C2A"/><circle cx="6" cy="6" r=".8" fill="#7D5A42"/></pattern></defs>
-      <rect x="0" y="34" width="${W}" height="96" fill="url(#soil)"/>
-      <rect x="0" y="30" width="${W}" height="6" fill="#4F7A3E"/>
-      <path d="M24 ${y} H ${24 + (W - 48) * pct}" stroke="#2A1B13" stroke-width="16" stroke-linecap="round"/>
-      <path d="M24 ${y} H ${W - 24}" stroke="#F4ECDD" stroke-width="1.4" stroke-dasharray="3 5" opacity=".5"/>
-      <rect x="10" y="10" width="28" height="24" rx="3" fill="#2B3F63"/><rect x="${W - 38}" y="10" width="28" height="24" rx="3" fill="#2B3F63"/>
-      <circle cx="${24 + (W - 48) * pct}" cy="${y}" r="7" fill="${COLORS[me?.worm?.color]?.body || '#E8959B'}"/>
-      <circle cx="${W - 24}" cy="${y}" r="7" fill="${COLORS[them?.worm?.color]?.body || '#B49BE0'}" opacity=".7"/>
-    </svg>` });
   const myIn = inchesFor(me?.love), theirIn = inchesFor(them?.love);
   const reunionIn = h('input', { type: 'date', value: hole.reunion_on || '' });
-  const reunionNote = h('input', { placeholder: 'Where? (optional)', maxLength: 60, value: hole.reunion_note || '' });
+  const reunionNote = h('input', { placeholder: 'Where?', maxLength: 60, value: hole.reunion_note || '' });
   const days = hole.reunion_on ? Math.ceil((Date.parse(hole.reunion_on + 'T00:00:00') - Date.now()) / 86400000) : null;
   const ev = S.events;
   const count = (k, slot) => ev.filter((e) => e.kind === k && (slot == null || e.from_slot === slot)).reduce((a, e) => a + (e.payload?.n || 1), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
+  const wormCard = (m, inches, mine) => h('div', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
+    h('span.mono.small', mine ? 'YOU' : (m?.name || '').toUpperCase()), h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')), h('p.small', m?.worm?.name || ''), h('p.small.muted', lengthBlurb(inches)));
 
   sheet('Us', [
     h('div.card',
-      h('div.row.between', h('span.mono.small', me?.place?.city || 'You'), h('span.mono.small', them?.place?.city || 'Them')),
-      tunnel,
-      h('p.big-num', fmtDistance(hole.dug_km || 0, units), h('span', ` of ${fmtDistance(hole.tunnel_km || 0, units)} dug`)),
+      h('div.row.between', h('span.mono.small.muted', (me?.place?.city || 'You').toUpperCase()), h('span.mono.small.muted', (them?.place?.city || 'Them').toUpperCase())),
+      h('div.tunnel-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', `${fmtDistance(hole.tunnel_km || 0, units)}`)),
+      h('p.big-num', fmtDistance(hole.dug_km || 0, units), h('span', ' dug')),
       h('p.small.muted', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
-    h('div.card.two',
-      h('div', h('span.mono.small', `${me?.worm?.name || 'Yours'} (you)`), h('p.big-num', `${myIn.toFixed(1)} in`), h('p.small.muted', lengthBlurb(myIn))),
-      h('div', h('span.mono.small', them?.worm?.name || 'Theirs'), h('p.big-num', `${theirIn.toFixed(1)} in`), h('p.small.muted', lengthBlurb(theirIn)))),
-    h('div.card',
+    h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
+    h('div.card.night',
+      h('span.mono.small', 'SAME POCKET'),
       days != null && days >= 0
-        ? h('p.big-num', days === 0 ? 'Today. Same pocket.' : `${days} day${days > 1 ? 's' : ''}`, days ? h('span', ' until the same pocket') : null)
-        : h('p.lede', 'When are you in the same pocket next?'),
+        ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
+        : h('p.big-num', h('span', 'When are you together next?')),
       hole.reunion_note && days >= 0 ? h('p.small.muted', hole.reunion_note) : null,
       h('div.row', reunionIn, reunionNote),
       btn('Set the countdown', async () => {
@@ -179,12 +169,12 @@ export function usSheet(app) {
         try { await app.backend.setReunion(reunionIn.value, reunionNote.value.trim() || null); app.backend.nudge('reunion', { note: reunionNote.value.trim() }); toast('Countdown set.'); } catch { toast('Couldn\'t save. Try again.'); }
       }, 'ghost')),
     h('div.stats',
-      stat(together, 'days in the pocket'), stat(hole.touches || 0, 'fingertip touches'),
+      stat(together, 'days together here'), stat(hole.touches || 0, 'fingertip touches'),
       stat(count('kiss', app.slot()), 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kisses received'),
       stat(count('note'), 'notes'), stat(count('pet'), 'pets')),
-    h('div.row.wrap',
-      btn([icon('jar'), ' The jar'], () => jarSheet(app), 'ghost'),
-      btn('Edit my worm', () => editWorm(app), 'ghost'),
+    h('div.btn-grid',
+      btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
+      btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ], { tall: true });
 }
@@ -209,7 +199,7 @@ export function peekSheet(app) {
   const s = sheet('Through the hole', [
     h('p.small.muted', `This is you, living in ${them?.name || 'their'}'s pocket. It's ${timeIn(them?.place?.tz)} there.`),
     cv,
-    h('div.cares', careLine('They fed you', me?.fed_at, 20, 'hungry'), careLine('Misted you', me?.misted_at, 18, 'dry'), careLine('Petted you', me?.petted_at, 12, 'lonely')),
+    h('div.meters', careLine('Fed', me?.fed_at, 20, 'hungry'), careLine('Misted', me?.misted_at, 18, 'dry'), careLine('Petted', me?.petted_at, 12, 'lonely')),
     h('h3', 'Lately'),
     h('ul.log', evs.map(line).filter(Boolean).length ? evs.map(line) : h('li.muted', 'Nothing yet.')),
   ], { onClose: () => pv?.stop() });

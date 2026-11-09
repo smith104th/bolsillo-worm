@@ -1,9 +1,9 @@
 // Bolsillo Worm service worker: keeps the pocket working offline and delivers buzzes.
-const VERSION = '43384389';
+const VERSION = '4f0dfe83';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
-  './fonts/fraunces.woff2', './fonts/fraunces-italic.woff2', './fonts/plex-mono-400.woff2', './fonts/plex-mono-500.woff2', './fonts/caveat.woff2',
+  './fonts/geist.woff2', './fonts/geist-mono.woff2',
   './icons/icon-192.png', './icons/badge-96.png',
 ];
 

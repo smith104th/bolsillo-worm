@@ -1,7 +1,7 @@
 // Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
 import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
-import { makeDenim } from './draw.js';
+import { skyFor, drawSky, makeGrain } from './draw.js';
 import { btn, field, icon, toast } from './ui.js';
 import { sfx, unlockAudio } from './feel.js';
 
@@ -12,7 +12,8 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
   const W = canvas.clientWidth || 300, H = canvas.clientHeight || 200;
   canvas.width = W * dpr; canvas.height = H * dpr;
   const x = canvas.getContext('2d');
-  const bg = makeDenim(W, H, dpr, 5);
+  const sky = skyFor(13, 'clear');
+  const grain = makeGrain(W, H, dpr);
   const R = Math.min(16, W * 0.05);
   const w = new Worm(design, { x: W * 0.6, y: H * 0.55, R, segs, angle: -0.3 });
   w.speedBase = R * 2.6;
@@ -23,7 +24,8 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     w.update(dt, { bounds, gx: 0, gy: 0 });
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
-    x.drawImage(bg, 0, 0, W, H);
+    drawSky(x, W, H, now / 1000, sky);
+    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.5; x.drawImage(grain, 0, 0); x.restore();
     w.draw(x);
     requestAnimationFrame(loop);
   };
@@ -34,6 +36,7 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
 
 function screen(...kids) {
   const root = $('#onboard');
+  root.classList.remove('hero');
   root.replaceChildren(h('div.ob-card', ...kids));
   root.hidden = false;
   root.scrollTop = 0;
@@ -69,7 +72,7 @@ export function installGate(code) {
 }
 
 function logo() {
-  return h('div.logo-mark', { html: `<svg viewBox="0 0 120 120"><rect x="6" y="6" width="108" height="108" rx="26" fill="#2B3F63"/><path d="M22 34h76" stroke="#D9A04A" stroke-width="2.4" stroke-dasharray="5 4"/><path d="M22 34v38q0 18 38 30 38-12 38-30V34" fill="none" stroke="#D9A04A" stroke-width="2.4" stroke-dasharray="5 4"/><path d="M40 70c4-14 12-16 16-6s12 10 16-4" fill="none" stroke="#E8959B" stroke-width="13" stroke-linecap="round"/><circle cx="72.5" cy="58" r="2.3" fill="#1E1418"/><circle cx="67" cy="55" r="2.3" fill="#1E1418"/></svg>` });
+  return h('div.logo-mark', { html: `<svg viewBox="0 0 120 120"><defs><radialGradient id="lo" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#0638E8"/><stop offset=".55" stop-color="#1FB8FF"/><stop offset="1" stop-color="#BDEBFF" stop-opacity="0"/></radialGradient><linearGradient id="lb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBE9DE"/><stop offset="1" stop-color="#EAF4FF"/></linearGradient></defs><rect width="120" height="120" fill="url(#lb)"/><circle cx="60" cy="68" r="46" fill="url(#lo)"/><path d="M60 74c0-14-10-18-10-28 0-9 10-14 18-9" fill="none" stroke="#FF9EC2" stroke-width="13" stroke-linecap="round"/><circle cx="66.5" cy="35.5" r="2.4" fill="#111"/><circle cx="72" cy="39.5" r="2.4" fill="#111"/></svg>` });
 }
 
 export async function onboard(backend, { code: presetCode } = {}) {
@@ -78,13 +81,15 @@ export async function onboard(backend, { code: presetCode } = {}) {
 
   // 1. welcome
   await new Promise((res) => {
-    screen(
-      h('div.ob-logo', logo()),
-      h('h1.title', 'Bolsillo Worm'),
-      h('p.tag', 'Carry each other.'),
-      h('p.lede', 'You become a worm. Your worm lives in their pocket, theirs lives in yours. A hole in the denim connects the two.'),
-      btn('Make my worm', res, 'primary'),
-    );
+    const root = $('#onboard');
+    root.hidden = false;
+    root.classList.add('hero');
+    root.replaceChildren(h('div.hero-card',
+      h('div.hero-top', h('span', 'for two'), h('span', 'carry each other')),
+      h('div.hero-title', 'bolsillo', h('br'), 'worm'),
+      h('p.hero-tag', 'You become a worm. Yours lives in their pocket. Theirs lives in yours.'),
+      h('div.hero-list', ['pet', 'kiss', 'feed', 'dig', 'touch'].map((w) => h('span', w))),
+      h('button.start-pill', { type: 'button', onclick: res }, 'start', h('i', { html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>' }))));
   });
 
   // 2. you
@@ -92,7 +97,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
     const input = h('input', { value: draft.name, maxLength: 40, placeholder: 'Your name', autocomplete: 'given-name', enterKeyHint: 'next' });
     const next = () => { if (!input.value.trim()) return input.focus(); draft.name = input.value.trim(); save(); res(); };
     input.addEventListener('keydown', (e) => e.key === 'Enter' && next());
-    screen(h('p.step', '1 / 4'), h('h1', 'Who are you?'), h('p.lede', 'This is what your partner sees next to your worm.'), field('Your name', input), btn('Next', next, 'primary'));
+    screen(h('p.step', '01 / 04'), h('h1', 'Who are you?'), h('p.lede', 'This is the name your person sees next to your worm.'), field('Your name', input), btn('Next', next, 'primary'));
     setTimeout(() => input.focus(), 300);
   });
 
@@ -112,7 +117,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
     };
     const next = () => { if (!nameIn.value.trim()) { toast('Your worm needs a name.'); return nameIn.focus(); } draft.worm.name = nameIn.value.trim(); save(); pv.stop(); res(); };
     screen(
-      h('p.step', '2 / 4'), h('h1', 'Make your worm'),
+      h('p.step', '02 / 04'), h('h1', 'Make your worm'),
       h('p.lede', 'This worm is you. It will live in their pocket.'),
       cv,
       field('Worm name', nameIn),
@@ -156,7 +161,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
       if (!draft.place) { toast('Where are you?'); return q.focus(); }
       save(); res();
     };
-    screen(h('p.step', '3 / 4'), h('h1', 'Where\'s your pocket?'),
+    screen(h('p.step', '03 / 04'), h('h1', 'Where\'s your pocket?'),
       h('p.lede', 'Your partner sees your time and weather, and the distance between you becomes a tunnel you dig together.'),
       field('City', q), chosen, list, btn('Next', next, 'primary'));
   });
@@ -187,7 +192,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
     };
     const paste = async () => { try { const t = await navigator.clipboard.readText(); codeIn.value = fmtCode(t); } catch { toast('Type it in instead.'); } };
 
-    screen(h('p.step', '4 / 4'), h('h1', 'Connect the pockets'),
+    screen(h('p.step', '04 / 04'), h('h1', 'Connect the pockets'),
       h('div.choice',
         h('h3', 'Starting?'),
         h('p.small', 'Dig a new hole and send the code to your person.'),

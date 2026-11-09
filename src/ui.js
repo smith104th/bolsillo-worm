@@ -2,8 +2,11 @@
 import { h, svg } from './util.js';
 import { sfx } from './feel.js';
 
-const I = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
+const I = (d, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${extra}>${d}</svg>`;
 export const ICON = {
+  pocket: I('<path d="M4.5 4.5h15v7.5a7.5 7.5 0 0 1-15 0z"/><path d="M4.5 9h15"/>'),
+  peek: I('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/>'),
+  kissFill: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M2.5 11.6c2.1-3.2 4.3-4.6 6.4-3.5 1.9-1.2 4.3-1.2 6.2 0 2.1-1.1 4.3.3 6.4 3.5-3.6.9-15.4.9-19 0Zm0 .8c3.3 4.5 15.7 4.5 19 0-3.8 1.1-15.2 1.1-19 0Z"/></svg>',
   feed: I('<path d="M5 15c0-4 3-7 7-7s7 3 7 7"/><path d="M4 15h16"/><circle cx="9" cy="11.5" r=".6" fill="currentColor"/><circle cx="13" cy="10.5" r=".6" fill="currentColor"/><circle cx="15.5" cy="12.5" r=".6" fill="currentColor"/><path d="M7 18.5c1.5.8 3.2 1 5 1s3.5-.2 5-1"/>'),
   kiss: I('<path d="M3 12c2-3 4-4.5 6-3.4 1.2-.9 2.8-.9 4 0 2-1.1 4 .4 6 3.4-3 .8-15 .8-16 0Z"/><path d="M3 12.4c3 4 15 4 18 0"/>'),
   drop: I('<ellipse cx="12" cy="15" rx="7" ry="3.2"/><path d="M12 4v8"/><path d="M8.5 8.5 12 12l3.5-3.5"/>'),
@@ -37,31 +40,44 @@ export const icon = (name, cls = '') => { const el = svg(ICON[name]); if (cls) e
 let toastBox;
 export function toast(text, { tone = 'plain', ms = 3200, icon: ic } = {}) {
   if (!toastBox) { toastBox = h('div.toasts'); document.body.append(toastBox); }
-  const el = h(`div.toast.${tone}`, ic ? icon(ic) : null, h('span', text));
+  const el = h(`div.toast.${tone}${ic ? '' : '.plain-pad'}`, ic ? h('span.ti', icon(ic)) : null, h('span', text));
   toastBox.append(el);
   requestAnimationFrame(() => el.classList.add('in'));
   setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 400); }, ms);
 }
 
-// ── sheets: paper slips that slide up out of the pocket
+// ── sheets: white cards that slide up, swipe down to close
 const stack = [];
+let sheetListener = null;
+export const onSheets = (fn) => { sheetListener = fn; };
 export function sheet(title, body, { onClose, wide = false, tall = false, className = '' } = {}) {
   const close = () => {
-    if (!el.isConnected) return;
+    if (!el.isConnected || el.dataset.closing) return;
+    el.dataset.closing = '1';
     el.classList.remove('in');
-    setTimeout(() => el.remove(), 320);
+    card.style.transform = '';
+    setTimeout(() => el.remove(), 360);
     const i = stack.indexOf(api); if (i >= 0) stack.splice(i, 1);
     onClose?.();
+    sheetListener?.(stack.length);
   };
+  const grab = h('div.grabber');
   const head = h('header.sheet-head', h('h2', title), h('button.icon-btn', { onclick: close, 'aria-label': 'Close' }, icon('close')));
-  const card = h(`div.sheet-card${wide ? '.wide' : ''}${tall ? '.tall' : ''}`, head, h('div.sheet-body', body));
+  const card = h(`div.sheet-card${wide ? '.wide' : ''}${tall ? '.tall' : ''}`, grab, head, h('div.sheet-body', body));
   if (className) card.classList.add(className);
   const el = h('div.sheet', { onclick: (e) => { if (e.target === el) close(); } }, card);
+  // swipe down on the grabber or title to dismiss
+  let y0 = null, dy = 0;
+  const start = (e) => { if (e.target.closest('button')) return; y0 = e.clientY; dy = 0; card.classList.add('dragging'); e.currentTarget.setPointerCapture?.(e.pointerId); };
+  const move = (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); card.style.transform = `translateY(${dy}px)`; };
+  const end = () => { if (y0 == null) return; y0 = null; card.classList.remove('dragging'); if (dy > 110) close(); else card.style.transform = ''; };
+  for (const t of [grab, head]) { t.addEventListener('pointerdown', start); t.addEventListener('pointermove', move); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end); }
   document.body.append(el);
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
   sfx.paper();
   const api = { el, card, close, body: card.querySelector('.sheet-body') };
   stack.push(api);
+  sheetListener?.(stack.length);
   return api;
 }
 export const closeAllSheets = () => [...stack].forEach((s) => s.close());

@@ -1,7 +1,7 @@
 // The pocket: canvas scene with the worm(s), things that fell through the hole,
 // crumbs, weather from the other side, and live fingertips.
 import { Worm, heart, star, segsFor } from './worm.js';
-import { makeDenim, drawSeams, makeFray, drawHole, drawItem, drawFood, drawLips, itemRadius } from './draw.js';
+import { skyFor, makeGrain, drawSky, drawOrb, drawItem, drawFood, drawLips, itemRadius } from './draw.js';
 import { clamp, rand, pick } from './util.js';
 import { sfx, buzz } from './feel.js';
 
@@ -19,6 +19,7 @@ export class Pocket {
     this.live = false;
     this.asleep = false;
     this.weather = { kind: 'none', day: true };
+    this.sky = skyFor(new Date().getHours(), 'clear');
     this.needs = { hungry: 0, dry: 0 };
     this.g = { x: 0, y: 0 }; this.gRaw = { x: 0, y: 0 }; this.gBase = null;
     this.glow = 0; this.flash = 0; this.shake = 0;
@@ -43,16 +44,11 @@ export class Pocket {
     this.cv.width = Math.round(W * dpr); this.cv.height = Math.round(H * dpr);
     this.cv.style.width = W + 'px'; this.cv.style.height = H + 'px';
     const ins = this.insets();
-    this.bounds = { l: 16, r: W - 16, t: ins.top, b: H - ins.bottom };
-    this.hole = { x: W / 2, y: this.bounds.b - 40 };
-    const rx = Math.min(W * 0.12, 56);
-    this.fray = makeFray(rx, rx * 0.56, 11);
-    this.R = clamp(Math.min(W, H) * 0.034, 10, 15);
-    const denim = makeDenim(W, H, dpr, 29);
-    const dx = denim.getContext('2d');
-    dx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawSeams(dx, W, H, ins.top - 4, this.bounds.b);
-    this.denim = denim;
+    this.bounds = { l: 14, r: W - 14, t: ins.top, b: H - ins.bottom };
+    this.R = clamp(Math.min(W, H) * 0.036, 10, 16);
+    this.orbR = Math.min(W * 0.17, 78);
+    this.hole = { x: W / 2, y: this.bounds.b - this.orbR * 0.9 };
+    this.grain = makeGrain(W, H, dpr);
     for (const w of [this.worm, this.mine]) if (w) { w.R = this.R; w.spacing = this.R * 0.62; w.speedBase = this.R * 3.4; }
   }
 
@@ -86,6 +82,7 @@ export class Pocket {
   setAsleep(on) { this.asleep = on; if (this.worm) this.worm.sleep(on); }
   setNeeds(n) { this.needs = n; if (this.worm) { this.worm.dry = clamp((n.dry - 0.5) * 2, 0, 1); } }
   setWeather(kind, day) { this.weather = { kind, day }; }
+  setSky(sky) { this.sky = sky; }
   setMarks(n) { if (!this.worm) return; while (this.worm.marks.length < Math.min(n, 12)) this.worm.addMark(((this.worm.marks.length + 1) * 0.6180339) % 1); }
 
   setTilt(gx, gy) {
@@ -476,22 +473,9 @@ export class Pocket {
     x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     x.save();
     if (this.shake > 0) x.translate(Math.sin(this.t * 80) * this.shake * 10, Math.cos(this.t * 70) * this.shake * 6);
-    x.drawImage(this.denim, 0, 0, W, H);
-
-    // sunbeam / moonbeam through the opening
-    const wk = this.weather;
-    if (wk.kind !== 'none') {
-      x.save();
-      const beam = x.createLinearGradient(W * 0.2, b.t, W * 0.7, H * 0.8);
-      const col = wk.day ? (wk.kind === 'clear' ? '255,236,190' : '220,228,245') : '170,190,255';
-      const a = wk.day ? (wk.kind === 'clear' ? 0.16 : 0.07) : 0.07;
-      beam.addColorStop(0, `rgba(${col},${a})`); beam.addColorStop(1, `rgba(${col},0)`);
-      x.fillStyle = beam;
-      x.beginPath(); x.moveTo(W * 0.15, b.t); x.lineTo(W * 0.62, b.t); x.lineTo(W * 0.95, H * 0.85); x.lineTo(W * 0.35, H * 0.85); x.closePath(); x.fill();
-      x.restore();
-    }
-
-    drawHole(x, this.hole.x, this.hole.y, this.fray, this.t, this.glow);
+    drawSky(x, W, H, this.t, this.sky);
+    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.55; x.drawImage(this.grain, 0, 0); x.restore();
+    drawOrb(x, this.hole.x, this.hole.y, this.orbR, this.t, this.glow, this.sky);
 
     for (const f of this.food) { x.save(); x.translate(f.x, f.y); x.scale(f.left, f.left); x.shadowColor = 'rgba(0,0,10,0.4)'; x.shadowBlur = 4; x.shadowOffsetY = 2; drawFood(x, f.kind, 9); x.restore(); }
 
@@ -515,14 +499,14 @@ export class Pocket {
       const a = clamp(p.life / (p.max * 0.4), 0, 1);
       x.save(); x.globalAlpha = a;
       switch (p.type) {
-        case 'heart': heart(x, p.x, p.y, p.size, '#F05A78'); break;
-        case 'spark': star(x, p.x, p.y, p.size * 0.6, '#FFE7B0'); break;
-        case 'drop': x.fillStyle = 'rgba(200,230,255,0.85)'; x.beginPath(); x.ellipse(p.x, p.y, p.size * 0.6, p.size * 1.3, 0, 0, 7); x.fill(); break;
-        case 'crumb': x.fillStyle = '#D9A04A'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
-        case 'z': x.fillStyle = 'rgba(230,236,255,0.85)'; x.font = `italic 600 ${p.size}px Fraunces, serif`; x.fillText('z', p.x, p.y); break;
-        case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,236,200,${0.6 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
-        case 'lipsfly': { const k = 1 - p.life / p.max; drawLips(x, p.x, p.y, p.size * (0.6 + k * 0.5), p.rot, '#D1203F'); break; }
-        case 'lipsout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawLips(x, p.x, p.y, p.size * (1 + k * p.grow), p.rot, '#D1203F'); break; }
+        case 'heart': heart(x, p.x, p.y, p.size, '#FF2D55'); break;
+        case 'spark': star(x, p.x, p.y, p.size * 0.6, '#FFFFFF'); break;
+        case 'drop': x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.ellipse(p.x, p.y, p.size * 0.6, p.size * 1.3, 0, 0, 7); x.fill(); break;
+        case 'crumb': x.fillStyle = '#F2B544'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
+        case 'z': x.fillStyle = this.sky.dark ? 'rgba(255,255,255,0.9)' : 'rgba(20,20,40,0.7)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
+        case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
+        case 'lipsfly': { const k = 1 - p.life / p.max; drawLips(x, p.x, p.y, p.size * (0.6 + k * 0.5), p.rot, '#FF2D55'); break; }
+        case 'lipsout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawLips(x, p.x, p.y, p.size * (1 + k * p.grow), p.rot, '#FF2D55'); break; }
       }
       x.restore();
     }
@@ -533,25 +517,24 @@ export class Pocket {
         x.fillStyle = `rgba(255,255,255,${d.splash != null ? 0.8 * (1 - d.splash / 2.5) : 0.85})`;
         x.beginPath(); x.arc(d.x, d.y, 2.2, 0, 7); x.fill();
       } else if (d.splash != null) {
-        const k = d.splash / 0.35; x.strokeStyle = `rgba(190,215,255,${0.5 * (1 - k)})`; x.lineWidth = 1;
+        const k = d.splash / 0.35; x.strokeStyle = `rgba(255,255,255,${0.55 * (1 - k)})`; x.lineWidth = 1;
         x.beginPath(); x.ellipse(d.x, d.y, 2 + k * 8, 1 + k * 3, 0, 0, 7); x.stroke();
       } else {
-        x.strokeStyle = 'rgba(190,215,255,0.45)'; x.lineWidth = 1.2;
+        x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 1.2;
         x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(d.x - 4, d.y - 18); x.stroke();
       }
     }
-    if (wk.kind === 'fog') { x.fillStyle = 'rgba(220,226,240,0.12)'; x.fillRect(0, 0, W, H); }
-    if (!wk.day && wk.kind !== 'none') { x.fillStyle = 'rgba(5,8,30,0.32)'; x.fillRect(0, 0, W, H); }
+    if (this.weather.kind === 'fog') { x.fillStyle = 'rgba(255,255,255,0.12)'; x.fillRect(0, 0, W, H); }
 
     // fingertips
-    if (this.theirFinger) this.fingerGlow(x, this.theirFinger.x, this.theirFinger.y, '255,120,160');
-    if (this.live && this.myFinger) this.fingerGlow(x, this.myFinger.x, this.myFinger.y, '255,240,220');
+    if (this.theirFinger) this.fingerGlow(x, this.theirFinger.x, this.theirFinger.y, '255,60,130');
+    if (this.live && this.myFinger) this.fingerGlow(x, this.myFinger.x, this.myFinger.y, '255,255,255');
     if (this.matchT > 0 && this.myFinger && this.theirFinger) {
       const cx = (this.myFinger.x + this.theirFinger.x) / 2, cy = (this.myFinger.y + this.theirFinger.y) / 2;
-      x.strokeStyle = `rgba(255,200,220,${Math.min(1, this.matchT)})`; x.lineWidth = 3;
+      x.strokeStyle = `rgba(255,255,255,${Math.min(1, this.matchT)})`; x.lineWidth = 3;
       x.beginPath(); x.arc(cx, cy, 34, -Math.PI / 2, -Math.PI / 2 + Math.min(1, this.matchT / 1.1) * Math.PI * 2); x.stroke();
     }
-    if (this.flash > 0) { x.fillStyle = `rgba(255,250,240,${this.flash * 0.35})`; x.fillRect(0, 0, W, H); }
+    if (this.flash > 0) { x.fillStyle = `rgba(255,255,255,${this.flash * 0.35})`; x.fillRect(0, 0, W, H); }
     x.restore();
   }
 
@@ -566,13 +549,13 @@ export class Pocket {
     const h = w.head(), bx = h.x + w.R * 1.6, by = h.y - w.R * 2.6;
     const a = Math.min(1, w.bubble.life, 4 - w.bubble.life);
     x.save(); x.globalAlpha = clamp(a * 2, 0, 1);
-    x.fillStyle = '#F6EEDC';
+    x.fillStyle = '#FFFFFF';
     x.beginPath(); x.arc(h.x + w.R * 0.8, h.y - w.R * 1.3, 3, 0, 7); x.fill();
     x.beginPath(); x.arc(h.x + w.R * 1.15, h.y - w.R * 1.85, 4.5, 0, 7); x.fill();
     x.beginPath(); x.ellipse(bx, by, 19, 15, 0, 0, 7); x.fill();
     x.translate(bx, by);
     if (w.bubble.need === 'food') drawFood(x, pick(['medialuna']), 8);
-    else { x.fillStyle = '#6FA8DC'; x.beginPath(); x.moveTo(0, -9); x.bezierCurveTo(7, 0, 6, 8, 0, 8); x.bezierCurveTo(-6, 8, -7, 0, 0, -9); x.fill(); }
+    else { x.fillStyle = '#3BA4FF'; x.beginPath(); x.moveTo(0, -9); x.bezierCurveTo(7, 0, 6, 8, 0, 8); x.bezierCurveTo(-6, 8, -7, 0, 0, -9); x.fill(); }
     x.restore();
   }
 }

@@ -3,15 +3,15 @@ import { clamp, rand, hash } from './util.js';
 import { drawLips } from './draw.js';
 
 export const COLORS = {
-  lombriz: { label: 'Lombriz', body: '#E8959B', dark: '#C46E78', light: '#F8CFCD', saddle: '#D27880' },
-  coral:   { label: 'Coral',   body: '#F2876B', dark: '#CF5F45', light: '#FCC1AE', saddle: '#E06D52' },
-  lila:    { label: 'Lila',    body: '#B49BE0', dark: '#8C70C2', light: '#E0D5F7', saddle: '#9E83D3' },
-  menta:   { label: 'Menta',   body: '#8FD3AE', dark: '#5FAE86', light: '#CDEFDC', saddle: '#74C096' },
-  manteca: { label: 'Manteca', body: '#F1CE6A', dark: '#CFA43C', light: '#FBE9B4', saddle: '#DDB54E' },
-  cielo:   { label: 'Cielo',   body: '#86BEE6', dark: '#5793C4', light: '#CBE4F6', saddle: '#6CA7D6' },
-  cacao:   { label: 'Cacao',   body: '#B08066', dark: '#8A5C45', light: '#DDBCA9', saddle: '#9A6A52' },
-  tomate:  { label: 'Tomate',  body: '#E5574B', dark: '#B93A31', light: '#F5A69D', saddle: '#CC463B' },
-  noche:   { label: 'Noche',   body: '#5A628C', dark: '#3E4468', light: '#959CC4', saddle: '#4A517A' },
+  lombriz: { label: 'Rosa',    body: '#FF9EC2', dark: '#E06C98', light: '#FFD3E3', saddle: '#F27FAA' },
+  coral:   { label: 'Coral',   body: '#FF7A59', dark: '#E0522F', light: '#FFB9A6', saddle: '#F2643F' },
+  lila:    { label: 'Lila',    body: '#A99BFF', dark: '#7D6BF0', light: '#D9D2FF', saddle: '#9283FA' },
+  menta:   { label: 'Verde',   body: '#47D18A', dark: '#22A866', light: '#A6EDC6', saddle: '#33BD78' },
+  manteca: { label: 'Limón',   body: '#E9F04A', dark: '#C4CB1E', light: '#F6F9AE', saddle: '#D8DF33' },
+  cielo:   { label: 'Cielo',   body: '#6CC0FF', dark: '#3494E6', light: '#BFE2FF', saddle: '#51ACF5' },
+  naranja: { label: 'Naranja', body: '#FF9A3C', dark: '#E57512', light: '#FFD0A3', saddle: '#F58726' },
+  tomate:  { label: 'Rojo',    body: '#FF5257', dark: '#DB2E35', light: '#FFADB0', saddle: '#EE3C42' },
+  noche:   { label: 'Negro',   body: '#2A2C38', dark: '#14151C', light: '#6B6F85', saddle: '#1E2029' },
 };
 export const PATTERNS = { rings: 'Rings', stripes: 'Stripes', spots: 'Spots', ombre: 'Ombré', sparkle: 'Sparkle' };
 export const ACCESSORIES = {
@@ -260,7 +260,7 @@ export class Worm {
     const C = COLORS[this.design.color] || COLORS.lombriz;
     const pat = this.design.pattern;
     const dryFade = this.dry * 0.35;
-    const body = dryFade ? mix(C.body, '#BFA99A', dryFade) : C.body;
+    const body = dryFade ? mix(C.body, '#B9B4AE', dryFade) : C.body;
     ctx.save();
     ctx.globalAlpha = this.alpha;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -268,9 +268,9 @@ export class Worm {
     // shadow
     if (!opts.flat) {
       ctx.save();
-      ctx.translate(R * 0.18, R * 0.34);
-      ctx.strokeStyle = 'rgba(6,10,24,0.32)';
-      ctx.lineWidth = R * 2.05;
+      ctx.translate(0, R * 0.55);
+      ctx.strokeStyle = 'rgba(16,18,60,0.16)';
+      ctx.lineWidth = R * 2.3;
       ctx.beginPath(); P.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.stroke();
       ctx.restore();
     }
@@ -290,8 +290,8 @@ export class Worm {
     }
 
     // rings
-    ctx.strokeStyle = 'rgba(70,20,30,0.16)';
-    ctx.lineWidth = Math.max(1, R * 0.09);
+    ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+    ctx.lineWidth = Math.max(1, R * 0.08);
     for (let i = 2; i < n - 1; i++) {
       const a = P[i - 1], c = P[i + 1], p = P[i];
       let nx = -(c.y - a.y), ny = c.x - a.x; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
@@ -315,8 +315,8 @@ export class Worm {
     ctx.save();
     ctx.translate(-R * 0.26, -R * 0.36);
     ctx.strokeStyle = C.light;
-    ctx.globalAlpha = this.alpha * (0.5 + this.wet * 0.45);
-    ctx.lineWidth = R * (0.42 + this.wet * 0.12);
+    ctx.globalAlpha = this.alpha * (0.42 + this.wet * 0.5);
+    ctx.lineWidth = R * (0.38 + this.wet * 0.12);
     ctx.beginPath();
     for (let i = 0; i < n - 2; i++) (i ? ctx.lineTo(P[i].x, P[i].y) : ctx.moveTo(P[i].x, P[i].y));
     ctx.stroke();
@@ -340,7 +340,7 @@ export class Worm {
     for (const k of this.marks) {
       const i = Math.min(k.i, n - 2), a = P[i - 1] || P[i], c = P[i + 1], p = P[i];
       let nx = -(c.y - a.y), ny = c.x - a.x; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
-      drawLips(ctx, p.x + nx * k.side * R * 0.35, p.y + ny * k.side * R * 0.35, R * k.s, Math.atan2(ny, nx) + k.rot, 'rgba(196,30,58,0.85)');
+      drawLips(ctx, p.x + nx * k.side * R * 0.35, p.y + ny * k.side * R * 0.35, R * k.s, Math.atan2(ny, nx) + k.rot, 'rgba(255,45,85,0.92)');
     }
 
     if (this.design.acc === 'pearls' || this.design.acc === 'scarf') this.neckwear(ctx, C);

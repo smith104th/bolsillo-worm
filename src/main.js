@@ -3,8 +3,8 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
-import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, lipsSVG } from './draw.js';
-import { toast, icon, sheet, btn, closeAllSheets } from './ui.js';
+import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, lipsSVG, skyFor } from './draw.js';
+import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
@@ -95,6 +95,7 @@ function refreshPocket() {
   }
   if (me) pocket.setMyWorm(me.worm, inchesFor(me.love));
   if (them && !S.weather && !S.weatherLoading && Date.now() - (S.weatherAt || 0) > 120000) loadWeather();
+  updateSky();
   renderHeader();
   renderDockDots();
   $('#waiting').hidden = !!them;
@@ -125,7 +126,7 @@ function enterPocket(data) {
   if (store('motion') || !(window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission)) enableMotion(false);
 
   setInterval(() => { if (!document.hidden) backend.updateMe({}).catch(() => {}); }, 120000);
-  setInterval(() => { renderHeader(); updateAsleep(); refreshNeeds(); }, 30000);
+  setInterval(() => { updateSky(); renderHeader(); updateAsleep(); refreshNeeds(); }, 30000);
   loadWeather(); setInterval(loadWeather, 20 * 60000);
   document.addEventListener('visibilitychange', onVisible);
   backend.updateMe({}).catch(() => {});
@@ -159,23 +160,43 @@ function updateAsleep() {
   S.asleep = asleep;
 }
 
-// ─────────────────────────────────────────────── chrome: label + dock
+// ─────────────────────────────────────────────── chrome: header + glass tab bar
+function updateSky() {
+  const them = app.them();
+  const hour = them ? hourIn(them.place?.tz) : new Date().getHours();
+  const sky = skyFor(hour, S.weather?.kind || 'clear');
+  if (S.sky?.key !== sky.key) {
+    S.sky = sky;
+    pocket?.setSky(sky);
+    document.body.classList.toggle('dark', sky.dark);
+    document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.stops[0]);
+  }
+}
+
+const TABS = [
+  ['pocket', 'Pocket', () => {}],
+  ['feed', 'Feed', () => (app.them() ? feedSheet(app) : waitToast())],
+  ['drop', 'Drop', () => (app.them() ? dropSheet(app) : waitToast())],
+  ['today', 'Today', () => todaySheet(app)],
+  ['us', 'Us', () => usSheet(app)],
+];
+const waitToast = () => { toast('Waiting for your person to crawl in.'); setTab('pocket'); };
+function setTab(name) { document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === name)); }
+
 function buildChrome() {
-  const label = $('#label');
-  label.onclick = () => app.them() && peekSheet(app);
-  const dock = $('#dock');
-  dock.replaceChildren(
-    dockBtn('feed', 'Feed', () => (app.them() ? feedSheet(app) : toast('Waiting for your person to crawl in.'))),
-    kissBtn(),
-    h('button.dock-btn.big#drop', { type: 'button', onclick: () => (app.them() ? dropSheet(app) : toast('Waiting for your person to crawl in.')) }, h('span.snap', icon('drop')), h('span.lbl', 'Drop')),
-    dockBtn('today', 'Today', () => todaySheet(app)),
-    dockBtn('us', 'Us', () => usSheet(app)),
-  );
+  $('#label').onclick = () => app.them() && peekSheet(app);
+  $('#peek').replaceChildren(icon('peek'));
+  $('#peek').onclick = () => (app.them() ? peekSheet(app) : waitToast());
+  const bar = h('div.tabbar.glass', TABS.map(([id, label, fn]) =>
+    h(`button.tab${id === 'pocket' ? '.on' : ''}`, { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { sfx.tick(); closeAllSheets(); setTab(id); fn(); } },
+      icon(id === 'pocket' ? 'pocket' : id === 'drop' ? 'drop' : id), h('span.lbl', label), id === 'today' ? h('span.dot', { hidden: true }) : null)));
+  $('#dock').replaceChildren(bar, kissBtn());
+  onSheets((n) => { if (n === 0) setTab('pocket'); });
   const code = S.hole?.code;
   $('#waiting').replaceChildren(h('div.waiting-card',
-    h('p.mono.small', 'Your pocket is empty'),
+    h('span.mono.small.muted', 'YOUR POCKET IS EMPTY'),
     h('h2', 'Waiting for your person'),
-    h('p.small', 'Send them the link. When they crawl in, their worm lands right here.'),
+    h('p', 'Send them the link. When they crawl in, their worm lands right here.'),
     h('div.code', fmtCode(code)),
     btn([icon('share'), ' Send the link'], async () => {
       const url = `${location.origin}${location.pathname}#join=${code}`;
@@ -183,44 +204,47 @@ function buildChrome() {
       try { if (navigator.share) await navigator.share({ title: 'Bolsillo Worm', text, url }); else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Link copied.'); } } catch { /* */ }
     }, 'primary')));
 }
-function dockBtn(ic, label, fn) {
-  return h(`button.dock-btn#d-${ic}`, { type: 'button', onclick: () => { sfx.tick(); fn(); } }, h('span.snap', icon(ic)), h('span.lbl', label), h('span.dot', { hidden: true }));
-}
 
 function renderHeader() {
   const them = app.them(), lab = $('#label');
-  if (!them) { lab.replaceChildren(h('div.lab-top', h('b', 'Bolsillo Worm')), h('div.lab-sub.mono', 'an empty pocket')); return; }
+  if (!them) { lab.replaceChildren(h('div.hd-meta', h('span.dot'), 'AN EMPTY POCKET'), h('div.hd-name', 'Bolsillo'), h('div.hd-sub', 'Your person isn\'t here yet')); return; }
   const w = S.weather;
-  const status = S.online ? h('span.status.here', 'here now') : S.asleep ? h('span.status.sleep', 'asleep') : h('span.status', 'away');
+  const status = S.online ? ['here', 'Here now'] : S.asleep ? ['sleep', 'Asleep'] : ['', 'Away'];
+  const meta = [status[1], timeIn(them.place?.tz), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ');
   lab.replaceChildren(
-    h('div.lab-top', status, h('b', them.worm?.name || 'Worm')),
-    h('div.lab-sub.mono', [them.name, timeIn(them.place?.tz).toLowerCase(), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ')),
+    h('div.hd-meta', h(`span.dot${status[0] ? '.' + status[0] : ''}`), meta),
+    h('div.hd-name', them.worm?.name || 'Worm'),
+    h('div.hd-sub', `${them.name}'s worm, in your pocket`),
   );
 }
 function renderDockDots() {
   const today = app.today();
   const did = (slot) => S.events.some((e) => e.kind === 'daily' && e.from_slot === slot && e.payload?.day === today);
-  const dot = $('#d-today .dot');
+  const dot = document.querySelector('.tab[data-tab=today] .dot');
   if (dot) dot.hidden = did(S.slot);
 }
 
 // Kiss: hold to charge, five strengths
 function kissBtn() {
-  const meter = h('div.kiss-meter', h('div.kiss-lips', { html: lipsSVG('#D1203F') }), h('div.kiss-name'), h('div.kiss-bar', h('span')));
+  const dots = h('div.kiss-dots', [1, 2, 3, 4, 5].map(() => h('span')));
+  const meter = h('div.kiss-meter.glass', h('div.kiss-lips', { html: lipsSVG('#FF2D55') }), h('div.kiss-name'), dots);
   document.body.append(meter);
-  let t0 = 0, level = 0, timer = 0, raf = 0;
-  const b = h('button.dock-btn#d-kiss', { type: 'button' }, h('span.snap', icon('kiss')), h('span.lbl', 'Kiss'));
+  let t0 = 0, level = 0, raf = 0;
+  const b = h('button.kissbtn.glass', { type: 'button', 'aria-label': 'Kiss (hold for a bigger one)', html: ICON.kissFill });
   const tick = () => {
     const el = (performance.now() - t0) / 1000;
     const lv = Math.min(5, 1 + Math.floor(el / 0.55));
-    if (lv !== level) { level = lv; buzz(8 + lv * 6); sfx.tick(); meter.querySelector('.kiss-name').textContent = KISS_NAMES[lv]; meter.dataset.level = lv; }
-    meter.querySelector('.kiss-bar span').style.width = `${Math.min(1, el / 2.4) * 100}%`;
-    meter.querySelector('.kiss-lips').style.transform = `scale(${0.8 + Math.min(1, el / 2.4) * 1.1}) rotate(${Math.sin(el * 20) * level}deg)`;
+    if (lv !== level) {
+      level = lv; buzz(8 + lv * 6); sfx.tick();
+      meter.querySelector('.kiss-name').textContent = KISS_NAMES[lv]; meter.dataset.level = lv;
+      [...dots.children].forEach((d, i) => d.classList.toggle('on', i < lv));
+    }
+    meter.querySelector('.kiss-lips').style.transform = `scale(${0.8 + Math.min(1, el / 2.4) * 0.9}) rotate(${Math.sin(el * 20) * level}deg)`;
     raf = requestAnimationFrame(tick);
   };
   b.addEventListener('pointerdown', (e) => {
     if (!app.them()) return toast('Waiting for your person to crawl in.');
-    e.preventDefault(); b.setPointerCapture?.(e.pointerId);
+    e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* */ }
     t0 = performance.now(); level = 0; meter.classList.add('on'); tick();
     if (pocket?.worm) pocket.worm.pucker = 3;
   });
@@ -353,13 +377,13 @@ function beingKissed(name, level) {
   document.body.append(layer);
   pocket.blowKiss(level);
   for (let i = 0; i < n; i++) {
-    const s = h('div.stamp', { html: lipsSVG(level >= 4 ? '#B5122F' : '#D1203F') });
+    const s = h('div.stamp', { html: lipsSVG(level >= 4 ? '#E0123F' : '#FF2D55') });
     const big = level === 5 && i === n - 1;
     Object.assign(s.style, { left: big ? '50%' : `${rand(8, 92)}%`, top: big ? '46%' : `${rand(12, 82)}%`, width: big ? '58vw' : `${rand(16, 30)}vw`, transform: `translate(-50%,-50%) rotate(${rand(-30, 30)}deg)`, animationDelay: `${0.35 + i * 0.12}s` });
     layer.append(s);
     setTimeout(() => { buzz(level >= 4 ? 22 : 12); sfx.kiss(level); }, 350 + i * 120);
   }
-  layer.append(h('div.kiss-caption', h('span.mono.small', 'incoming'), h('b', `${name} sent you a ${KISS_NAMES[level]}`)));
+  layer.append(h('div.kiss-caption.glass', h('span.mono', 'incoming'), h('b', `${name} sent you a ${KISS_NAMES[level]}`)));
   setTimeout(() => layer.classList.add('out'), 2600 + n * 120);
   setTimeout(() => layer.remove(), 3400 + n * 120);
 }
@@ -380,6 +404,7 @@ async function loadWeather() {
     const c = j.current;
     S.weather = { temp: c.temperature_2m, code: c.weather_code, kind: weatherKind(c.weather_code), day: !!c.is_day };
     pocket.setWeather(S.weather.kind, S.weather.day);
+    updateSky();
     renderHeader();
   } catch { /* the pocket stays dry */ } finally { S.weatherLoading = false; }
 }

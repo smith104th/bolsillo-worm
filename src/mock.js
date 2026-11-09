@@ -42,7 +42,7 @@ export function mockBackend() {
       const r = Math.random();
       if (r < 0.25) { ev(1, 'pet', { n: 1 }); }
       else if (r < 0.32) ev(1, 'kiss', { level: 1 + Math.floor(Math.random() * 5) });
-      else if (r < 0.36) ev(1, 'note', { text: pick(['Your worm keeps stealing my crumbs.', 'Te extraño, gusano.', 'Ate a medialuna in your honor.']), paper: pick(['cream', 'celeste', 'limon']) });
+      else if (r < 0.36) ev(1, 'note', { text: pick(['Your worm keeps stealing my crumbs.', 'Te extraño, gusano.', 'Ate a medialuna in your honor.']), paper: pick(['white', 'celeste', 'limon']) });
       else if (r < 0.39) ev(1, 'trinket', { what: pick(['pebble', 'leaf', 'coin', 'flower', 'feather']), inscription: 'from my walk' });
       else if (r < 0.41) ev(1, 'knock', {});
     }, 9000);
@@ -81,7 +81,7 @@ export function mockBackend() {
       if (p) { p.love += 3; if (kind === 'feed') p.fed_at = now(); if (kind === 'mist') p.misted_at = now(); if (['pet', 'boop', 'kiss'].includes(kind)) p.petted_at = now(); setTimeout(() => on.member?.({ ...p }, 'UPDATE'), 40); }
       hole.dug_km += 40; setTimeout(() => on.hole?.({ ...hole }), 50);
       if (kind === 'kiss') setTimeout(() => ev(1, 'kiss', { level: Math.min(5, (payload.level || 1) + 1) }), 2500);
-      if (kind === 'note') setTimeout(() => ev(1, 'note', { text: 'Got it. Folding it into my wallet.', paper: 'cream' }), 5000);
+      if (kind === 'note') setTimeout(() => ev(1, 'note', { text: 'Got it. Folding it into my wallet.', paper: 'rosa' }), 5000);
       return e;
     },
     async open(eid, keep) { const e = events.find((x) => x.id === eid); if (e) { if (e.from_slot !== 0) e.opened_at = e.opened_at || now(); if (keep != null) e.kept = keep; on.event?.({ ...e }, 'UPDATE'); } },

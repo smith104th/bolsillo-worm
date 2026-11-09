@@ -8,13 +8,13 @@ import { sfx, buzz } from './feel.js';
 const busy = (b, on) => { b.disabled = on; b.classList.toggle('busy', on); };
 
 export function composeNote(app) {
-  let paper = 'cream';
+  let paper = 'white';
   const ta = h('textarea.handwriting', { maxLength: 600, rows: 7, placeholder: 'Write something for their pocket…' });
   const card = h('div.paper-card', { style: { background: PAPERS[paper] } }, ta);
   const count = h('span.small.muted', '0 / 600');
   ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / 600`; });
   const s = sheet('A note', [
-    segmented({ cream: 'Cream', rosa: 'Rosa', celeste: 'Celeste', limon: 'Limón' }, paper, (k) => { paper = k; card.style.background = PAPERS[k]; }),
+    segmented({ white: 'White', rosa: 'Rosa', celeste: 'Celeste', limon: 'Limón' }, paper, (k) => { paper = k; card.style.background = PAPERS[k]; }),
     card, h('div.row.between', count, btn('Fold it and drop it', async (e) => {
       const text = ta.value.trim(); if (!text) return ta.focus();
       busy(e.currentTarget, true);
@@ -28,7 +28,7 @@ export function composeDoodle(app) {
   const size = Math.min(window.innerWidth - 48, 380);
   const cv = h('canvas.doodle-pad', { width: size * 2, height: size * 2, style: { width: size + 'px', height: size + 'px' } });
   const x = cv.getContext('2d'); x.scale(2, 2);
-  const inks = ['#1E1A18', '#C4314B', '#E8959B', '#2F6CB5', '#3F8F5A', '#D9A04A'];
+  const inks = ['#0B0B0C', '#FF2D55', '#FF9EC2', '#2F7BFF', '#34C759', '#FF9A3C'];
   let ink = inks[1], width = 14;
   const strokes = []; let cur = null;
   const redraw = () => { x.clearRect(0, 0, size, size); renderStrokes(x, strokes, size, 1); };
@@ -201,7 +201,7 @@ export function openItem(app, it) {
   let onClose = null;
   switch (it.kind) {
     case 'note':
-      body = [h('div.paper-card.read', { style: { background: PAPERS[p.paper] || PAPERS.cream } }, h('p.handwriting', p.text))];
+      body = [h('div.paper-card.read', { style: { background: PAPERS[p.paper] || PAPERS.white } }, h('p.handwriting', p.text))];
       break;
     case 'doodle': {
       const size = Math.min(window.innerWidth - 48, 380);
