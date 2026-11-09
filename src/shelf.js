@@ -48,6 +48,43 @@ export function parcelSVG({ ready = false, w = 88 } = {}) {
 }
 const tag = (text, tone = '') => h(`span.tag${tone ? '.' + tone : ''}`, text);
 
+// the safe: everything sealed for later lives in here
+export function safeSVG({ w = 118, open = false } = {}) {
+  const ticks = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<path d="M${(58 + Math.cos(a) * 15).toFixed(1)} ${(56 + Math.sin(a) * 15).toFixed(1)} L${(58 + Math.cos(a) * 18.5).toFixed(1)} ${(56 + Math.sin(a) * 18.5).toFixed(1)}" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`; }).join('');
+  const door = open
+    ? `<rect x="16" y="14" width="98" height="84" rx="7" fill="#7E9E8C" stroke="${INK}" stroke-width="2.4"/><path d="M24 50h82M24 74h82" stroke="${INK}" stroke-width="2" opacity=".35"/>
+       <path d="M16 14 L-14 24 V92 L16 98 Z" fill="#C6E0D1" stroke="${INK}" stroke-width="2.6" stroke-linejoin="round"/><circle cx="1" cy="56" r="7" fill="#fff" stroke="${INK}" stroke-width="2"/>`
+    : `<rect x="16" y="14" width="98" height="84" rx="8" fill="#C6E0D1" stroke="${INK}" stroke-width="2.4"/>
+       <rect x="10" y="26" width="9" height="15" rx="2" fill="#7E9E8C" stroke="${INK}" stroke-width="2"/><rect x="10" y="70" width="9" height="15" rx="2" fill="#7E9E8C" stroke="${INK}" stroke-width="2"/>
+       <circle cx="58" cy="56" r="21" fill="#fff" stroke="${INK}" stroke-width="2.6"/>${ticks}
+       <path d="M58 56 L58 42" stroke="#E0465E" stroke-width="3" stroke-linecap="round"/><circle cx="58" cy="56" r="5.5" fill="${INK}"/>
+       <rect x="92" y="38" width="11" height="36" rx="5.5" fill="#E3A23F" stroke="${INK}" stroke-width="2.4"/>
+       <path d="M58 90s-5-3-5-6a2.6 2.6 0 0 1 5-1.2 2.6 2.6 0 0 1 5 1.2c0 3-5 6-5 6Z" fill="#E0465E" stroke="${INK}" stroke-width="1.4"/>`;
+  return `<svg viewBox="${open ? '-18' : '0'} 0 ${open ? 148 : 130} 122" width="${w}" aria-hidden="true">
+    <rect x="18" y="106" width="15" height="11" rx="2.5" fill="#5F7A6B" stroke="${INK}" stroke-width="2.4"/>
+    <rect x="97" y="106" width="15" height="11" rx="2.5" fill="#5F7A6B" stroke="${INK}" stroke-width="2.4"/>
+    <rect x="4" y="4" width="122" height="104" rx="13" fill="#A8CBB7" stroke="${INK}" stroke-width="2.8"/>
+    ${door}
+  </svg>`;
+}
+// the suitcase: everything you've opened, with stickers from both cities
+export function suitcaseSVG({ a = '', b = '', w = 132 } = {}) {
+  const sticker = (txt, x, y, r, fill) => txt ? `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-17" y="-9" width="34" height="18" rx="4" fill="${fill}" stroke="${INK}" stroke-width="1.8"/><text x="0" y="4.2" text-anchor="middle" font-family="Geist Mono, ui-monospace, monospace" font-size="10" font-weight="600" fill="${INK}">${txt}</text></g>` : '';
+  return `<svg viewBox="0 0 150 118" width="${w}" aria-hidden="true">
+    <path d="M55 26 V15 Q55 5 65 5 H85 Q95 5 95 15 V26 H86 V16 Q86 13 83 13 H67 Q64 13 64 16 V26 Z" fill="#9C6338" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+    <rect x="4" y="24" width="142" height="88" rx="13" fill="#CF9161" stroke="${INK}" stroke-width="2.8"/>
+    <path d="M4 44 H146" stroke="${INK}" stroke-width="2" opacity=".3"/>
+    <rect x="30" y="24" width="13" height="88" fill="#A86C3E" stroke="${INK}" stroke-width="2"/>
+    <rect x="107" y="24" width="13" height="88" fill="#A86C3E" stroke="${INK}" stroke-width="2"/>
+    <rect x="28" y="38" width="17" height="11" rx="2" fill="#EBD3A5" stroke="${INK}" stroke-width="1.8"/>
+    <rect x="105" y="38" width="17" height="11" rx="2" fill="#EBD3A5" stroke="${INK}" stroke-width="1.8"/>
+    <circle cx="70" cy="68" r="14" fill="#F9C6D3" stroke="${INK}" stroke-width="2"/>
+    <path d="M70 75s-6-3.6-6-7.4a3 3 0 0 1 6-1.4 3 3 0 0 1 6 1.4c0 3.8-6 7.4-6 7.4Z" fill="#E0465E"/>
+    ${sticker(a, 98, 96, 6, '#FFFFFF')}${sticker(b, 116, 72, -9, '#BFDDF7')}
+  </svg>`;
+}
+const cityCode = (c) => (c || '').normalize('NFD').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+
 let woodURL = null;
 function wood() {
   if (woodURL) return woodURL;
@@ -94,82 +131,33 @@ export function Shelf(app, root) {
     bg.width = c.width; bg.height = c.height; bg.getContext('2d').drawImage(c, 0, 0);
   }
 
-  function items() {
-    const me = app.slot();
+  // what goes where: sealed things in the safe, opened things and keepsakes in the suitcase
+  function contents() {
+    const me = app.slot(), mine = view === 'from';
     const all = [...app.S.shelf.values()];
-    const later = all.filter((e) => e.kind === 'later');
-    const isReady = (e) => e.payload?.mode === 'date' && e.payload.on && daysUntil(app, e.payload.on) <= 0;
-    if (view === 'for') {
-      const theirs = later.filter((e) => e.from_slot !== me);
-      return [
-        ['Open when…', theirs.filter((e) => e.payload?.mode === 'when').sort((a, b) => (!!a.opened_at - !!b.opened_at) || (a.created_at < b.created_at ? 1 : -1))],
-        ['Time capsules', theirs.filter((e) => e.payload?.mode === 'date').sort((a, b) => (!!a.opened_at - !!b.opened_at) || (isReady(b) - isReady(a)) || (a.payload.on > b.payload.on ? 1 : -1))],
-        ['Kept', all.filter((e) => e.kept && e.kind !== 'later' && e.from_slot !== me)],
-      ];
-    }
-    const mine = later.filter((e) => e.from_slot === me);
-    const them = app.them()?.name || 'them';
-    return [
-      [`Waiting for ${them}`, mine.filter((e) => !e.opened_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1))],
-      [`${them} opened`, mine.filter((e) => e.opened_at).sort((a, b) => (a.opened_at < b.opened_at ? 1 : -1))],
-      [`${them} kept`, all.filter((e) => e.kept && e.kind !== 'later' && e.from_slot === me)],
-    ];
-  }
-
-  function thing(e) {
-    const p = e.payload || {}, mine = e.from_slot === app.slot();
-    const rot = ((e.id * 53) % 9) - 4;
-    let art, label = null, cls = '';
-    if (e.kind === 'later' && p.mode === 'when') {
-      art = html(envelopeSVG(p.paper, { open: !!e.opened_at }));
-      label = tag(mine && view === 'from' ? `when ${p.label}` : p.label, e.opened_at ? 'dim' : '');
-      cls = e.opened_at ? '.opened' : '.sealed';
-    } else if (e.kind === 'later') {
-      const left = daysUntil(app, p.on);
-      if (e.opened_at) { art = html(envelopeSVG('white', { open: true })); label = tag(dayLabel(p.on), 'dim'); cls = '.opened'; }
-      else if (left <= 0) { art = html(parcelSVG({ ready: true })); label = tag(mine ? 'ready for them' : 'open me', 'pink'); cls = '.ready'; }
-      else { art = html(parcelSVG()); label = tag(`${dayLabel(p.on)} · ${left}d`); cls = '.locked'; }
-    } else {
-      switch (e.kind) {
-        case 'note': art = h('div.k-card', { style: { background: PAPERS[p.paper] || '#fff' } }, (p.text || '').slice(0, 80)); break;
-        case 'photo': art = h('div.k-pol', h('img', { src: p.thumb, alt: '' })); break;
-        case 'doodle': { const c = h('canvas', { width: 128, height: 128 }); const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 64, 1); art = h('div.k-frame', c); break; }
-        case 'trinket': art = h('div.k-thing', trinketCanvas(p.what, 66, p.text)); break;
-        case 'whisper': art = h('div.k-emo', '🐚'); break;
-        case 'wiggle': art = h('div.k-emo', '🎶'); break;
-        default: return null;
-      }
-      label = tag(e.kind === 'trinket' ? (TRINKETS[p.what] || 'found thing').replace(/^an? /, '') : ago(e.created_at), 'dim');
-    }
-    return h(`button.thing${cls}`, { type: 'button', style: { '--r': `${rot}deg` }, onclick: () => tap(e) }, art, label);
-  }
-
-  function tap(e) {
-    sfx.paper(); buzz(8);
-    if (e.kind === 'later') return openLater(app, e, () => render());
-    openItem(app, app.asItem(e));
+    const ours = (e) => (mine ? e.from_slot === me : e.from_slot !== me);
+    const later = all.filter((e) => e.kind === 'later' && ours(e));
+    return {
+      safe: later.filter((e) => !e.opened_at),
+      archive: [...later.filter((e) => e.opened_at), ...all.filter((e) => e.kept && e.kind !== 'later' && ours(e))],
+    };
   }
 
   function render() {
     const them = app.them()?.name || 'them';
-    const groups = items().filter(([, list]) => list.length);
-    const total = groups.reduce((a, [, l]) => a + l.length, 0);
-    const sealedForMe = [...app.S.shelf.values()].filter((e) => e.kind === 'later' && e.from_slot !== app.slot() && !e.opened_at).length;
-    meta.textContent = view === 'for'
-      ? (sealedForMe ? `${sealedForMe} SEALED FOR YOU` : 'YOUR SHELF')
-      : `WHAT YOU LEFT ${them.toUpperCase()}`;
-    const out = [decor()];
-    for (const [title, list] of groups) {
-      out.push(h('h3.shelf-title', title));
-      for (let i = 0; i < list.length; i += 3) out.push(h('div.shelf-row', list.slice(i, i + 3).map(thing).filter(Boolean)), plank());
-    }
-    if (!total) {
-      out.push(h('div.shelf-empty',
-        h('p', view === 'for' ? `Nothing on your shelf yet. When ${them} leaves you something for later, it lands here. Things you keep from the pocket live here too.` : `Leave ${them} an envelope for a bad day, or a photo that only opens on a date you pick.`),
-        btn(`Leave something for ${them}`, () => leaveSheet(app), 'primary')));
-    } else if (view === 'from') {
-      out.push(h('div.shelf-empty', btn(`Leave something for ${them}`, () => leaveSheet(app), 'ghost')));
-    }
+    const { safe, archive } = contents();
+    const ready = safe.filter((e) => e.payload?.mode === 'date' && daysUntil(app, e.payload.on) <= 0).length;
+    meta.textContent = view === 'for' ? (safe.length ? `${safe.length} SEALED FOR YOU` : 'YOUR SHELF') : `WHAT YOU LEFT ${them.toUpperCase()}`;
+    const count = (n, tone = '') => (n ? h(`span.count${tone ? '.' + tone : ''}`, String(n)) : null);
+    const safeBtn = h(`button.thing.big${ready && view === 'for' ? '.ready' : ''}`, { type: 'button', style: { '--r': '-1deg' }, onclick: () => safeSheet(app, view, () => render()) },
+      html(safeSVG()), count(safe.length, ready && view === 'for' ? 'pink' : ''),
+      tag(view === 'for' ? (ready ? `${ready} ready to open` : 'for later') : `${them}'s safe`, ready && view === 'for' ? 'pink' : ''));
+    const cities = [app.me()?.place?.city, app.them()?.place?.city].map(cityCode);
+    const caseBtn = h('button.thing.big.case', { type: 'button', style: { '--r': '1.5deg' }, onclick: () => archiveSheet(app, view, () => render()) },
+      html(suitcaseSVG({ a: cities[0], b: cities[1] })), count(archive.length), tag(view === 'for' ? 'Archive' : `${them} opened`));
+    const out = [decor(), h('div.shelf-row.objects', safeBtn, caseBtn), plank()];
+    if (view === 'for' && !safe.length && !archive.length) out.push(h('p.shelf-hint', `When ${them} leaves you something for later, it's locked in the safe. Once you open it, it goes in the suitcase.`));
+    if (view === 'from') out.push(h('div.shelf-empty', btn(`Leave something for ${them}`, () => leaveSheet(app), 'primary')));
     content.replaceChildren(...out);
   }
 
@@ -257,6 +245,76 @@ function nap(canvas, design) {
   return api;
 }
 
+// ── inside the safe and the suitcase ──────────────────────
+function keptArt(e) {
+  const p = e.payload || {};
+  switch (e.kind) {
+    case 'note': return h('div.k-card', { style: { background: PAPERS[p.paper] || '#fff' } }, (p.text || '').slice(0, 70));
+    case 'photo': return h('div.k-pol', h('img', { src: p.thumb, alt: '' }));
+    case 'doodle': { const c = h('canvas', { width: 128, height: 128 }); const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 64, 1); return h('div.k-frame', c); }
+    case 'trinket': return h('div.k-thing', trinketCanvas(p.what, 60, p.text));
+    case 'whisper': return h('div.k-emo', '🐚');
+    case 'wiggle': return h('div.k-emo', '🎶');
+  }
+  return null;
+}
+function cell(app, e, onChange) {
+  const p = e.payload || {};
+  let art, label, sub = '', tone = '';
+  if (e.kind === 'later') {
+    const left = p.mode === 'date' ? daysUntil(app, p.on) : 0;
+    if (e.opened_at) { art = html(envelopeSVG(p.mode === 'when' ? p.paper : 'white', { open: true, w: 74 })); label = p.mode === 'when' ? `when ${p.label}` : `time capsule`; sub = `opened ${prettyDay(app.dayOf(e.opened_at))}`; }
+    else if (p.mode === 'when') { art = html(envelopeSVG(p.paper, { w: 78 })); label = `when ${p.label}`; sub = `left ${ago(e.created_at)}`; }
+    else if (left <= 0) { art = html(parcelSVG({ ready: true, w: 72 })); label = 'ready to open'; sub = dayLabel(p.on); tone = '.ready'; }
+    else { art = html(parcelSVG({ w: 72 })); label = dayLabel(p.on); sub = `${left} day${left > 1 ? 's' : ''} to go`; }
+  } else {
+    art = keptArt(e); if (!art) return null;
+    label = e.kind === 'trinket' ? (TRINKETS[p.what] || 'found thing').replace(/^an? /, '') : { note: 'a note', photo: 'a polaroid', doodle: 'a doodle', whisper: 'a whisper', wiggle: p.label || 'a wiggle' }[e.kind];
+    sub = `kept · ${ago(e.created_at)}`;
+  }
+  return h(`button.cell${tone}`, { type: 'button', onclick: () => { buzz(8); if (e.kind === 'later') openLater(app, e, onChange); else openItem(app, app.asItem(e)); } },
+    h('div.cell-art', art), h('b', label), h('span', sub));
+}
+
+function safeSheet(app, view, onChange) {
+  const them = app.them()?.name || 'them';
+  const grid = h('div.cells');
+  const intro = h('p.small.muted');
+  const render = () => {
+    const me = app.slot();
+    const list = [...app.S.shelf.values()].filter((e) => e.kind === 'later' && !e.opened_at && (view === 'from' ? e.from_slot === me : e.from_slot !== me));
+    const ready = (e) => e.payload?.mode === 'date' && daysUntil(app, e.payload.on) <= 0;
+    list.sort((a, b) => (ready(b) - ready(a)) || ((a.payload.mode === 'date') - (b.payload.mode === 'date')) || (a.payload.mode === 'date' ? (a.payload.on > b.payload.on ? 1 : -1) : (a.created_at < b.created_at ? 1 : -1)));
+    intro.textContent = view === 'from'
+      ? `Sealed and waiting in ${them}'s safe. Once ${them} opens one, it moves to the suitcase.`
+      : `${them} left these for later. Open one when it's true. After that it lives in the suitcase.`;
+    grid.replaceChildren(...(list.length ? list.map((e) => cell(app, e, () => { render(); onChange?.(); })) : [h('p.cells-empty', view === 'from' ? `Nothing waiting for ${them} right now.` : `The safe is empty. When ${them} leaves you something for later, it's locked in here.`)]));
+  };
+  render();
+  return sheet(view === 'from' ? `${them}'s safe` : 'The safe', [
+    h('div.later-art', { html: safeSVG({ open: true, w: 150 }) }),
+    intro, grid,
+    view === 'from' ? btn(`Leave something for ${them}`, () => leaveSheet(app), 'ghost wide') : null,
+  ].filter(Boolean), { tall: true, quiet: true });
+}
+
+function archiveSheet(app, view, onChange) {
+  const them = app.them()?.name || 'them';
+  const me = app.slot();
+  const ours = (e) => (view === 'from' ? e.from_slot === me : e.from_slot !== me);
+  const all = [...app.S.shelf.values()];
+  const letters = all.filter((e) => e.kind === 'later' && e.opened_at && ours(e)).sort((a, b) => (a.opened_at < b.opened_at ? 1 : -1));
+  const kept = all.filter((e) => e.kept && e.kind !== 'later' && ours(e)).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  const cities = [app.me()?.place?.city, app.them()?.place?.city].map(cityCode);
+  const section = (title, list) => (list.length ? [h('h3', title), h('div.cells', list.map((e) => cell(app, e, onChange)).filter(Boolean))] : []);
+  return sheet(view === 'from' ? `${them} opened` : 'Archive', [
+    h('div.later-art', { html: suitcaseSVG({ a: cities[0], b: cities[1], w: 150 }) }),
+    ...(letters.length || kept.length
+      ? [...section(view === 'from' ? 'Letters and capsules' : 'Opened', letters), ...section(view === 'from' ? `${them} kept` : 'Kept from the pocket', kept)]
+      : [h('p.cells-empty', view === 'from' ? `${them} hasn't opened anything yet.` : 'Nothing in here yet. Everything you open from the safe, and everything you keep from the pocket, ends up in this suitcase.')]),
+  ], { tall: true, quiet: true });
+}
+
 // ── opening something from the shelf ───────────────────────
 const contents = new Map();
 async function inside(app, e) {
@@ -281,12 +339,12 @@ export function openLater(app, e, onChange) {
   const body = h('div.later-body');
   const from = mine ? `You left this for ${them} · ${prettyDay(app.dayOf(e.created_at))}` : `From ${them} · left ${prettyDay(app.dayOf(e.created_at))}`;
   const target = { to: e.id, about: p.mode === 'when' ? 'envelope' : 'time capsule' };
-  const s = sheet(title, [art, body, h('p.meta', from)]);
+  const s = sheet(title, [art, body, h('p.meta', from)], { quiet: true });
 
   const reveal = async (animate) => {
     try {
       const c = await inside(app, e);
-      if (animate) { art.innerHTML = p.mode === 'when' ? envelopeSVG(p.paper, { open: true, w: 170 }) : envelopeSVG('white', { open: true, w: 170 }); art.classList.add('pop'); sfx.chime(); buzz([15, 40, 15]); }
+      if (animate) { art.innerHTML = p.mode === 'when' ? envelopeSVG(p.paper, { open: true, w: 170 }) : envelopeSVG('white', { open: true, w: 170 }); art.classList.add('pop'); buzz([15, 40, 15]); }
       if (!mine && c.opened_at && !e.opened_at) { e.opened_at = c.opened_at; app.shelfChanged(e); onChange?.(); app.backend.nudge('unsealed', { mode: p.mode, label: p.label || null }); }
       body.replaceChildren(...letter(c), mine ? theirReactions(app, target) : reactRow(app, target));
     } catch (err) {

@@ -59,7 +59,7 @@ export function findEl(app, e) {
 
 export async function viewPhoto(app, mediaId, thumb, title = 'Photo of the day') {
   const img = h('img', { src: thumb, alt: '' });
-  sheet(title, h('div.polaroid', h('div.polaroid-img', img)));
+  sheet(title, h('div.polaroid', h('div.polaroid-img', img)), { quiet: true });
   if (mediaId) try { const m = await app.backend.media(mediaId); if (m?.data) img.src = m.data; } catch { /* thumb is fine */ }
 }
 

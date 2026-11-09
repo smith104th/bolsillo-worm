@@ -266,11 +266,11 @@ export function openItem(app, it) {
       body = [h('div.trinket-big', trinketCanvas(p.what, 150, p.text)), h('p.big-quote', TRINKETS[p.what] || 'Something'), p.inscription ? h('p.handwriting.center', p.inscription) : null];
       break;
   }
-  const keepBtn = h('button.btn.ghost', { type: 'button' }, icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' On your shelf' : ' Put on your shelf');
+  const keepBtn = h('button.btn.ghost', { type: 'button' }, icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' Kept' : ' Keep it');
   keepBtn.onclick = async () => {
     it.kept = !it.kept;
-    keepBtn.replaceChildren(icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' On your shelf' : ' Put on your shelf');
-    if (it.kept) { sfx.chime(); toast('On your shelf. Swipe left to find it.'); }
+    keepBtn.replaceChildren(icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' Kept' : ' Keep it');
+    if (it.kept) toast('Kept. It\'s in the suitcase on your shelf.');
     try { await app.backend.open(it.id, it.kept); } catch { /* */ }
     app.shelfChanged({ ...it, kept: it.kept });
     app.refreshPocket();
@@ -278,9 +278,8 @@ export function openItem(app, it) {
   const stash = btn('Put in the jar', () => { app.stash(it.id); s.close(); }, 'ghost');
   const about = { note: 'note', doodle: 'doodle', photo: 'polaroid', whisper: 'whisper', wiggle: 'wiggle', trinket: 'found thing' }[it.kind];
   const target = { to: it.id, about };
-  const s = sheet(titleFor(it), [...body, meta, it.mine ? theirReactions(app, target) : reactRow(app, target), h('div.row', keepBtn, it.mine ? null : stash)], { onClose });
+  const s = sheet(titleFor(it), [...body, meta, it.mine ? theirReactions(app, target) : reactRow(app, target), h('div.row', keepBtn, it.mine ? null : stash)], { onClose, quiet: true });
   if (!it.mine && !it.opened_at) { it.opened_at = new Date().toISOString(); it.opened = true; app.backend.open(it.id).catch(() => {}); app.refreshPocket(); }
-  sfx.paper();
 }
 
 export function titleFor(it) {

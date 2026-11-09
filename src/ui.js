@@ -51,7 +51,7 @@ export function toast(text, { tone = 'plain', ms = 3200, icon: ic } = {}) {
 const stack = [];
 let sheetListener = null;
 export const onSheets = (fn) => { sheetListener = fn; };
-export function sheet(title, body, { onClose, wide = false, tall = false, className = '' } = {}) {
+export function sheet(title, body, { onClose, wide = false, tall = false, className = '', quiet = false } = {}) {
   const close = () => {
     if (!el.isConnected || el.dataset.closing) return;
     el.dataset.closing = '1';
@@ -75,7 +75,7 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   for (const t of [grab, head]) { t.addEventListener('pointerdown', start); t.addEventListener('pointermove', move); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end); }
   document.body.append(el);
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
-  sfx.paper();
+  if (!quiet) sfx.paper();
   const api = { el, card, close, body: card.querySelector('.sheet-body') };
   stack.push(api);
   sheetListener?.(stack.length);
