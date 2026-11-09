@@ -1,0 +1,25 @@
+{
+  "name": "bolsillo-worm",
+  "version": "1.0.0",
+  "description": "Carry each other. A pocket for two worms.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node supabase/test/schema.test.mjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource/caveat": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "esbuild": "^0.28.2",
+    "sharp": "^0.35.5",
+    "web-push": "^4.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0"
+  },
+  "private": true,
+  "type": "module"
+}

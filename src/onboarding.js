@@ -1,0 +1,226 @@
+// Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
+import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
+import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
+import { makeDenim } from './draw.js';
+import { btn, field, icon, toast } from './ui.js';
+import { sfx, unlockAudio } from './feel.js';
+
+export const fmtCode = (c) => (c || '').replace(/[^A-Z0-9]/gi, '').toUpperCase().replace(/^(.{4})(.+)$/, '$1-$2');
+
+export function wormPreview(canvas, design, { segs = 18 } = {}) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = canvas.clientWidth || 300, H = canvas.clientHeight || 200;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const x = canvas.getContext('2d');
+  const bg = makeDenim(W, H, dpr, 5);
+  const R = Math.min(16, W * 0.05);
+  const w = new Worm(design, { x: W * 0.6, y: H * 0.55, R, segs, angle: -0.3 });
+  w.speedBase = R * 2.6;
+  let run = true, last = performance.now();
+  const bounds = { l: 6, r: W - 6, t: 6, b: H - 6 };
+  const loop = (now) => {
+    if (!run) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    w.update(dt, { bounds, gx: 0, gy: 0 });
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    x.drawImage(bg, 0, 0, W, H);
+    w.draw(x);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+  canvas.addEventListener('pointerdown', () => { w.happy = 2; w.squish = 1; w.dance = 0.5; w.danceAmp = R * 0.5; sfx.boop(); });
+  return { worm: w, set(d) { w.setDesign(d); w.happy = 1.2; }, stop() { run = false; } };
+}
+
+function screen(...kids) {
+  const root = $('#onboard');
+  root.replaceChildren(h('div.ob-card', ...kids));
+  root.hidden = false;
+  root.scrollTop = 0;
+  return root;
+}
+
+export function installGate(code) {
+  return new Promise((resolve) => {
+    if (isStandalone() || store('skipInstall')) return resolve();
+    const ios = isIOS();
+    let deferred = window.__bwInstallPrompt;
+    if (!ios && !deferred) return resolve();
+    const copy = code ? h('div.code-box',
+      h('span.mono.small', 'Your code'),
+      h('div.code', fmtCode(code)),
+      btn('Copy code', async () => { try { await navigator.clipboard.writeText(code); toast('Copied. Paste it inside the app.'); } catch { toast('Write it down: ' + fmtCode(code)); } }, 'ghost small'),
+    ) : null;
+    screen(
+      h('div.ob-logo', logo()),
+      h('h1', 'Put it in your pocket'),
+      ios
+        ? h('ol.steps',
+          h('li', 'Tap ', h('span.inline-ic', icon('share')), ' Share at the bottom of Safari.'),
+          h('li', 'Scroll and tap ', h('b', 'Add to Home Screen'), '.'),
+          h('li', 'Open ', h('b', 'Bolsillo Worm'), ' from your home screen.'))
+        : h('p.lede', 'Install it so it lives on your home screen and can buzz you when something lands in your pocket.'),
+      ios ? h('p.small.muted', 'It only works as a home screen app on iPhone: notifications, full screen, the works.') : null,
+      copy,
+      !ios && deferred ? btn('Install Bolsillo Worm', async () => { deferred.prompt(); await deferred.userChoice; resolve(); }, 'primary') : null,
+      h('button.link', { onclick: () => { store('skipInstall', true); resolve(); } }, 'Continue in the browser'),
+    );
+  });
+}
+
+function logo() {
+  return h('div.logo-mark', { html: `<svg viewBox="0 0 120 120"><rect x="6" y="6" width="108" height="108" rx="26" fill="#2B3F63"/><path d="M22 34h76" stroke="#D9A04A" stroke-width="2.4" stroke-dasharray="5 4"/><path d="M22 34v38q0 18 38 30 38-12 38-30V34" fill="none" stroke="#D9A04A" stroke-width="2.4" stroke-dasharray="5 4"/><path d="M40 70c4-14 12-16 16-6s12 10 16-4" fill="none" stroke="#E8959B" stroke-width="13" stroke-linecap="round"/><circle cx="72.5" cy="58" r="2.3" fill="#1E1418"/><circle cx="67" cy="55" r="2.3" fill="#1E1418"/></svg>` });
+}
+
+export async function onboard(backend, { code: presetCode } = {}) {
+  const draft = store('draft') || { name: '', worm: { ...DEFAULT_DESIGN }, place: null };
+  const save = () => store('draft', draft);
+
+  // 1. welcome
+  await new Promise((res) => {
+    screen(
+      h('div.ob-logo', logo()),
+      h('h1.title', 'Bolsillo Worm'),
+      h('p.tag', 'Carry each other.'),
+      h('p.lede', 'You become a worm. Your worm lives in their pocket, theirs lives in yours. A hole in the denim connects the two.'),
+      btn('Make my worm', res, 'primary'),
+    );
+  });
+
+  // 2. you
+  await new Promise((res) => {
+    const input = h('input', { value: draft.name, maxLength: 40, placeholder: 'Your name', autocomplete: 'given-name', enterKeyHint: 'next' });
+    const next = () => { if (!input.value.trim()) return input.focus(); draft.name = input.value.trim(); save(); res(); };
+    input.addEventListener('keydown', (e) => e.key === 'Enter' && next());
+    screen(h('p.step', '1 / 4'), h('h1', 'Who are you?'), h('p.lede', 'This is what your partner sees next to your worm.'), field('Your name', input), btn('Next', next, 'primary'));
+    setTimeout(() => input.focus(), 300);
+  });
+
+  // 3. your worm
+  await new Promise((res) => {
+    const cv = h('canvas.preview');
+    const nameIn = h('input', { value: draft.worm.name || '', maxLength: 24, placeholder: 'Fideo, Pickle, Señor Gusano…' });
+    let pv;
+    const swatches = h('div.swatches', Object.entries(COLORS).map(([k, c]) =>
+      h(`button.swatch${draft.worm.color === k ? '.on' : ''}`, { type: 'button', style: { background: c.body }, title: c.label, onclick: (e) => { draft.worm.color = k; [...swatches.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); sfx.pop(); } })));
+    const chips = (obj, key) => {
+      const wrap = h('div.chips');
+      for (const [k, label] of Object.entries(obj)) {
+        wrap.append(h(`button.chip${draft.worm[key] === k ? '.on' : ''}`, { type: 'button', onclick: (e) => { draft.worm[key] = k; [...wrap.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); sfx.pop(); } }, label));
+      }
+      return wrap;
+    };
+    const next = () => { if (!nameIn.value.trim()) { toast('Your worm needs a name.'); return nameIn.focus(); } draft.worm.name = nameIn.value.trim(); save(); pv.stop(); res(); };
+    screen(
+      h('p.step', '2 / 4'), h('h1', 'Make your worm'),
+      h('p.lede', 'This worm is you. It will live in their pocket.'),
+      cv,
+      field('Worm name', nameIn),
+      h('div.field', h('span.field-label', 'Color'), swatches),
+      h('div.field', h('span.field-label', 'Pattern'), chips(PATTERNS, 'pattern')),
+      h('div.field', h('span.field-label', 'Wearing'), chips(ACCESSORIES, 'acc')),
+      btn('Next', next, 'primary'),
+    );
+    requestAnimationFrame(() => { pv = wormPreview(cv, draft.worm); });
+  });
+
+  // 4. where
+  await new Promise((res) => {
+    const q = h('input', { placeholder: 'Search your city', autocomplete: 'off', enterKeyHint: 'search', value: draft.place?.city || '' });
+    const list = h('div.results');
+    const chosen = h('p.chosen', draft.place ? `${draft.place.city}${draft.place.country ? ', ' + draft.place.country : ''}` : '');
+    let timer;
+    const search = async () => {
+      const term = q.value.trim(); if (term.length < 2) { list.replaceChildren(); return; }
+      try {
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=6&language=en&format=json`);
+        const j = await r.json();
+        list.replaceChildren(...(j.results || []).map((c) => h('button.result', { type: 'button', onclick: () => {
+          draft.place = { city: c.name, country: c.country || '', region: c.admin1 || '', lat: +c.latitude.toFixed(3), lon: +c.longitude.toFixed(3), tz: c.timezone || myTz() };
+          save(); chosen.textContent = `${c.name}, ${c.country || ''}`; list.replaceChildren(); q.value = c.name; sfx.pop();
+        } }, h('b', c.name), h('span', [c.admin1, c.country].filter(Boolean).join(', ')))));
+        if (!j.results?.length) list.replaceChildren(h('p.small.muted', 'Nothing found. Try the nearest big city.'));
+      } catch { list.replaceChildren(h('p.small.muted', 'Can\'t search right now. Type your city and tap Next.')); }
+    };
+    q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 300); });
+    const next = () => {
+      if (!draft.place && q.value.trim()) draft.place = { city: q.value.trim(), tz: myTz() };
+      if (!draft.place) { toast('Where are you?'); return q.focus(); }
+      save(); res();
+    };
+    screen(h('p.step', '3 / 4'), h('h1', 'Where\'s your pocket?'),
+      h('p.lede', 'Your partner sees your time and weather, and the distance between you becomes a tunnel you dig together.'),
+      field('City', q), chosen, list, btn('Next', next, 'primary'));
+  });
+
+  // 5. pair
+  return await new Promise((resolve) => {
+    const codeIn = h('input.code-in', { placeholder: 'XXXX-XXXX', maxLength: 9, autocapitalize: 'characters', autocomplete: 'off', value: presetCode ? fmtCode(presetCode) : '' });
+    codeIn.addEventListener('input', () => { const p = codeIn.selectionStart; codeIn.value = fmtCode(codeIn.value); codeIn.setSelectionRange(p, p); });
+    const busy = (b, on) => { b.disabled = on; b.classList.toggle('busy', on); };
+
+    const create = async (e) => {
+      const b = e.currentTarget; busy(b, true);
+      try {
+        const r = await backend.create(draft.name, draft.worm, draft.place);
+        store('draft', null);
+        showCode(r.code, resolve);
+      } catch (err) { toast(nice(err)); busy(b, false); }
+    };
+    const join = async (e) => {
+      const b = e.currentTarget; const code = codeIn.value.replace(/[^A-Z0-9]/gi, '');
+      if (code.length < 8) { toast('The code has 8 characters.'); return codeIn.focus(); }
+      busy(b, true);
+      try {
+        const r = await backend.join(code, draft.name, draft.worm, draft.place);
+        if (r.full) { busy(b, false); return reclaim(code, r.worms, resolve); }
+        store('draft', null); sfx.chime(); resolve(r);
+      } catch (err) { toast(nice(err)); busy(b, false); }
+    };
+    const paste = async () => { try { const t = await navigator.clipboard.readText(); codeIn.value = fmtCode(t); } catch { toast('Type it in instead.'); } };
+
+    screen(h('p.step', '4 / 4'), h('h1', 'Connect the pockets'),
+      h('div.choice',
+        h('h3', 'Starting?'),
+        h('p.small', 'Dig a new hole and send the code to your person.'),
+        btn('Dig a new hole', create, 'primary')),
+      h('div.or', 'or'),
+      h('div.choice',
+        h('h3', 'Got a code?'),
+        h('div.code-row', codeIn, h('button.icon-btn', { type: 'button', onclick: paste, title: 'Paste' }, 'Paste')),
+        btn('Crawl in', join, presetCode ? 'primary' : '')),
+    );
+  });
+}
+
+function showCode(code, resolve) {
+  const url = `${location.origin}${location.pathname}#join=${code}`;
+  const share = async () => {
+    const text = `Crawl into my pocket 🪱 Install Bolsillo Worm, then use code ${fmtCode(code)}`;
+    try { if (navigator.share) await navigator.share({ title: 'Bolsillo Worm', text, url }); else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Link copied.'); } } catch { /* cancelled */ }
+  };
+  sfx.chime();
+  screen(h('div.ob-logo', logo()), h('h1', 'Your hole is dug'),
+    h('p.lede', 'Send this to your person. When they crawl in, their worm shows up in your pocket.'),
+    h('div.code-box', h('span.mono.small', 'Code'), h('div.code', fmtCode(code))),
+    btn('Send the link', share, 'primary'),
+    btn('Go to my pocket', () => resolve({ code }), 'ghost'));
+}
+
+function reclaim(code, worms, resolve) {
+  screen(h('h1', 'This hole is full'),
+    h('p.lede', 'It already has two worms. New phone? Pick yours to take it back. The old phone will lose access.'),
+    h('div.reclaim', worms.map((w) => h('button.result', { type: 'button', onclick: async () => {
+      try { const r = await window.__bw.backend.reclaim(code, w.slot); store('draft', null); sfx.chime(); resolve(r); } catch (err) { toast(nice(err)); }
+    } }, h('b', w.worm?.name || 'Worm'), h('span', `${w.name}'s worm`)))));
+}
+
+export function nice(err) {
+  const m = String(err?.message || err);
+  if (m.includes('no_such_hole')) return 'No hole with that code. Check the letters.';
+  if (m.includes('already_in_hole')) return 'This phone is already in a pocket.';
+  if (m.includes('anonymous') || m.includes('Anonymous')) return 'Sign-ins are switched off on the server.';
+  if (m.includes('Failed to fetch') || m.includes('NetworkError')) return 'No connection. Try again.';
+  return 'Something snagged: ' + m.slice(0, 80);
+}
+export { rand };
