@@ -346,7 +346,7 @@ export function openLater(app, e, onChange) {
       const c = await inside(app, e);
       if (animate) { art.innerHTML = p.mode === 'when' ? envelopeSVG(p.paper, { open: true, w: 170 }) : envelopeSVG('white', { open: true, w: 170 }); art.classList.add('pop'); buzz([15, 40, 15]); }
       if (!mine && c.opened_at && !e.opened_at) { e.opened_at = c.opened_at; app.shelfChanged(e); onChange?.(); app.backend.nudge('unsealed', { mode: p.mode, label: p.label || null }); }
-      body.replaceChildren(...letter(c), mine ? theirReactions(app, target) : reactRow(app, target));
+      body.replaceChildren(...[...letter(c), mine ? theirReactions(app, target) : reactRow(app, target)].filter(Boolean));
     } catch (err) {
       body.replaceChildren(h('p.small.muted', /not_yet/.test(err.message) ? 'Not yet. Patience, gusano.' : 'Couldn\'t open it. Try again.'));
     }

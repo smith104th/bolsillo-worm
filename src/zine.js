@@ -79,7 +79,7 @@ function footer(x, n, tones) {
     x.save(); x.beginPath(); wave(x, PH - 40 + i * 11, 2.2, n * 3 + i); x.lineTo(PW, PH); x.lineTo(0, PH); x.closePath();
     soilFill(x, tones[i]); x.restore();
   });
-  font(x, 500, 7, true); x.fillStyle = 'rgba(255,248,238,0.92)'; x.textAlign = 'center'; x.fillText(String(n), PW / 2, PH - 12); x.textAlign = 'left';
+  font(x, 500, 7, true); x.fillStyle = INK; x.textAlign = 'center'; x.fillText(String(n), PW / 2, PH - 12); x.textAlign = 'left';
 }
 function runningHead(x, left) {
   font(x, 500, 6.5, true); x.fillStyle = INK2;
@@ -111,8 +111,8 @@ function qaBlock(x, app, L, names) {
     a.forEach((c, i) => {
       const bx = M + i * (colW + 10);
       rrect(x, bx, by, colW, boxH, 7); x.fillStyle = i ? '#F3ECDF' : '#F7F2E9'; x.fill();
-      font(x, 500, 6.3, true); x.fillStyle = INK2; x.fillText(c.n.toUpperCase(), bx + pad, by + pad + 6);
-      font(x, 400, 9.2); x.fillStyle = c.faint ? INK2 : INK;
+      font(x, 500, 6.3, true); x.fillStyle = INK; x.fillText(c.n.toUpperCase(), bx + pad, by + pad + 6);
+      font(x, c.faint ? 'italic 400' : 400, 9.2); x.fillStyle = INK;
       c.lines.forEach((l, j) => x.fillText(l, bx + pad, by + pad + 20 + j * 12));
     });
   } };
@@ -249,7 +249,7 @@ function monthPage(x, monthDay, count, tone, n) {
   x.font = `30px ${SANS}`; x.fillText('🌱', PW - M - 34, 232);
   font(x, 600, 62); x.fillStyle = INK;
   x.fillText(new Date(monthDay + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }), M - 2, 320);
-  font(x, 500, 7, true); x.fillStyle = 'rgba(11,11,12,0.6)';
+  font(x, 500, 7, true); x.fillStyle = INK;
   x.fillText(`${count} LAYER${count === 1 ? '' : 'S'}`, M, 342);
 }
 function backPage(x, app) {
@@ -258,7 +258,7 @@ function backPage(x, app) {
   drawHole(x, PW / 2, PH / 2 - 40, 34, 0, 0);
   font(x, 600, 18); x.fillStyle = INK; x.textAlign = 'center';
   x.fillText('Same pocket soon.', PW / 2, PH / 2 + 40);
-  font(x, 500, 6.5, true); x.fillStyle = 'rgba(11,11,12,0.65)';
+  font(x, 500, 6.5, true); x.fillStyle = INK;
   x.fillText('MADE FOR TWO', PW / 2, PH - 40); x.textAlign = 'left';
 }
 

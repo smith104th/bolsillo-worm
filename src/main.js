@@ -251,12 +251,12 @@ function renderHeader() {
   const w = S.weather;
   const status = S.online ? ['here', 'here now'] : S.asleep ? ['sleep', 'asleep'] : ['', 'away'];
   const meta = [timeIn(them.place?.tz), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ');
-  lab.replaceChildren(
+  lab.replaceChildren(...[
     h('div.hd-meta', meta),
     h('div.hd-name', them.worm?.name || 'Worm'),
     h('div.hd-sub', h(`span.dot${status[0] ? '.' + status[0] : ''}`), `${them.name}'s worm · ${status[1]}`),
     S.online ? null : callInBtn(them),
-  );
+  ].filter(Boolean));
 }
 // when they're not in the pocket: a little button to buzz them over
 function callInBtn(them) {
