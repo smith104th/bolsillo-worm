@@ -76,6 +76,7 @@ export function supabaseBackend(cfg) {
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'holes', filter: `id=eq.${holeId}` }, (p) => on.hole?.(p.new))
         .on('presence', { event: 'sync' }, () => on.presence?.(ch.presenceState()))
         .on('broadcast', { event: 'live' }, ({ payload }) => on.live?.(payload))
+        .on('system', {}, (m) => { if (m?.status === 'ok' || m?.extension === 'postgres_changes') on.ready?.(); })
         .subscribe(async (status) => {
           on.status?.(status);
           if (status === 'SUBSCRIBED') { try { await ch.track({ slot, at: Date.now() }); } catch { /* */ } }

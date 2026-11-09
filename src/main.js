@@ -298,6 +298,7 @@ const realtime = {
     refreshPocket(); updateAsleep();
   },
   hole(row) { S.hole = { ...S.hole, ...row }; },
+  ready: throttle(() => onVisible(), 3000),
   presence(state) {
     const online = !!state[String(1 - S.slot)]?.length;
     if (online !== S.online) {
