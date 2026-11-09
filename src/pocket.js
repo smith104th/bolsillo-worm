@@ -102,7 +102,7 @@ export class Pocket {
   // ── items
   syncItems(list) {
     const keep = new Set(list.map((i) => i.id));
-    this.items = this.items.filter((i) => keep.has(i.id));
+    this.items = this.items.filter((i) => keep.has(i.id) || i.diving != null);
     for (const it of list) {
       const have = this.items.find((x) => x.id === it.id);
       if (have) { Object.assign(have, { payload: it.payload, opened: it.opened, kept: it.kept }); continue; }

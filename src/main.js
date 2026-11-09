@@ -164,7 +164,7 @@ function buildChrome() {
   label.onclick = () => app.them() && peekSheet(app);
   const dock = $('#dock');
   dock.replaceChildren(
-    dockBtn('feed', 'Feed', () => feedSheet(app)),
+    dockBtn('feed', 'Feed', () => (app.them() ? feedSheet(app) : toast('Waiting for your person to crawl in.'))),
     kissBtn(),
     h('button.dock-btn.big#drop', { type: 'button', onclick: () => (app.them() ? dropSheet(app) : toast('Waiting for your person to crawl in.')) }, h('span.snap', icon('drop')), h('span.lbl', 'Drop')),
     dockBtn('today', 'Today', () => todaySheet(app)),
@@ -416,7 +416,10 @@ async function enablePush() {
     if (perm !== 'granted') return toast('Notifications are off. You can allow them in your phone settings.');
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
-    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(CONFIG.vapidPublicKey) });
+    const key = await backend.vapidKey();
+    if (sub && store('vapid') && store('vapid') !== key) { await sub.unsubscribe(); sub = null; }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) });
+    store('vapid', key);
     const json = sub.toJSON();
     await backend.updateMe({ push: json });
     const me = app.me(); if (me) me.push = json;

@@ -59,6 +59,11 @@ export function supabaseBackend(cfg) {
       mediaCache.set(id, data);
       return data;
     },
+    async vapidKey() {
+      const { data, error } = await sb.functions.invoke('nudge', { body: { kind: 'vapid' } });
+      if (error || !data?.publicKey) throw new Error(error?.message || 'no push key');
+      return data.publicKey;
+    },
     async nudge(kind, extra = {}) {
       try { await sb.functions.invoke('nudge', { body: { kind, extra } }); } catch { /* push is best-effort */ }
     },

@@ -127,4 +127,7 @@ await as(U.D, 'select wh_leave()');
 await as(U.A, 'select wh_leave()');
 assert.equal((await db.query('select count(*)::int n from holes')).rows[0].n, 0);
 
+// push keys are out of reach for app users
+await fails(U.A, 'select * from private.vapid', [], /permission denied/);
+
 console.log('all schema tests passed');
