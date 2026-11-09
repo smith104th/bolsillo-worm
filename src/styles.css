@@ -41,7 +41,7 @@ h1, h2, h3 { font-weight: 500; margin: 0; letter-spacing: -0.01em; }
 #label::after { content: ''; position: absolute; left: -6px; right: -6px; top: 50%; height: 1px; }
 .lab-top { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .lab-top b { font: italic 600 23px/1.05 var(--serif); letter-spacing: 0.01em; text-transform: none; }
-.lab-sub { font-size: 10.5px; color: #6C5146; text-transform: lowercase; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab-sub { font-size: 10.5px; color: #6C5146; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status { font: 500 9px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.1em; color: #7B6A60; display: inline-flex; align-items: center; gap: 4px; }
 .status::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #A29387; }
 .status.here { color: #2F7A4C; } .status.here::before { background: #3FBF72; box-shadow: 0 0 0 0 rgba(63,191,114,0.7); animation: pulse 1.6s infinite; }
