@@ -49,7 +49,6 @@ export function dropSheet(app) {
     tile('trinket', 'Found thing', 'a pebble, a ticket…', composeTrinket),
     tile('later', 'For later', 'open when… or on a date', (a) => leaveSheet(a)),
     tile('knock', 'Knock', 'thinking of you', () => app.knock()),
-    tile('ring', 'Call them in', 'open the hole', () => app.ring()),
   ));
 }
 

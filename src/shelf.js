@@ -175,7 +175,7 @@ export function Shelf(app, root) {
 
   // top plank: a plant and their worm, napping
   function decor() {
-    const cv = h('canvas.napper', { width: 400, height: 160 });
+    const cv = h('canvas.napper', { width: 440, height: 220, 'aria-label': `${app.them()?.worm?.name || 'Their worm'}, asleep` });
     const row = h('div.shelf-row.decor', h('span.plant', '🪴'), h('div.nap', cv, h('span.zz', 'z'), h('span.zz.b', 'z')));
     const wrap = h('div.decor-wrap', row, plank());
     requestAnimationFrame(() => { napper?.stop(); napper = nap(cv, app.them()?.worm); });
@@ -189,29 +189,71 @@ export function Shelf(app, root) {
   };
 }
 
-// a little worm asleep on the top shelf; poke it and it wakes for a moment
+// their worm, tucked into a little bed on the top shelf. It stays put and breathes;
+// poke it and it opens its eyes for a moment, then goes back to sleep.
 function nap(canvas, design) {
-  const x = canvas.getContext('2d'), W = 200, H = 80;
+  const x = canvas.getContext('2d'), W = 220, H = 110, R = 10.5;
   canvas.width = W * 2; canvas.height = H * 2;
-  const w = new Worm(design || {}, { x: 100, y: 54, R: 11.5, segs: 14, angle: 0 });
-  w.speedBase = 16;
-  const bounds = { l: 18, r: W - 18, t: 34, b: H - 10 };
-  for (let i = 0; i < 90; i++) w.update(1 / 60, { bounds, gx: 0, gy: 0 });
-  w.sleep(true);
-  for (let i = 0; i < 240; i++) w.update(1 / 60, { bounds, gx: 0, gy: 0 });
-  let run = false, last = 0, wakeT = 0;
+  const w = new Worm(design || {}, { x: 58, y: 54, R, segs: 15, angle: Math.PI });
+  // lay it down: head on the pillow, body stretched out under the blanket
+  w.pts.forEach((p, k) => { p.x = p.px = 58 + k * w.spacing; p.y = p.py = 55 + Math.sin(k * 0.55) * 1.4 + k * 0.18; });
+  w.heading = Math.PI;
+  const sleep = () => { w.mode = 'sleep'; w.orbit = { x: 0, y: 0, a: 0, r: 0, t: 99 }; w.happy = 0; w.surprise = 0; };
+  sleep();
+  const bodyY = (px) => { let best = w.pts[0]; for (const p of w.pts) if (Math.abs(p.x - px) < Math.abs(best.x - px)) best = p; return best.y; };
+  const tail = () => w.pts[w.pts.length - 1].x;
+  const INK = '#26324D', WOOD = '#C9935B', WOOD_D = '#A9733F', BLANKET = '#F9C6D3', THREAD = '#E3A23F';
+  const line = () => { x.strokeStyle = INK; x.lineWidth = 2; x.lineJoin = 'round'; x.stroke(); };
+  const rr = (X, Y, Wd, Ht, r) => { x.beginPath(); x.roundRect(X, Y, Wd, Ht, r); };
+
+  let run = false, t = 0, last = 0, wakeT = 0;
+  const draw = () => {
+    x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, W, H);
+    const breathe = Math.sin(t * 1.7) * 0.9;
+    // headboard, legs, rail
+    rr(10, 26, 20, 82, [9, 9, 2, 2]); x.fillStyle = WOOD; x.fill(); line();
+    x.beginPath(); x.arc(20, 24, 4.5, 0, Math.PI * 2); x.fillStyle = WOOD_D; x.fill(); line();
+    rr(32, 92, 7, 16, 2); x.fillStyle = WOOD_D; x.fill(); line();
+    rr(186, 92, 7, 16, 2); x.fill(); line();
+    rr(26, 78, 172, 15, 3); x.fillStyle = WOOD; x.fill(); line();
+    // mattress
+    rr(28, 64, 168, 17, 5); x.fillStyle = '#FFFFFF'; x.fill(); line();
+    // pillow
+    x.beginPath(); x.ellipse(52, 60, 25, 10, -0.05, 0, Math.PI * 2); x.fillStyle = '#FFFFFF'; x.fill(); line();
+    x.beginPath(); x.moveTo(40, 57); x.quadraticCurveTo(52, 61, 64, 57); x.strokeStyle = '#D5D9E3'; x.lineWidth = 1.5; x.stroke();
+    // the worm
+    w.draw(x, { flat: true });
+    // blanket, rising and falling a little
+    x.beginPath();
+    const x0 = 78, x1 = Math.min(196, tail() + 16);
+    x.moveTo(x0, 86);
+    for (let px = x0; px <= x1; px += 4) x.lineTo(px, bodyY(px) - R * 0.9 + breathe * (1 - (px - x0) / (x1 - x0)) + Math.sin(px / 7) * 0.6);
+    x.lineTo(x1 + 2, 74); x.quadraticCurveTo(x1 + 4, 86, x1 - 2, 90); x.lineTo(x0 - 2, 90); x.closePath();
+    x.fillStyle = BLANKET; x.fill(); line();
+    // turned-down edge with a running stitch, like the hole
+    x.beginPath(); x.moveTo(x0, bodyY(x0) - R * 0.9 + breathe); x.lineTo(x0 + 13, bodyY(x0 + 13) - R * 0.9 + breathe * 0.9); x.lineTo(x0 + 11, 89); x.lineTo(x0 - 2, 90); x.closePath();
+    x.fillStyle = '#FCE3EA'; x.fill(); line();
+    x.setLineDash([3, 3]); x.beginPath(); x.moveTo(x0 + 18, bodyY(x0 + 18) - R * 0.9 + 4); x.lineTo(x0 + 18, 86); x.strokeStyle = THREAD; x.lineWidth = 1.6; x.stroke(); x.setLineDash([]);
+    // footboard in front
+    rr(190, 46, 18, 62, [8, 8, 2, 2]); x.fillStyle = WOOD; x.fill(); line();
+  };
   const loop = (now) => {
     if (!run) return;
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (wakeT > 0) { wakeT -= dt; if (wakeT <= 0) w.sleep(true); }
-    w.update(dt, { bounds, gx: 0, gy: 0 });
-    x.setTransform(2, 0, 0, 2, 0, 0); x.clearRect(0, 0, W, H);
-    w.draw(x, { flat: true });
+    const dt = Math.min(0.1, (now - last) / 1000);
+    if (dt >= 1 / 20) {
+      last = now; t += dt;
+      if (wakeT > 0) { wakeT -= dt; w.happy = Math.max(w.happy - dt * 0.3, 0); if (wakeT <= 0) { sleep(); canvas.parentElement?.classList.remove('awake'); } }
+      draw();
+    }
     requestAnimationFrame(loop);
   };
-  canvas.addEventListener('click', () => { w.sleep(false); w.happy = 2; w.surprise = 0.6; wakeT = 4; sfx.boop(); buzz(10); });
+  canvas.addEventListener('click', () => {
+    w.mode = 'wander'; w.orbit = null; w.happy = 2.2; w.surprise = 0.5; w.blush = Math.min(1, w.blush + 0.15); wakeT = 3.5;
+    canvas.parentElement?.classList.add('awake');
+    sfx.boop(); buzz(10);
+  });
   const api = { start() { if (!run) { run = true; last = performance.now(); requestAnimationFrame(loop); } }, stop() { run = false; } };
-  api.start();
+  draw(); api.start();
   return api;
 }
 

@@ -4,7 +4,7 @@ import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isS
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
 import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
-import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON } from './ui.js';
+import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON, confirmBox } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
@@ -255,8 +255,22 @@ function renderHeader() {
     h('div.hd-meta', meta),
     h('div.hd-name', them.worm?.name || 'Worm'),
     h('div.hd-sub', h(`span.dot${status[0] ? '.' + status[0] : ''}`), `${them.name}'s worm · ${status[1]}`),
+    S.online ? null : callInBtn(them),
   );
 }
+// when they're not in the pocket: a little button to buzz them over
+function callInBtn(them) {
+  const recently = S.calledAt && Date.now() - S.calledAt < 120000;
+  return h(`button.callin.glass${recently ? '.sent' : ''}`, {
+    type: 'button', disabled: recently,
+    onclick: async (e) => {
+      e.stopPropagation();
+      if (S.asleep && !(await confirmBox(`It's ${timeIn(them.place?.tz)} for ${them.name} and they look asleep. Buzz them anyway?`, 'Buzz them'))) return;
+      ring();
+    },
+  }, icon('ring'), recently ? `Buzzed ${them.name}. Waiting at the hole.` : `Call ${them.name} in`);
+}
+
 function renderDockDots() {
   const today = app.today();
   const did = (slot) => S.events.some((e) => e.kind === 'daily' && e.from_slot === slot && e.payload?.day === today);
@@ -346,7 +360,12 @@ async function knock() {
   if (await act('knock', {})) { backend.nudge('knock'); sfx.knock(); buzz([30, 80, 30]); toast('Knocked.'); }
 }
 async function ring() {
-  if (await act('ring', {})) { backend.nudge('ring'); toast(`Called. ${app.them()?.name || 'They'} will get a buzz.`); }
+  if (await act('ring', {})) {
+    backend.nudge('ring'); sfx.chime(); buzz([15, 40, 15]);
+    S.calledAt = Date.now(); renderHeader();
+    setTimeout(renderHeader, 120500);
+    if (pocket) pocket.glow = 1.3;
+  }
 }
 
 async function sendReact(emoji, extra = {}) {

@@ -437,12 +437,13 @@ body.dark .shelf-tabs button.on { background: rgba(255,255,255,0.2); color: #fff
 .bracket.l { left: 15%; border-right: 17px solid transparent; }
 .bracket.r { right: 15%; border-left: 17px solid transparent; }
 .decor-wrap { margin-top: 16px; }
-.shelf-row.decor { justify-content: space-between; padding: 0 28px 0 34px; min-height: 70px; }
+.shelf-row.decor { justify-content: space-between; align-items: flex-end; padding: 0 22px 0 30px; min-height: 70px; }
 .decor .plant { font-size: 54px; line-height: 0.82; filter: drop-shadow(0 4px 4px rgba(20,25,60,0.18)); }
-.nap { position: relative; line-height: 0; margin-bottom: -6px; }
-.nap canvas { width: 200px; height: 80px; cursor: pointer; }
-.zz { position: absolute; right: 20px; top: 4px; font: 600 13px var(--sans); color: rgba(38,50,77,0.7); animation: zz 3.2s ease-in infinite; pointer-events: none; }
-.zz.b { animation-delay: 1.6s; right: 12px; }
+.nap { position: relative; line-height: 0; margin-bottom: -1px; }
+.nap canvas { width: 220px; height: 110px; cursor: pointer; }
+.zz { position: absolute; left: 66px; top: 14px; font: 600 13px var(--sans); color: rgba(38,50,77,0.7); animation: zz 3.2s ease-in infinite; pointer-events: none; }
+.zz.b { animation-delay: 1.6s; left: 74px; }
+.nap.awake .zz { display: none; }
 body.dark .zz { color: rgba(255,255,255,0.85); }
 @keyframes zz { 0% { opacity: 0; transform: translate(0, 8px) scale(0.7); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -22px) scale(1.15); } }
 
@@ -485,3 +486,10 @@ body.dark .zz { color: rgba(255,255,255,0.85); }
 .edge { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none; background-color: #6FBEFF; }
 #edge-top { top: 0; }
 #edge-bottom { bottom: 0; background-color: #EEF6FF; }
+
+/* call them in: only when they're away */
+.callin { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; height: 36px; padding: 0 14px 0 11px; border-radius: 999px; font: 500 14px/1 var(--sans); letter-spacing: -0.01em; color: var(--ink); cursor: pointer; transition: transform 0.15s, opacity 0.2s; }
+.callin svg { width: 17px; height: 17px; }
+.callin:active { transform: scale(0.95); }
+.callin.sent { opacity: 0.72; cursor: default; }
+body.dark .callin { color: #fff; }
