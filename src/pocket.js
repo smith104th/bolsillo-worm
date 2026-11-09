@@ -1,7 +1,8 @@
 // The pocket: canvas scene with the worm(s), things that fell through the hole,
 // crumbs, weather from the other side, and live fingertips.
 import { Worm, heart, star, segsFor } from './worm.js';
-import { skyFor, makeGrain, drawSky, drawOrb, drawItem, drawFood, drawLips, itemRadius } from './draw.js';
+import { makeDenim, drawSeams, drawHole, drawItem, drawFood, drawLips, itemRadius } from './draw.js';
+import { dab } from './brush.js';
 import { clamp, rand, pick } from './util.js';
 import { sfx, buzz } from './feel.js';
 
@@ -19,7 +20,6 @@ export class Pocket {
     this.live = false;
     this.asleep = false;
     this.weather = { kind: 'none', day: true };
-    this.sky = skyFor(new Date().getHours(), 'clear');
     this.needs = { hungry: 0, dry: 0 };
     this.g = { x: 0, y: 0 }; this.gRaw = { x: 0, y: 0 }; this.gBase = null;
     this.glow = 0; this.flash = 0; this.shake = 0;
@@ -45,10 +45,13 @@ export class Pocket {
     this.cv.style.width = W + 'px'; this.cv.style.height = H + 'px';
     const ins = this.insets();
     this.bounds = { l: 14, r: W - 14, t: ins.top, b: H - ins.bottom };
-    this.R = clamp(Math.min(W, H) * 0.036, 10, 16);
-    this.orbR = Math.min(W * 0.17, 78);
-    this.hole = { x: W / 2, y: this.bounds.b - this.orbR * 0.9 };
-    this.grain = makeGrain(W, H, dpr);
+    this.R = clamp(Math.min(W, H) * 0.044, 12, 19);
+    this.holeR = Math.min(W * 0.115, 48);
+    this.hole = { x: W / 2, y: this.bounds.b - this.holeR * 1.7 };
+    const denim = makeDenim(W, H, dpr, 29);
+    const dx = denim.getContext('2d');
+    drawSeams(dx, W, H, this.bounds.b + 34);
+    this.denim = denim;
     for (const w of [this.worm, this.mine]) if (w) { w.R = this.R; w.spacing = this.R * 0.62; w.speedBase = this.R * 3.4; }
   }
 
@@ -82,7 +85,7 @@ export class Pocket {
   setAsleep(on) { this.asleep = on; if (this.worm) this.worm.sleep(on); }
   setNeeds(n) { this.needs = n; if (this.worm) { this.worm.dry = clamp((n.dry - 0.5) * 2, 0, 1); } }
   setWeather(kind, day) { this.weather = { kind, day }; }
-  setSky(sky) { this.sky = sky; }
+  setSky() { /* the pocket is always light denim now */ }
   setMarks(n) { if (!this.worm) return; while (this.worm.marks.length < Math.min(n, 12)) this.worm.addMark(((this.worm.marks.length + 1) * 0.6180339) % 1); }
 
   setTilt(gx, gy) {
@@ -296,7 +299,7 @@ export class Pocket {
     this.g.x += (tgx - this.g.x) * Math.min(1, dt * 6); this.g.y += (tgy - this.g.y) * Math.min(1, dt * 6);
     const env = { bounds: b, gx: this.g.x, gy: this.g.y };
 
-    this.glow = Math.max(this.live ? 0.55 + 0.25 * Math.sin(this.t * 2) : 0, this.glow - dt * 0.6);
+    this.glow = Math.max(this.live ? 0.3 + 0.15 * Math.sin(this.t * 2) : 0, this.glow - dt * 0.6);
     this.shake = Math.max(0, this.shake - dt);
     this.flash = Math.max(0, this.flash - dt * 2);
     this.knotCool = Math.max(0, this.knotCool - dt);
@@ -473,9 +476,8 @@ export class Pocket {
     x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     x.save();
     if (this.shake > 0) x.translate(Math.sin(this.t * 80) * this.shake * 10, Math.cos(this.t * 70) * this.shake * 6);
-    drawSky(x, W, H, this.t, this.sky);
-    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.55; x.drawImage(this.grain, 0, 0); x.restore();
-    drawOrb(x, this.hole.x, this.hole.y, this.orbR, this.t, this.glow, this.sky);
+    x.drawImage(this.denim, 0, 0, W, H);
+    drawHole(x, this.hole.x, this.hole.y, this.holeR, this.t, this.glow);
 
     for (const f of this.food) { x.save(); x.translate(f.x, f.y); x.scale(f.left, f.left); x.shadowColor = 'rgba(0,0,10,0.4)'; x.shadowBlur = 4; x.shadowOffsetY = 2; drawFood(x, f.kind, 9); x.restore(); }
 
@@ -499,11 +501,11 @@ export class Pocket {
       const a = clamp(p.life / (p.max * 0.4), 0, 1);
       x.save(); x.globalAlpha = a;
       switch (p.type) {
-        case 'heart': heart(x, p.x, p.y, p.size, '#FF2D55'); break;
+        case 'heart': heart(x, p.x, p.y, p.size, '#EE4F6E'); break;
         case 'spark': star(x, p.x, p.y, p.size * 0.6, '#FFFFFF'); break;
         case 'drop': x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.ellipse(p.x, p.y, p.size * 0.6, p.size * 1.3, 0, 0, 7); x.fill(); break;
         case 'crumb': x.fillStyle = '#F2B544'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
-        case 'z': x.fillStyle = this.sky.dark ? 'rgba(255,255,255,0.9)' : 'rgba(20,20,40,0.7)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
+        case 'z': x.fillStyle = 'rgba(38,50,77,0.75)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
         case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
         case 'lipsfly': { const k = 1 - p.life / p.max; drawLips(x, p.x, p.y, p.size * (0.6 + k * 0.5), p.rot, '#FF2D55'); break; }
         case 'lipsout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawLips(x, p.x, p.y, p.size * (1 + k * p.grow), p.rot, '#FF2D55'); break; }
@@ -539,10 +541,10 @@ export class Pocket {
   }
 
   fingerGlow(x, fx, fy, rgb) {
-    const r = 46 + Math.sin(this.t * 5) * 4;
-    const g = x.createRadialGradient(fx, fy, 2, fx, fy, r);
-    g.addColorStop(0, `rgba(${rgb},0.75)`); g.addColorStop(0.35, `rgba(${rgb},0.28)`); g.addColorStop(1, `rgba(${rgb},0)`);
-    x.fillStyle = g; x.beginPath(); x.arc(fx, fy, r, 0, 7); x.fill();
+    const col = rgb === '255,255,255' ? '#FFFFFF' : '#F0588A';
+    const r = 34 + Math.sin(this.t * 5) * 3;
+    dab(x, col, fx, fy, r * 1.4, 'soft', 0.55);
+    dab(x, col, fx, fy, r * 0.45, 'body', 0.85);
   }
 
   drawBubble(x, w) {
@@ -553,6 +555,7 @@ export class Pocket {
     x.beginPath(); x.arc(h.x + w.R * 0.8, h.y - w.R * 1.3, 3, 0, 7); x.fill();
     x.beginPath(); x.arc(h.x + w.R * 1.15, h.y - w.R * 1.85, 4.5, 0, 7); x.fill();
     x.beginPath(); x.ellipse(bx, by, 19, 15, 0, 0, 7); x.fill();
+    x.strokeStyle = '#26324D'; x.lineWidth = 1.3; x.stroke();
     x.translate(bx, by);
     if (w.bubble.need === 'food') drawFood(x, pick(['medialuna']), 8);
     else { x.fillStyle = '#3BA4FF'; x.beginPath(); x.moveTo(0, -9); x.bezierCurveTo(7, 0, 6, 8, 0, 8); x.bezierCurveTo(-6, 8, -7, 0, 0, -9); x.fill(); }

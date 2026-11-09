@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
-import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, lipsSVG, skyFor } from './draw.js';
+import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, lipsSVG, DENIM } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
@@ -162,15 +162,9 @@ function updateAsleep() {
 
 // ─────────────────────────────────────────────── chrome: header + glass tab bar
 function updateSky() {
-  const them = app.them();
-  const hour = them ? hourIn(them.place?.tz) : new Date().getHours();
-  const sky = skyFor(hour, S.weather?.kind || 'clear');
-  if (S.sky?.key !== sky.key) {
-    S.sky = sky;
-    pocket?.setSky(sky);
-    document.body.classList.toggle('dark', sky.dark);
-    document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.stops[0]);
-  }
+  // the pocket is light denim day and night; their worm sleeping tells you it's night there
+  document.body.classList.remove('dark');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', DENIM);
 }
 
 const TABS = [

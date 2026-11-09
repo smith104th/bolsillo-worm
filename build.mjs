@@ -40,7 +40,7 @@ await sharp(icon).resize(512, 512).png().toFile(`${OUT}/icons/icon-512.png`);
 await sharp(icon).resize(192, 192).png().toFile(`${OUT}/icons/icon-192.png`);
 await sharp(icon).resize(180, 180).png().toFile(`${OUT}/icons/apple-touch-icon.png`);
 // maskable: worm a bit smaller inside the safe zone
-await sharp({ create: { width: 512, height: 512, channels: 4, background: '#F0EDEE' } })
+await sharp({ create: { width: 512, height: 512, channels: 4, background: '#A3BEDD' } })
   .composite([{ input: await sharp(icon).resize(420, 420).png().toBuffer(), top: 46, left: 46 }]).png().toFile(`${OUT}/icons/icon-maskable-512.png`);
 // monochrome badge for Android's status bar
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><path d="M30 70c0-14-6-20-10-26-6-8 0-18 10-17 8 1 12 7 20 3" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><ellipse cx="34" cy="74" rx="20" ry="8" fill="#fff"/></svg>`;

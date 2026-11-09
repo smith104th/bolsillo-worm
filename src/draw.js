@@ -1,80 +1,124 @@
 // Everything that lives in a pocket, drawn by hand on canvas.
 import { seeded, hash } from './util.js';
+import { wobblyCircle, dab } from './brush.js';
 
 
-// ── the sky inside the pocket: their time of day + weather ─────────
-const PALETTES = {
-  night:  { stops: ['#0B0F2E', '#232768', '#5A48B8'], orb: ['#0A0B3A', '#7B6CFF', '#FF8AD8'], dark: true },
-  dawn:   { stops: ['#8C98E2', '#F1B3A8', '#FF8B4E'], orb: ['#1B2A9E', '#5C8BFF', '#FFD0A8'], dark: false },
-  day:    { stops: ['#6FBEFF', '#B7E0FF', '#EEF6FF'], orb: ['#0638E8', '#1FB8FF', '#BDEBFF'], dark: false },
-  golden: { stops: ['#97A3EE', '#F6B78C', '#FF6A2B'], orb: ['#2A1FA8', '#6F7BFF', '#FFC48F'], dark: false },
-  dusk:   { stops: ['#262A6A', '#6B5BC6', '#F28A9C'], orb: ['#0C0C40', '#8E6BFF', '#FFB0C8'], dark: true },
-};
-const WEATHER_TINT = { cloud: ['#AEB6C8', 0.18], fog: ['#D9DEE8', 0.3], rain: ['#56637D', 0.3], storm: ['#2E3550', 0.42], snow: ['#E9EEF8', 0.3] };
+// ── light-wash denim, flat color + woven texture ─────────────
+export const DENIM = '#A3BEDD';
+export const THREAD = '#E3A23F';
 
 export function mixHex(a, b, t) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
   const ch = (sh) => Math.round(((pa >> sh) & 255) * (1 - t) + ((pb >> sh) & 255) * t);
   return '#' + [16, 8, 0].map((sh) => ch(sh).toString(16).padStart(2, '0')).join('');
 }
-const lum = (hex) => { const v = parseInt(hex.slice(1), 16); return (0.299 * ((v >> 16) & 255) + 0.587 * ((v >> 8) & 255) + 0.114 * (v & 255)) / 255; };
-
-export function skyFor(hour = 12, kind = 'clear') {
-  const moment = hour >= 22 || hour < 5 ? 'night' : hour < 8 ? 'dawn' : hour < 17 ? 'day' : hour < 20 ? 'golden' : 'dusk';
-  const p = PALETTES[moment];
-  const tint = WEATHER_TINT[kind];
-  const stops = tint ? p.stops.map((c) => mixHex(c, tint[0], tint[1])) : [...p.stops];
-  const dark = lum(stops[0]) < 0.55;
-  return { moment, kind, stops, orb: p.orb, dark, key: moment + kind };
-}
-
-export function makeGrain(W, H, dpr) {
-  const c = document.createElement('canvas');
-  c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
-  const x = c.getContext('2d');
-  const img = x.createImageData(c.width, c.height);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const v = Math.random() * 255;
-    d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 22;
-  }
-  x.putImageData(img, 0, 0);
-  return c;
-}
-
-export function drawSky(x, W, H, t, sky) {
-  const g = x.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, sky.stops[0]); g.addColorStop(0.55, sky.stops[1]); g.addColorStop(1, sky.stops[2]);
-  x.fillStyle = g; x.fillRect(0, 0, W, H);
-  // two slow drifting blooms, so the sky breathes
-  const blob = (cx, cy, r, col, a) => {
-    const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r);
-    rg.addColorStop(0, hexA(col, a)); rg.addColorStop(1, hexA(col, 0));
-    x.fillStyle = rg; x.fillRect(cx - r, cy - r, r * 2, r * 2);
-  };
-  blob(W * (0.25 + 0.12 * Math.sin(t * 0.07)), H * (0.3 + 0.08 * Math.cos(t * 0.05)), W * 0.9, sky.stops[2], 0.35);
-  blob(W * (0.8 + 0.1 * Math.cos(t * 0.06)), H * (0.62 + 0.07 * Math.sin(t * 0.08)), W * 0.8, sky.stops[0], 0.3);
-}
 export function hexA(hex, a) {
   const v = parseInt(hex.slice(1), 16);
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
 }
 
-// the hole: a soft glowing orb that things fall in and out of
-export function drawOrb(x, cx, cy, r, t, glow, sky) {
-  const [core, mid, edge] = sky.orb;
-  const breathe = 1 + Math.sin(t * 1.3) * 0.04 + glow * 0.18;
-  const R = r * breathe;
-  const halo = x.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 2.3);
-  halo.addColorStop(0, hexA(edge, 0.55 + glow * 0.3)); halo.addColorStop(1, hexA(edge, 0));
-  x.fillStyle = halo; x.fillRect(cx - R * 2.4, cy - R * 2.4, R * 4.8, R * 4.8);
-  for (let k = 0; k < 3; k++) {
-    const a = t * (0.35 + k * 0.17) + k * 2.1;
-    const ox = Math.cos(a) * R * 0.14, oy = Math.sin(a) * R * 0.1;
-    const g = x.createRadialGradient(cx + ox, cy + oy, 0, cx + ox, cy + oy, R * (1.05 - k * 0.12));
-    g.addColorStop(0, hexA(core, 0.95)); g.addColorStop(0.45, hexA(mid, 0.75)); g.addColorStop(1, hexA(mid, 0));
-    x.fillStyle = g; x.beginPath(); x.arc(cx + ox, cy + oy, R * (1.05 - k * 0.12), 0, 7); x.fill();
+export function makeDenim(W, H, dpr, seed = 7) {
+  const c = document.createElement('canvas');
+  c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  const x = c.getContext('2d');
+  x.scale(dpr, dpr);
+  const r = seeded(seed);
+  x.fillStyle = DENIM; x.fillRect(0, 0, W, H);
+  // twill: a fine diagonal weave
+  x.lineWidth = 0.7;
+  for (let i = -H; i < W; i += 2) {
+    x.strokeStyle = (Math.floor(i / 2) % 2) ? 'rgba(255,255,255,0.08)' : 'rgba(38,70,120,0.06)';
+    x.beginPath(); x.moveTo(i, 0); x.lineTo(i + H * 0.36, H); x.stroke();
   }
+  // white weft flecks and indigo flecks
+  for (let i = 0; i < (W * H) / 45; i++) {
+    const light = r() > 0.45;
+    x.fillStyle = light ? `rgba(255,255,255,${0.1 + r() * 0.25})` : `rgba(40,72,128,${0.06 + r() * 0.14})`;
+    x.fillRect(r() * W, r() * H, 1 + r() * 1.8, 0.8);
+  }
+  // slubs run with the warp, mostly up and down
+  for (let i = 0; i < 90; i++) {
+    const sx = r() * W, sy = r() * H, len = 6 + r() * 16;
+    x.strokeStyle = `rgba(255,255,255,${0.1 + r() * 0.14})`; x.lineWidth = 1 + r() * 1.2; x.lineCap = 'round';
+    x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + (r() - 0.5) * 2, sy + len); x.stroke();
+  }
+  // a few worn whiskers
+  for (let i = 0; i < 6; i++) {
+    const wx = W * (0.15 + r() * 0.7), wy = H * (0.2 + r() * 0.6), len = 30 + r() * 60;
+    x.strokeStyle = 'rgba(255,255,255,0.16)'; x.lineWidth = 2.5 + r() * 2;
+    x.beginPath(); x.moveTo(wx, wy); x.quadraticCurveTo(wx + len * 0.5, wy - 6 + r() * 12, wx + len, wy + r() * 8 - 4); x.stroke();
+  }
+  // lint in the corners
+  for (let i = 0; i < 8; i++) {
+    const lx = r() < 0.5 ? 18 + r() * 40 : W - 18 - r() * 40, ly = H * (0.5 + r() * 0.35);
+    x.strokeStyle = 'rgba(255,255,255,0.5)'; x.lineWidth = 0.7;
+    for (let k = 0; k < 12; k++) { x.beginPath(); x.moveTo(lx + (r() - 0.5) * 6, ly + (r() - 0.5) * 6); x.quadraticCurveTo(lx + (r() - 0.5) * 14, ly + (r() - 0.5) * 14, lx + (r() - 0.5) * 12, ly + (r() - 0.5) * 12); x.stroke(); }
+  }
+  return c;
+}
+
+// hand-sewn running stitch along a path, with a little wobble
+export function stitchPath(x, pts, seed = 1, color = THREAD, w = 2) {
+  const r = seeded(seed);
+  x.save();
+  x.lineCap = 'round';
+  let carry = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+    const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
+    for (let d = carry; d < len; d += 10) {
+      const s = Math.min(6, len - d), j = (r() - 0.5) * 1.4;
+      x.strokeStyle = 'rgba(20,40,80,0.18)'; x.lineWidth = w;
+      x.beginPath(); x.moveTo(ax + ux * d - uy * j + 0.6, ay + uy * d + ux * j + 1); x.lineTo(ax + ux * (d + s) - uy * j + 0.6, ay + uy * (d + s) + ux * j + 1); x.stroke();
+      x.strokeStyle = color;
+      x.beginPath(); x.moveTo(ax + ux * d - uy * j, ay + uy * d + ux * j); x.lineTo(ax + ux * (d + s) - uy * j, ay + uy * (d + s) + ux * j); x.stroke();
+      carry = d + 10 - len;
+    }
+  }
+  x.restore();
+}
+
+export function drawSeams(x, W, H, bottom) {
+  const inset = 11, curve = (k) => {
+    const pts = [];
+    pts.push([inset + k, -10], [inset + k, bottom - 40]);
+    for (let i = 0; i <= 16; i++) { const t = i / 16; pts.push([inset + k + (W - 2 * (inset + k)) * t, bottom - 40 + Math.sin(t * Math.PI) * 34]); }
+    pts.push([W - inset - k, -10]);
+    return pts;
+  };
+  stitchPath(x, curve(0), 3);
+  stitchPath(x, curve(7), 9);
+}
+
+// the hole: a black circle sewn into the denim
+export function drawHole(x, cx, cy, r, t, glow = 0) {
+  x.save();
+  if (glow > 0.35) {
+    x.strokeStyle = `rgba(255,255,255,${(glow - 0.35) * 1.2})`; x.lineWidth = 2.5; x.setLineDash([3, 6]);
+    wobblyCircle(x, cx, cy, r * (1.5 + (1 - glow) * 0.6), 5, 0.04); x.stroke(); x.setLineDash([]);
+  }
+  // a soft shadow ring where the fabric folds in
+  x.fillStyle = 'rgba(30,55,100,0.18)';
+  wobblyCircle(x, cx + 1.5, cy + 2.5, r * 1.06, 7, 0.05); x.fill();
+  x.fillStyle = '#0D0F14';
+  wobblyCircle(x, cx, cy, r, 7, 0.05); x.fill();
+  // a sliver of depth
+  x.strokeStyle = '#26324D'; x.lineWidth = r * 0.08; x.lineCap = 'round';
+  x.beginPath(); x.arc(cx, cy + r * 0.12, r * 0.72, Math.PI * 1.15, Math.PI * 1.55); x.stroke();
+  // blanket stitch around the edge
+  const n = Math.max(16, Math.round(r * 0.42));
+  const pop = 1 + glow * 0.12;
+  x.strokeStyle = 'rgba(20,40,80,0.2)'; x.lineWidth = 2.6; x.lineCap = 'round';
+  wobblyCircle(x, cx + 0.8, cy + 1.2, r * 1.2 * pop, 2, 0.02); x.stroke();
+  x.strokeStyle = THREAD;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + 0.04 * Math.sin(i * 7.3);
+    const r0 = r * 0.93, r1 = r * 1.2 * pop;
+    x.beginPath(); x.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); x.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); x.stroke();
+  }
+  x.lineWidth = 2.4;
+  wobblyCircle(x, cx, cy, r * 1.2 * pop, 2, 0.02); x.stroke();
+  x.restore();
 }
 
 // rounded rect path helper
@@ -237,70 +281,77 @@ export function drawTrinket(x, kind, s = 16, text = '') {
 
 // ── things that arrive through the hole ──────────────────────
 export const ITEM_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'];
-export const PAPERS = { white: '#FFFFFF', rosa: '#FFC9DD', celeste: '#BFE3FF', limon: '#F1F59A' };
+export const PAPERS = { white: '#FFFFFF', rosa: '#FCD3DC', celeste: '#CFE6FA', limon: '#F6F1A6' };
 
 export function itemRadius(kind) {
   return { note: 24, doodle: 24, photo: 28, whisper: 18, wiggle: 13, trinket: 16 }[kind] || 16;
 }
 
-const SHADOW = 'rgba(16,18,60,0.22)';
+const INK = '#26324D';
+const SHADE = 'rgba(30,55,100,0.22)';
+function card(x, X, Y, W, H, r, fill) {
+  x.fillStyle = SHADE; rr(x, X + 2, Y + 3, W, H, r); x.fill();
+  x.fillStyle = fill; rr(x, X, Y, W, H, r); x.fill();
+  x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
+}
 export function drawItem(x, it, t, images) {
   const p = it.payload || {};
   x.save();
   x.translate(it.x, it.y);
   x.rotate(it.rot || 0);
+  x.lineJoin = 'round'; x.lineCap = 'round';
   const fresh = !it.opened && !it.mine;
   if (fresh) {
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3 + it.seed);
-    x.strokeStyle = `rgba(255,255,255,${0.35 + pulse * 0.45})`; x.lineWidth = 2;
-    x.beginPath(); x.arc(0, 0, it.r * (1.35 + pulse * 0.12), 0, 7); x.stroke();
+    x.save(); x.rotate(t * 0.6 + it.seed);
+    x.strokeStyle = 'rgba(255,255,255,0.95)'; x.lineWidth = 2; x.setLineDash([4, 5]);
+    x.beginPath(); x.arc(0, 0, it.r * 1.42, 0, 7); x.stroke();
+    x.restore();
   }
-  x.shadowColor = SHADOW; x.shadowBlur = 14; x.shadowOffsetY = 6;
   switch (it.kind) {
     case 'note': {
-      x.fillStyle = PAPERS[p.paper] || '#FFFFFF'; rr(x, -24, -17, 48, 34, 8); x.fill();
-      x.shadowColor = 'transparent';
-      x.strokeStyle = 'rgba(0,0,0,0.08)'; x.lineWidth = 1.2;
-      x.beginPath(); x.moveTo(-20, -13); x.lineTo(0, 1); x.lineTo(20, -13); x.stroke();
-      if (fresh) { x.fillStyle = '#FF2D55'; x.beginPath(); x.arc(0, 2, 5, 0, 7); x.fill(); }
+      card(x, -24, -17, 48, 34, 5, PAPERS[p.paper] || '#FFFFFF');
+      x.strokeStyle = INK; x.lineWidth = 1.2;
+      x.beginPath(); x.moveTo(-23, -15); x.quadraticCurveTo(-8, -4, 0, 1); x.quadraticCurveTo(8, -4, 23, -15); x.stroke();
+      if (fresh) { x.fillStyle = '#E2344F'; x.beginPath(); x.arc(0, 2, 5, 0, 7); x.fill(); }
       break;
     }
     case 'doodle': {
-      x.fillStyle = '#FFFFFF'; rr(x, -23, -23, 46, 46, 10); x.fill();
-      x.shadowColor = 'transparent';
+      card(x, -23, -23, 46, 46, 6, '#FFFFFF');
       const thumb = doodleThumb(it);
       if (thumb) x.drawImage(thumb, -19, -19, 38, 38);
+      x.fillStyle = 'rgba(227,162,63,0.85)'; x.fillRect(-7, -27, 14, 7);
       break;
     }
     case 'photo': {
-      x.fillStyle = '#FFFFFF'; rr(x, -25, -29, 50, 58, 9); x.fill();
-      x.shadowColor = 'transparent';
+      card(x, -25, -29, 50, 58, 4, '#FFFFFF');
       const img = images && p.thumb ? images(p.thumb) : null;
-      x.save(); rr(x, -21, -25, 42, 42, 6); x.clip();
       if (img && img.complete && img.naturalWidth) {
         const sw = img.naturalWidth, sh = img.naturalHeight, side = Math.min(sw, sh);
         x.drawImage(img, (sw - side) / 2, (sh - side) / 2, side, side, -21, -25, 42, 42);
-      } else { x.fillStyle = '#E9E9EE'; x.fillRect(-21, -25, 42, 42); }
-      x.restore();
+      } else { x.fillStyle = '#DDE3EC'; x.fillRect(-21, -25, 42, 42); }
+      x.strokeStyle = INK; x.lineWidth = 1; x.strokeRect(-21, -25, 42, 42);
       break;
     }
     case 'whisper': {
+      x.fillStyle = SHADE; x.beginPath(); x.arc(2, 3, 18, 0, 7); x.fill();
       x.fillStyle = '#FFFFFF'; x.beginPath(); x.arc(0, 0, 18, 0, 7); x.fill();
-      x.shadowColor = 'transparent';
-      x.fillStyle = '#111'; x.lineCap = 'round';
+      x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
+      x.fillStyle = INK;
       [5, 10, 14, 8, 12, 6].forEach((hgt, i) => { const live = 1 + Math.sin(t * 6 + i) * (fresh ? 0.25 : 0.08); rr(x, -9.5 + i * 3.4, -hgt * live / 2, 2, hgt * live, 1); x.fill(); });
       break;
     }
     case 'wiggle': {
       const hop = it.hop || 0;
       x.translate(0, -hop * 7); x.rotate(Math.sin(t * 20) * hop * 0.5);
-      x.fillStyle = '#FF8A3D'; rr(x, -14, -8, 28, 16, 8); x.fill();
-      x.shadowColor = 'transparent';
-      x.strokeStyle = 'rgba(255,255,255,0.9)'; x.lineWidth = 1.6; x.lineCap = 'round';
+      x.fillStyle = SHADE; rr(x, -12, -5, 28, 16, 8); x.fill();
+      x.fillStyle = '#F5A04F'; rr(x, -14, -8, 28, 16, 8); x.fill();
+      x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
+      x.strokeStyle = '#FFFFFF'; x.lineWidth = 1.8;
       x.beginPath(); for (let i = 0; i <= 12; i++) { const px = -9 + i * 1.5, py = Math.sin(i * 1.1 + t * 8 * (fresh ? 1 : 0.2)) * 2.4; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke();
       break;
     }
     case 'trinket':
+      dab(x, '#1E3A66', 2, 4, 17, 'soft', 0.35);
       drawTrinket(x, p.what, 15, p.text);
       break;
   }

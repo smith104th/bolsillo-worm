@@ -1,7 +1,7 @@
 // Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
 import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
-import { skyFor, drawSky, makeGrain } from './draw.js';
+import { makeDenim, drawHole } from './draw.js';
 import { btn, field, icon, toast } from './ui.js';
 import { sfx, unlockAudio } from './feel.js';
 
@@ -12,8 +12,7 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
   const W = canvas.clientWidth || 300, H = canvas.clientHeight || 200;
   canvas.width = W * dpr; canvas.height = H * dpr;
   const x = canvas.getContext('2d');
-  const sky = skyFor(13, 'clear');
-  const grain = makeGrain(W, H, dpr);
+  const bg = makeDenim(W, H, dpr, 5);
   const R = Math.min(16, W * 0.05);
   const w = new Worm(design, { x: W * 0.6, y: H * 0.55, R, segs, angle: -0.3 });
   w.speedBase = R * 2.6;
@@ -24,8 +23,7 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     w.update(dt, { bounds, gx: 0, gy: 0 });
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawSky(x, W, H, now / 1000, sky);
-    x.save(); x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 0.5; x.drawImage(grain, 0, 0); x.restore();
+    x.drawImage(bg, 0, 0, W, H);
     w.draw(x);
     requestAnimationFrame(loop);
   };
@@ -72,7 +70,35 @@ export function installGate(code) {
 }
 
 function logo() {
-  return h('div.logo-mark', { html: `<svg viewBox="0 0 120 120"><defs><radialGradient id="lo" cx=".5" cy=".55" r=".5"><stop offset="0" stop-color="#0638E8"/><stop offset=".55" stop-color="#1FB8FF"/><stop offset="1" stop-color="#BDEBFF" stop-opacity="0"/></radialGradient><linearGradient id="lb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FBE9DE"/><stop offset="1" stop-color="#EAF4FF"/></linearGradient></defs><rect width="120" height="120" fill="url(#lb)"/><circle cx="60" cy="68" r="46" fill="url(#lo)"/><path d="M60 74c0-14-10-18-10-28 0-9 10-14 18-9" fill="none" stroke="#FF9EC2" stroke-width="13" stroke-linecap="round"/><circle cx="66.5" cy="35.5" r="2.4" fill="#111"/><circle cx="72" cy="39.5" r="2.4" fill="#111"/></svg>` });
+  return h('div.logo-mark', h('img', { src: 'icons/icon-192.png', alt: '', width: 72, height: 72 }));
+}
+
+// the welcome scene: light denim, a stitched hole, a worm poking out
+function heroScene(canvas) {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const x = canvas.getContext('2d');
+  const bg = makeDenim(W, H, dpr, 13);
+  const R = Math.min(22, W * 0.055);
+  const hole = { x: W * 0.68, y: H * 0.3 };
+  const w = new Worm({ name: 'hero', color: 'lombriz', pattern: 'stripes', acc: 'beanie' }, { x: hole.x, y: hole.y, R, segs: 16, angle: -2.4 });
+  w.speedBase = R * 2.2;
+  const bounds = { l: W * 0.18, r: W - 16, t: H * 0.08, b: H * 0.5 };
+  let run = true, last = performance.now(), t = 0;
+  const loop = (now) => {
+    if (!run || !canvas.isConnected) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+    w.update(dt, { bounds, gx: 0, gy: 0 });
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    x.drawImage(bg, 0, 0, W, H);
+    drawHole(x, hole.x, hole.y, R * 2.4, t, 0);
+    w.draw(x);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+  canvas.addEventListener('pointerdown', () => { w.happy = 2; w.squish = 1; w.dance = 0.6; w.danceAmp = R * 0.5; sfx.boop(); });
+  return () => { run = false; };
 }
 
 export async function onboard(backend, { code: presetCode } = {}) {
@@ -84,12 +110,15 @@ export async function onboard(backend, { code: presetCode } = {}) {
     const root = $('#onboard');
     root.hidden = false;
     root.classList.add('hero');
-    root.replaceChildren(h('div.hero-card',
+    const cv = h('canvas.hero-canvas');
+    root.replaceChildren(h('div.hero-card', cv,
       h('div.hero-top', h('span', 'for two'), h('span', 'carry each other')),
       h('div.hero-title', 'bolsillo', h('br'), 'worm'),
       h('p.hero-tag', 'You become a worm. Yours lives in their pocket. Theirs lives in yours.'),
       h('div.hero-list', ['pet', 'kiss', 'feed', 'dig', 'touch'].map((w) => h('span', w))),
-      h('button.start-pill', { type: 'button', onclick: res }, 'start', h('i', { html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>' }))));
+      h('button.start-pill', { type: 'button', onclick: () => { stop(); res(); } }, 'start', h('i', { html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>' }))));
+    let stop = () => {};
+    requestAnimationFrame(() => { stop = heroScene(cv); });
   });
 
   // 2. you
