@@ -106,6 +106,31 @@ assert.equal(dailyEvents.length, 4);
 assert.equal(dailyEvents[3].payload.both, true);
 assert.equal((await as(U.A, 'select * from dailies')).length, 1, 'own daily rows only');
 
+// planted questions: next free day, hidden from the partner until it comes up
+const [{ wh_plant: d1 }] = await as(U.A, `select wh_plant('  What would you name our dog?  ')`);
+const [{ wh_plant: d2 }] = await as(U.B, `select wh_plant('Where should we go in March?')`);
+const [{ hd: holeDay }] = (await db.query(`select wh_today(id) hd from holes`)).rows;
+const dayMs = 86400000;
+assert.equal(new Date(d1) - new Date(holeDay), dayMs, 'first seed comes up tomorrow');
+assert.equal(new Date(d2) - new Date(holeDay), 2 * dayMs, 'second seed takes the next free day');
+let seen = await as(U.A, 'select * from wh_planted()');
+assert.deepEqual(seen.map((r) => r.question), ['What would you name our dog?'], 'only my own future seed');
+await db.query(`update planted set day = $1 where question like 'Where%'`, [holeDay]);
+seen = await as(U.A, 'select * from wh_planted()');
+assert.equal(seen.length, 2, 'their seed shows once it is up');
+await fails(U.A, `select wh_plant('hi')`, [], /bad_question/);
+await fails(U.C, `select wh_plant('Who are you?')`, [], /no_hole/);
+await as(U.B, `select wh_unplant($1)`, [holeDay]);
+assert.equal((await db.query(`select count(*)::int n from planted`)).rows[0].n, 2, 'cannot dig up a seed that already came up');
+await as(U.A, `select wh_unplant($1)`, [d1]);
+assert.equal((await as(U.A, 'select * from wh_planted()')).length, 1, 'dug up');
+assert.equal((await as(U.B, `select * from events where kind = 'plant'`)).length, 1, 'its plant event goes too');
+for (let i = 0; i < 7; i++) await as(U.A, `select wh_plant('Question number ${i}?')`);
+await fails(U.A, `select wh_plant('One too many?')`, [], /too_many_seeds/);
+await fails(U.A, `select * from planted`, [], /permission denied/);
+const stats = await as(U.A, `select * from wh_stats(now() - interval '1 day', now() + interval '1 day')`);
+assert.ok(stats.find((r) => r.kind === 'plant' && r.from_slot === 0 && Number(r.n) === 7), 'stats count plants');
+
 // tunnel completes and loops
 await db.exec(`update holes set tunnel_km = 100, dug_km = 90`);
 await as(U.B, `select wh_act('note', '{"text":"x"}')`);

@@ -9,6 +9,7 @@ export function mockBackend() {
   const members = [];
   const events = [];
   const dailies = {};
+  const planted = {};
   const media = new Map();
   let on = {};
   let present = true;
@@ -34,6 +35,44 @@ export function mockBackend() {
       { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'doodle', payload: { strokes: [{ c: '#C4314B', w: 22, p: [300, 420, 360, 330, 450, 320, 500, 400, 550, 320, 640, 330, 700, 420, 600, 560, 500, 660, 400, 560, 300, 420] }] }, created_at: old(30), opened_at: null, kept: false },
       { id: ++id, hole_id: hole.id, from_slot: 0, kind: 'kiss', payload: { level: 3 }, created_at: old(2), opened_at: null, kept: false },
     );
+    history(old);
+  }
+
+  // a few weeks of soil so the archive has layers
+  function history(old) {
+    const tz = mine()?.place?.tz || 'UTC';
+    const add = (from, kind, payload, hAgo, openedAfter = 2) => events.push({ id: ++id, hole_id: hole.id, from_slot: from, kind, payload, media_id: null, created_at: old(hAgo), opened_at: old(hAgo - openedAfter), kept: false });
+    add(1, 'note', { text: 'Bought the wrong oranges again. They taste like you being far away.', paper: 'limon' }, 24 * 4 + 3);
+    add(0, 'note', { text: 'Your worm slept on my phone all night. I let him.', paper: 'celeste' }, 24 * 5 + 7);
+    add(1, 'photo', { thumb: fakeThumb(['#F7B267', '#F4845F'], '🌇'), caption: 'Gran Vía at 8' }, 24 * 6 + 2);
+    add(1, 'trinket', { what: 'leaf', inscription: 'Retiro, the big tree' }, 24 * 8 + 5);
+    add(0, 'photo', { thumb: fakeThumb(['#8EC5FC', '#E0C3FC'], '🥐'), caption: 'medialuna count: 3' }, 24 * 9 + 1);
+    add(1, 'wiggle', { pattern: [80, 90, 140, 420, 80, 90, 140], label: 'heartbeat' }, 24 * 11 + 4);
+    add(0, 'doodle', { strokes: [{ c: '#2F7BFF', w: 14, p: [200, 700, 300, 500, 420, 640, 520, 420, 640, 600, 760, 380] }] }, 24 * 13 + 8);
+    add(1, 'note', { text: 'Counting sleeps. Too many still.', paper: 'rosa' }, 24 * 16 + 1);
+    const answers = [
+      ['Choripán from the stand by the river.', 'Tortilla, still warm, eaten standing up.'],
+      ['Buses and a guy practicing trumpet.', 'Rain on the skylight.'],
+      ['The yellow light on the balcony at six.', 'Blue and cold. Very Madrid.'],
+      ['Probably arguing about where to eat.', 'Walking with no plan, which is the plan.'],
+      ['A train ticket with your name on it.', 'Your hoodie. The grey one.'],
+      ['9. Lost a point for the subte.', '8 worms. Coffee was perfect.'],
+    ];
+    answers.forEach(([a, b], i) => {
+      const day = dayIn(tz, new Date(Date.now() - (i + 1) * (i < 3 ? 1 : 2) * 86400000));
+      dailies[day] = { 0: { answer: a }, 1: { answer: b } };
+      if (i % 2 === 0) { dailies[day][0].thumb = fakeThumb(['#FFD3A5', '#FD6585'], ['☕', '🌳', '🚲'][i / 2]); dailies[day][0].photo = -1; dailies[day][1].thumb = fakeThumb(['#A1C4FD', '#C2E9FB'], ['🌧', '🍊', '🧣'][i / 2]); dailies[day][1].photo = -1; }
+    });
+    const y = dayIn(tz, new Date(Date.now() - 2 * 86400000));
+    planted[y] = { from_slot: 1, question: 'What is a song you would play at our worm wedding?' };
+    planted[dayIn(tz, new Date(Date.now() + 3 * 86400000))] = { from_slot: 1, question: 'A secret for later.' };
+  }
+  function fakeThumb([a, b], emo) {
+    const c = document.createElement('canvas'); c.width = c.height = 220;
+    const x = c.getContext('2d'); const g = x.createLinearGradient(0, 0, 220, 220);
+    g.addColorStop(0, a); g.addColorStop(1, b); x.fillStyle = g; x.fillRect(0, 0, 220, 220);
+    x.font = '96px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(emo, 110, 118);
+    return c.toDataURL('image/jpeg', 0.7);
   }
 
   function botLoop() {
@@ -101,7 +140,7 @@ export function mockBackend() {
       return { both: false, fresh: true };
     },
     async dailies() {
-      const today = dayIn('UTC');
+      const today = dayIn(mine()?.place?.tz || 'UTC');
       if (!dailies[today]) dailies[today] = { 0: {}, 1: { answer: 'The bus driver singing along to the radio.' } };
       return Object.entries(dailies).sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, v]) => ({
         day, my_answer: v[0].answer || null, their_answer: v[0].answer ? v[1].answer || null : null, their_answered: !!v[1].answer,
@@ -109,6 +148,28 @@ export function mockBackend() {
       }));
     },
     async media(mid) { return media.get(mid); },
+    async planted() {
+      const today = dayIn(mine()?.place?.tz || 'UTC');
+      return Object.entries(planted).filter(([d, v]) => v.from_slot === 0 || d <= today).sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, v]) => ({ day, ...v }));
+    },
+    async plant(question) {
+      const tz = mine()?.place?.tz || 'UTC';
+      let t = Date.now() + 86400000; let d = dayIn(tz, new Date(t));
+      while (planted[d]) { t += 86400000; d = dayIn(tz, new Date(t)); }
+      planted[d] = { from_slot: 0, question: question.trim() };
+      ev(0, 'plant', { day: d });
+      return d;
+    },
+    async unplant(day) { if (planted[day]?.from_slot === 0) delete planted[day]; },
+    async stats(from, to) {
+      const m = new Map();
+      for (const e of events) if (e.created_at >= from && e.created_at < to) { const k = e.kind + ':' + e.from_slot; m.set(k, (m.get(k) || 0) + (e.payload?.n || 1)); }
+      return [...m].map(([k, n]) => ({ kind: k.split(':')[0], from_slot: +k.split(':')[1], n }));
+    },
+    async archive({ before = null, after = null, limit = 80 } = {}) {
+      return events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'].includes(e.kind) && (!before || e.created_at < before) && (!after || e.created_at >= after))
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit).map((e) => ({ ...e }));
+    },
     async nudge() {},
     connect(holeId, slot, handlers) { on = handlers; setTimeout(() => { on.status?.('SUBSCRIBED'); on.presence?.({ 0: [{ slot: 0 }], 1: [{ slot: 1 }] }); }, 300); },
     async track() {},

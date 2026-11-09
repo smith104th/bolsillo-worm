@@ -56,6 +56,7 @@ function compose(kind: string, me: any, extra: any = {}) {
       if (extra.both) return { title: `Today's ${extra.part === "photo" ? "photos are" : "answers are"} up`, body: `Go see what ${n} ${extra.part === "photo" ? "saw" : "said"}.` };
       return { title: extra.part === "photo" ? `${n} took today's photo` : `${n} answered today's question`, body: "It's buried until you do yours." };
     case "reunion": return { title: `${n} set the countdown`, body: extra.note ? `Same pocket: ${extra.note}` : "Same pocket soon." };
+    case "plant":   return { title: `${n} planted a question 🌱`, body: `It comes up ${extra.when ?? "soon"} as your question of the day.` };
     default:        return { title: "Something moved in your pocket", body: `From ${n}.` };
   }
 }

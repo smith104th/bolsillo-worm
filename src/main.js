@@ -3,16 +3,19 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
-import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, DENIM, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
+import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
 import { onboard, installGate, fmtCode, nice } from './onboarding.js';
 import { openItem } from './compose.js';
+import { questionFor } from './questions.js';
 import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } from './sheets.js';
 
-const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, stashed: new Set(store('stashed') || []) };
+const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), stashed: new Set(store('stashed') || []) };
+const dailyFns = new Set();
+const COMPOST_H = 72; // opened things settle into the soil after three days
 let backend, pocket;
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
@@ -25,13 +28,22 @@ const app = {
   them: () => S.members.find((m) => m.slot !== S.slot),
   slot: () => S.slot,
   today: () => dayIn(S.members.find((m) => m.slot === 0)?.place?.tz || 'UTC'),
+  dayOf: (iso) => dayIn(S.members.find((m) => m.slot === 0)?.place?.tz || 'UTC', new Date(iso)),
+  questionFor(day) {
+    const p = S.planted.get(day);
+    if (p) return { q: p.question, by: p.from_slot === S.slot ? 'you' : (app.them()?.name || 'them'), mine: p.from_slot === S.slot };
+    return { q: questionFor(day, app.seed()), by: null };
+  },
+  composted: (e) => !!e.opened_at && !e.kept && hoursSince(e.opened_at) > COMPOST_H,
+  loadPlanted,
   seed: () => hash(S.hole?.code || 'bw') % 997,
   defaultUnits: () => (/^en-US/i.test(navigator.language) ? 'mi' : 'km'),
   asItem: (e) => ({ ...e, opened: !!e.opened_at, mine: e.from_slot === S.slot }),
   stash(id) { S.stashed.add(id); store('stashed', [...S.stashed].slice(-500)); app.refreshPocket(); },
   refreshPocket,
   send, feed, mist, knock, ring, react: sendReact, enablePush, enableMotion,
-  onDailyChange: null,
+  onDaily: (fn) => dailyFns.add(fn),
+  dailyChanged: () => { for (const f of dailyFns) if (f() === false) dailyFns.delete(f); },
   onReact: null,
 };
 
@@ -80,7 +92,7 @@ function applyData({ hole, members, events }) {
 function pocketItems() {
   const theirs = S.events.filter((e) => ITEM_KINDS.includes(e.kind) && e.from_slot !== S.slot && !S.stashed.has(e.id));
   const pinned = theirs.filter((e) => !e.opened_at || e.kept);
-  const rest = theirs.filter((e) => e.opened_at && !e.kept).slice(0, Math.max(0, 12 - pinned.length));
+  const rest = theirs.filter((e) => e.opened_at && !e.kept && !app.composted(e)).slice(0, Math.max(0, 12 - pinned.length));
   return [...pinned, ...rest].slice(0, 22).map(app.asItem);
 }
 
@@ -131,6 +143,7 @@ function enterPocket(data) {
   loadWeather(); setInterval(loadWeather, 20 * 60000);
   document.addEventListener('visibilitychange', onVisible);
   backend.updateMe({}).catch(() => {});
+  loadPlanted();
   syncPush();
   setTimeout(welcome, 900);
 }
@@ -141,7 +154,7 @@ async function onVisible() {
   try {
     const data = await backend.load();
     const hadThem = !!app.them();
-    applyData(data); refreshPocket();
+    applyData(data); refreshPocket(); loadPlanted();
     if (!hadThem && app.them()) toast(`${app.them().name} crawled in.`, { tone: 'love' });
     if (backend.channelState && backend.channelState() !== 'joined') backend.connect(S.hole.id, S.slot, realtime);
   } catch { /* offline: keep what we have */ }
@@ -163,9 +176,13 @@ function updateAsleep() {
 
 // ─────────────────────────────────────────────── chrome: header + glass tab bar
 function updateSky() {
-  // the pocket is light denim day and night; their worm sleeping tells you it's night there
-  document.body.classList.remove('dark');
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', DENIM);
+  // their sky: your gradient by day, warmer at dawn and dusk, deep blue with stars at night
+  const alt = params.has('alt') ? +params.get('alt') : null;
+  const sky = skyFor(app.them()?.place, new Date(), alt);
+  S.sky = sky;
+  pocket?.setSky(sky);
+  document.body.classList.toggle('dark', sky.dark);
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.top);
 }
 
 const TABS = [
@@ -319,6 +336,21 @@ function upsertEvent(ev) {
   if (i >= 0) S.events[i] = { ...S.events[i], ...ev }; else S.events.unshift(ev);
 }
 
+async function loadPlanted() {
+  try {
+    const rows = await backend.planted();
+    S.planted = new Map(rows.map((r) => [String(r.day).slice(0, 10), r]));
+    app.dailyChanged();
+  } catch { /* the daily question still works */ }
+}
+function whenDay(day) {
+  const n = Math.round((Date.parse(day + 'T00:00:00Z') - Date.parse(app.today() + 'T00:00:00Z')) / 86400000);
+  if (n <= 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  return n < 7 ? new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' }) : new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+app.whenDay = whenDay;
+
 // ─────────────────────────────────────────────── realtime
 const petToast = throttle((name) => toast(`${name} is petting you`, { tone: 'love', icon: 'heart' }), 25000);
 const realtime = {
@@ -385,10 +417,11 @@ function react(ev, fromThem) {
     }
     case 'daily':
       toast(p.both ? `Today's ${p.part === 'photo' ? 'photos are' : 'answers are'} up. Go look.` : `${name} ${p.part === 'photo' ? 'posted today\'s photo' : 'answered today\'s question'}. Yours unlocks it.`, { icon: 'today' });
-      app.onDailyChange?.();
+      app.dailyChanged();
       break;
     case 'tunnel': celebrateTunnel(p); break;
     case 'reunion': toast(`${name} set the countdown${p.note ? `: ${p.note}` : ''}.`); break;
+    case 'plant': toast(`${name} planted a question 🌱 It comes up ${whenDay(p.day)}.`, { tone: 'love' }); sfx.chime(); loadPlanted(); break;
     case 'arrived': toast(`${name} crawled into your pocket.`, { tone: 'love' }); onVisible(); break;
   }
 }

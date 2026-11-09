@@ -5,7 +5,7 @@ import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './
 import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
-import { questionFor } from './questions.js';
+import { soilSheet, plantSheet, viewPhoto, soilGrain as soilGrainURL } from './soil.js';
 import { sfx } from './feel.js';
 
 
@@ -61,7 +61,7 @@ export async function todaySheet(app) {
     const today = app.today();
     const t = rows.find((r) => r.day === today) || { day: today };
     const them = app.them()?.name || 'Them';
-    const q = questionFor(today, app.seed());
+    const Q = app.questionFor(today), q = Q.q;
 
     // streak: consecutive days where both of you did both
     const full = new Set(rows.filter((r) => r.my_answer && r.their_answered && r.my_photo && r.their_photographed).map((r) => r.day));
@@ -104,15 +104,7 @@ export async function todaySheet(app) {
       ? h('div.answer', h('span.who', them), h('p', t.their_answer), reactRow(app, tA))
       : t.their_answered ? h('div.answer.buried', h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
 
-    const layers = rows.filter((r) => r.day !== today).map((r) => {
-      const open = h('div.layer-body', { hidden: true },
-        h('p.q', questionFor(r.day, app.seed())),
-        r.my_answer ? h('p', h('b', 'You: '), r.my_answer) : null,
-        r.their_answer ? h('p', h('b', them + ': '), r.their_answer) : null,
-        h('div.row', r.my_thumb ? h('img.mini', { src: r.my_thumb, onclick: () => viewFull(app, r.my_photo, r.my_thumb) }) : null, r.their_thumb ? h('img.mini', { src: r.their_thumb, onclick: () => viewFull(app, r.their_photo, r.their_thumb) }) : null));
-      return h('div.layer', { onclick: (e) => { if (e.target.tagName !== 'IMG') open.hidden = !open.hidden; } },
-        h('div.layer-head', h('span', prettyDay(r.day)), h('span.dots', r.my_answer && r.their_answer ? '●' : '○', r.my_thumb && r.their_thumb ? '●' : '○')), open);
-    });
+    const layers = rows.filter((r) => String(r.day).slice(0, 10) < today && (r.my_answer || r.their_answer)).length;
 
     body.replaceChildren(...[
       h('div.today-head', h('span.mono', prettyDay(today)), streak ? h('span.streak', `${streak} day${streak > 1 ? 's' : ''} in a row`) : h('span.streak.dim', 'Start a streak')),
@@ -121,22 +113,20 @@ export async function todaySheet(app) {
       t.their_thumb ? reactRow(app, tP) : null,
       t.my_thumb ? theirReactions(app, { day: today, part: 'photo' }) : null,
       h('h3', 'Question of the day'),
+      Q.by ? h('span.seed', Q.mine ? '🌱 You planted this one' : `🌱 ${Q.by} planted this one`) : null,
       h('p.question', q),
       answerBox, theirAnswer,
-      layers.length ? h('h3', 'Earlier') : null,
-      h('div.layers', layers),
+      h('div.soil-links',
+        h('button.soil-link', { type: 'button', onclick: () => soilSheet(app), style: { '--grain': soilGrainURL() } }, h('b', 'The soil'), h('span', layers ? `${layers} layer${layers > 1 ? 's' : ''} of answers, plus everything that settled` : 'Where everything settles')),
+        h('button.plant-link', { type: 'button', onclick: () => plantSheet(app) }, h('b', '🌱'), h('span', `Plant a question for ${them}`))),
     ].filter(Boolean));
   };
-  app.onDailyChange = () => { if (s.el.isConnected) render(); };
+  app.onDaily(() => { if (!s.el.isConnected) return false; render(); });
   app.onReact = (ev) => { if (s.el.isConnected && ev?.payload?.day) render(); };
   render();
 }
 
-async function viewFull(app, mediaId, thumb) {
-  const img = h('img', { src: thumb, alt: '' });
-  sheet('Today', h('div.polaroid', h('div.polaroid-img', img)));
-  if (mediaId) try { const m = await app.backend.media(mediaId); img.src = m.data; } catch { /* thumb is fine */ }
-}
+const viewFull = (app, mediaId, thumb) => viewPhoto(app, mediaId, thumb, 'Today');
 
 // ── us: the tunnel, the worms, the countdown
 export function usSheet(app) {
@@ -175,8 +165,9 @@ export function usSheet(app) {
       stat(together, 'days together here'), stat(hole.touches || 0, 'fingertip touches'),
       stat(count('kiss', app.slot()), 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kisses received'),
       stat(count('note'), 'notes'), stat(count('pet'), 'pets')),
-    h('div.btn-grid',
+    h('div.btn-grid.four',
       btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
+      btn('🌱 Soil', () => soilSheet(app), 'ghost'),
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ], { tall: true });
@@ -195,7 +186,7 @@ export function peekSheet(app) {
       feed: `fed you ${FOODS[p.food] || 'a crumb'}`, mist: 'misted you', note: 'dropped a note', doodle: 'drew you something',
       photo: 'sent a polaroid', whisper: 'whispered', wiggle: `wiggled${p.label ? ` “${p.label}”` : ''}`, trinket: `found you ${TRINKETS[p.what] || 'something'}`,
       knock: 'knocked', ring: 'called you in', touch: 'touched fingertips with you', daily: p.part === 'photo' ? 'posted today\'s photo' : 'answered today\'s question',
-      reunion: 'set the countdown', arrived: 'crawled into your pocket', tunnel: 'finished a tunnel with you',
+      reunion: 'set the countdown', plant: 'planted a question for you', arrived: 'crawled into your pocket', tunnel: 'finished a tunnel with you',
     }[e.kind];
     return t ? h('li', h('span', t), h('span.mono.small', ago(e.created_at))) : null;
   };

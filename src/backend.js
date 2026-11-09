@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const EVENT_COLS = 'id,hole_id,from_slot,kind,payload,media_id,created_at,opened_at,kept';
+const ARCHIVE_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'];
 
 export function supabaseBackend(cfg) {
   const sb = createClient(cfg.supabaseUrl, cfg.supabaseKey, {
@@ -51,7 +52,20 @@ export function supabaseBackend(cfg) {
     setReunion: (on, note) => rpc('wh_set_reunion', { p_on: on, p_note: note }),
     daily: (day, { answer = null, photo = null, mime = null, thumb = null }) =>
       rpc('wh_daily', { p_day: day, p_answer: answer, p_photo: photo, p_mime: mime, p_thumb: thumb }),
-    dailies: () => rpc('wh_dailies', { p_limit: 120 }),
+    dailies: (limit = 120) => rpc('wh_dailies', { p_limit: limit }),
+    plant: (question) => rpc('wh_plant', { p_question: question }),
+    unplant: (day) => rpc('wh_unplant', { p_day: day }),
+    planted: () => rpc('wh_planted'),
+    stats: (from, to) => rpc('wh_stats', { p_from: from, p_to: to }),
+    // everything that ever came through the hole, newest first, a page at a time
+    async archive({ before = null, after = null, limit = 80 } = {}) {
+      let q = sb.from('events').select(EVENT_COLS).in('kind', ARCHIVE_KINDS).order('created_at', { ascending: false }).limit(limit);
+      if (before) q = q.lt('created_at', before);
+      if (after) q = q.gte('created_at', after);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
     async media(id) {
       if (mediaCache.has(id)) return mediaCache.get(id);
       const { data, error } = await sb.from('media').select('mime,data').eq('id', id).single();

@@ -1,10 +1,10 @@
 // The pocket: canvas scene with the worm(s), things that fell through the hole,
 // crumbs, weather from the other side, and live fingertips.
 import { Worm, heart, star, segsFor } from './worm.js';
-import { makeSky, drawHole, drawItem, drawFood, itemRadius } from './draw.js';
+import { makeSky, drawHole, drawItem, drawFood, itemRadius, SKY } from './draw.js';
 import { dab, drawEmoji } from './brush.js';
 import { KISS_EMOJI } from './draw.js';
-import { clamp, rand, pick } from './util.js';
+import { clamp, rand, pick, seeded } from './util.js';
 import { sfx, buzz } from './feel.js';
 
 export class Pocket {
@@ -49,7 +49,8 @@ export class Pocket {
     this.R = clamp(Math.min(W, H) * 0.044, 12, 19);
     this.holeR = Math.min(W * 0.115, 48);
     this.hole = { x: W / 2, y: this.bounds.b - this.holeR * 1.7 };
-    this.denim = makeSky(W, H, dpr);
+    this.denim = makeSky(W, H, dpr, this.sky || SKY);
+    this.stars = Array.from({ length: Math.round(W * H / 5200) }, (_, i) => { const r = seeded(i * 7919 + 13); return { x: r() * W, y: r() * H * 0.78, s: 0.5 + r() * 1.3, ph: r() * 6.28, sp: 0.6 + r() * 1.6 }; });
     for (const w of [this.worm, this.mine]) if (w) { w.R = this.R; w.spacing = this.R * 0.62; w.speedBase = this.R * 3.4; }
   }
 
@@ -83,7 +84,11 @@ export class Pocket {
   setAsleep(on) { this.asleep = on; if (this.worm) this.worm.sleep(on); }
   setNeeds(n) { this.needs = n; if (this.worm) { this.worm.dry = clamp((n.dry - 0.5) * 2, 0, 1); } }
   setWeather(kind, day) { this.weather = { kind, day }; }
-  setSky() { /* the pocket is always the soft day sky */ }
+  setSky(sky) {
+    if (this.sky && this.sky.key === sky.key) return;
+    this.sky = sky;
+    this.denim = makeSky(this.W, this.H, this.dpr, sky);
+  }
   setMarks(n) { if (!this.worm) return; while (this.worm.marks.length < Math.min(n, 12)) this.worm.addMark(((this.worm.marks.length + 1) * 0.6180339) % 1); }
 
   setTilt(gx, gy) {
@@ -491,6 +496,16 @@ export class Pocket {
     x.save();
     if (this.shake > 0) x.translate(Math.sin(this.t * 80) * this.shake * 10, Math.cos(this.t * 70) * this.shake * 6);
     x.drawImage(this.denim, 0, 0, W, H);
+    const night = this.sky?.night || 0;
+    if (night > 0) {
+      x.fillStyle = '#FFFFFF';
+      for (const st of this.stars) {
+        const a = night * (0.45 + 0.55 * Math.sin(this.t * st.sp + st.ph) ** 2) * (1 - st.y / (H * 0.85));
+        if (a <= 0.02) continue;
+        x.globalAlpha = a; x.beginPath(); x.arc(st.x, st.y, st.s, 0, 7); x.fill();
+      }
+      x.globalAlpha = 1;
+    }
     drawHole(x, this.hole.x, this.hole.y, this.holeR, this.t, this.glow);
 
     for (const f of this.food) { x.save(); x.translate(f.x, f.y); x.scale(f.left, f.left); x.shadowColor = 'rgba(0,0,10,0.4)'; x.shadowBlur = 4; x.shadowOffsetY = 2; drawFood(x, f.kind, 9); x.restore(); }
@@ -519,7 +534,7 @@ export class Pocket {
         case 'spark': star(x, p.x, p.y, p.size * 0.6, '#FFFFFF'); break;
         case 'drop': x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.ellipse(p.x, p.y, p.size * 0.6, p.size * 1.3, 0, 0, 7); x.fill(); break;
         case 'crumb': x.fillStyle = '#F2B544'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
-        case 'z': x.fillStyle = 'rgba(38,50,77,0.75)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
+        case 'z': x.fillStyle = this.sky?.dark ? 'rgba(255,255,255,0.85)' : 'rgba(38,50,77,0.75)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
         case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
         case 'emojifly': { const k = 1 - p.life / p.max; drawEmoji(x, p.ch, p.x, p.y, p.size * (p.toHole ? 1 - k * 0.7 : 0.7 + k * 0.4), p.rot); break; }
         case 'emojiout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawEmoji(x, p.ch, p.x, p.y, p.size * (1 + k * p.grow), p.rot + Math.sin(this.t * 6 + p.size) * 0.15); break; }
@@ -529,15 +544,16 @@ export class Pocket {
     }
 
     // weather layer
+    const rainRGB = this.sky?.dark ? '205,222,255' : '60,110,170';
     for (const d of this.drops) {
       if (d.snow) {
         x.fillStyle = `rgba(255,255,255,${d.splash != null ? 0.9 * (1 - d.splash / 2.5) : 0.95})`;
         x.beginPath(); x.arc(d.x, d.y, 2.4, 0, 7); x.fill(); x.strokeStyle = 'rgba(80,130,190,0.3)'; x.lineWidth = 0.8; x.stroke();
       } else if (d.splash != null) {
-        const k = d.splash / 0.35; x.strokeStyle = `rgba(60,110,170,${0.35 * (1 - k)})`; x.lineWidth = 1;
+        const k = d.splash / 0.35; x.strokeStyle = `rgba(${rainRGB},${0.4 * (1 - k)})`; x.lineWidth = 1;
         x.beginPath(); x.ellipse(d.x, d.y, 2 + k * 8, 1 + k * 3, 0, 0, 7); x.stroke();
       } else {
-        x.strokeStyle = 'rgba(60,110,170,0.35)'; x.lineWidth = 1.2;
+        x.strokeStyle = `rgba(${rainRGB},0.4)`; x.lineWidth = 1.2;
         x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(d.x - 4, d.y - 18); x.stroke();
       }
     }

@@ -22,21 +22,69 @@ export const KISS_EMOJI = ['', '😗', '😙', '😘', '💋', '😍'];
 export const KISS_NAMES = ['', 'piquito', 'besito', 'beso', 'besote', 'BESAZO'];
 export const REACTIONS = ['❤️', '🥰', '🥺', '😂', '🔥', '🫶', '✨', '😴'];
 export const SKY = { top: '#6FBEFF', mid: '#B7E0FF', bottom: '#EEF6FF' };
-export function makeSky(W, H, dpr) {
+// the same sky through the day, following the sun where their worm lives
+const SKIES = {
+  goldDusk: { top: '#80A8EA', mid: '#F3C2B1', bottom: '#FFE3C2' },
+  goldDawn: { top: '#8AB3F0', mid: '#F5C8D6', bottom: '#FFEEDF' },
+  twiDusk: { top: '#33458E', mid: '#7D70B3', bottom: '#E9A28D' },
+  twiDawn: { top: '#3C4F97', mid: '#8C7EBE', bottom: '#F1B2B4' },
+  night: { top: '#0A1331', mid: '#15275C', bottom: '#2A4584' },
+};
+const mixSky = (a, b, t) => ({ top: mixHex(a.top, b.top, t), mid: mixHex(a.mid, b.mid, t), bottom: mixHex(a.bottom, b.bottom, t) });
+const lum = (hex) => { const v = parseInt(hex.slice(1), 16); const c = [16, 8, 0].map((s) => { const x = ((v >> s) & 255) / 255; return x <= 0.04 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+
+// solar altitude in degrees, and whether it's morning, for a lat/lon at a moment
+export function sunAt(lat, lon, date = new Date()) {
+  const rad = Math.PI / 180;
+  const d = date.getTime() / 86400000 - 10957.5;
+  const g = (357.529 + 0.98560028 * d) * rad;
+  const q = 280.459 + 0.98564736 * d;
+  const L = (q + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * rad;
+  const e = (23.439 - 0.00000036 * d) * rad;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L));
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const gmst = ((18.697374558 + 24.06570982441908 * d) % 24 + 24) % 24;
+  let H = (gmst * 15 + lon) * rad - ra;
+  H = Math.atan2(Math.sin(H), Math.cos(H));
+  const alt = Math.asin(Math.sin(lat * rad) * Math.sin(dec) + Math.cos(lat * rad) * Math.cos(dec) * Math.cos(H)) / rad;
+  return { alt, am: H < 0 };
+}
+
+// day: your gradient. dawn/dusk: warmer. night: deep blue with stars.
+export function skyFor(place, date = new Date(), altOverride = null) {
+  const has = place && Number.isFinite(+place.lat) && Number.isFinite(+place.lon);
+  if (!has && altOverride == null) return { ...SKY, night: 0, dark: false, key: 'day' };
+  const sun = has ? sunAt(+place.lat, +place.lon, date) : { alt: 0, am: false };
+  const alt = altOverride ?? sun.alt;
+  const gold = sun.am ? SKIES.goldDawn : SKIES.goldDusk, twi = sun.am ? SKIES.twiDawn : SKIES.twiDusk;
+  let pal;
+  if (alt >= 8) pal = SKY;
+  else if (alt >= 1) pal = mixSky(gold, SKY, (alt - 1) / 7);
+  else if (alt >= -5) pal = mixSky(twi, gold, (alt + 5) / 6);
+  else if (alt >= -12) pal = mixSky(SKIES.night, twi, (alt + 12) / 7);
+  else pal = SKIES.night;
+  const night = Math.max(0, Math.min(1, (-alt - 3) / 7));
+  const key = alt >= 8 ? 'day' : alt <= -12 ? 'night' : `${sun.am ? 'a' : 'p'}${Math.round(alt * 2) / 2}`;
+  return { ...pal, night, dark: lum(pal.top) < 0.16, alt, key };
+}
+
+export function makeSky(W, H, dpr, pal = SKY) {
   const c = document.createElement('canvas');
   c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
   const x = c.getContext('2d');
   x.scale(dpr, dpr);
   const g = x.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, SKY.top); g.addColorStop(0.55, SKY.mid); g.addColorStop(1, SKY.bottom);
+  g.addColorStop(0, pal.top); g.addColorStop(0.55, pal.mid); g.addColorStop(1, pal.bottom);
   x.fillStyle = g; x.fillRect(0, 0, W, H);
   const bloom = (cx, cy, r, col, a) => {
     const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r);
     rg.addColorStop(0, hexA(col, a)); rg.addColorStop(1, hexA(col, 0));
     x.fillStyle = rg; x.fillRect(cx - r, cy - r, r * 2, r * 2);
   };
-  bloom(W * 0.22, H * 0.78, W * 0.95, SKY.bottom, 0.5);
-  bloom(W * 0.85, H * 0.18, W * 0.8, SKY.top, 0.35);
+  const night = pal.night || 0;
+  bloom(W * 0.22, H * 0.78, W * 0.95, pal.bottom, 0.5 - night * 0.2);
+  bloom(W * 0.85, H * 0.18, W * 0.8, pal.top, 0.35);
+  if (night > 0) bloom(W * 0.8, H * 0.12, W * 0.45, '#C9D8FF', 0.1 * night); // a little moonlight
   // fine grain
   x.setTransform(1, 0, 0, 1, 0, 0);
   const img = x.getImageData(0, 0, c.width, c.height), d = img.data;
