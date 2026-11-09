@@ -10,7 +10,7 @@ const PALETTES = {
   golden: { stops: ['#97A3EE', '#F6B78C', '#FF6A2B'], orb: ['#2A1FA8', '#6F7BFF', '#FFC48F'], dark: false },
   dusk:   { stops: ['#262A6A', '#6B5BC6', '#F28A9C'], orb: ['#0C0C40', '#8E6BFF', '#FFB0C8'], dark: true },
 };
-const WEATHER_TINT = { cloud: ['#B8C0CF', 0.32], fog: ['#D9DEE8', 0.45], rain: ['#56637D', 0.42], storm: ['#2E3550', 0.55], snow: ['#E9EEF8', 0.4] };
+const WEATHER_TINT = { cloud: ['#AEB6C8', 0.18], fog: ['#D9DEE8', 0.3], rain: ['#56637D', 0.3], storm: ['#2E3550', 0.42], snow: ['#E9EEF8', 0.3] };
 
 export function mixHex(a, b, t) {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);

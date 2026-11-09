@@ -209,12 +209,12 @@ function renderHeader() {
   const them = app.them(), lab = $('#label');
   if (!them) { lab.replaceChildren(h('div.hd-meta', h('span.dot'), 'AN EMPTY POCKET'), h('div.hd-name', 'Bolsillo'), h('div.hd-sub', 'Your person isn\'t here yet')); return; }
   const w = S.weather;
-  const status = S.online ? ['here', 'Here now'] : S.asleep ? ['sleep', 'Asleep'] : ['', 'Away'];
-  const meta = [status[1], timeIn(them.place?.tz), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ');
+  const status = S.online ? ['here', 'here now'] : S.asleep ? ['sleep', 'asleep'] : ['', 'away'];
+  const meta = [timeIn(them.place?.tz), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ');
   lab.replaceChildren(
-    h('div.hd-meta', h(`span.dot${status[0] ? '.' + status[0] : ''}`), meta),
+    h('div.hd-meta', meta),
     h('div.hd-name', them.worm?.name || 'Worm'),
-    h('div.hd-sub', `${them.name}'s worm, in your pocket`),
+    h('div.hd-sub', h(`span.dot${status[0] ? '.' + status[0] : ''}`), `${them.name}'s worm · ${status[1]}`),
   );
 }
 function renderDockDots() {
