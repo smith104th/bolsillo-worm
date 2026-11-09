@@ -12,7 +12,8 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
-body { background: #0B0F2E; color: var(--ink); font: 400 16px/1.4 var(--sans); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+html { background-color: #6FBEFF; }
+body { background: transparent; color: var(--ink); font: 400 16px/1.4 var(--sans); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
 h1, h2, h3 { margin: 0; font-weight: 600; }
@@ -295,7 +296,7 @@ canvas.doodle-pad { background: #fff; border-radius: 24px; box-shadow: 0 0 0 1px
 .answer { padding: 16px 18px; border-radius: 22px; background: var(--fill); }
 .answer .who { font: 500 11px var(--mono); text-transform: uppercase; color: var(--ink-2); }
 .answer p { margin: 6px 0 0; font-size: 17px; line-height: 1.35; }
-.answer.buried { background: linear-gradient(160deg, #232768, #5A48B8); color: #fff; }
+.answer.buried { background-color: #CFB389; background-image: var(--grain); background-size: 160px; color: var(--ink); }
 .answer.buried .who { color: rgba(255,255,255,0.6); }
 .answer-form { display: flex; flex-direction: column; gap: 8px; }
 .layers { display: flex; flex-direction: column; gap: 6px; }
@@ -479,3 +480,8 @@ body.dark .zz { color: rgba(255,255,255,0.85); }
 .later-count b { display: block; font: 600 64px/1 var(--sans); letter-spacing: -0.05em; color: var(--ink); }
 .later-photo { display: flex; flex-direction: column; gap: 8px; align-items: center; }
 .later-photo:empty { display: none; }
+
+/* Safari tints its bars from what touches the top and bottom edges; keep them the sky's colors */
+.edge { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none; background-color: #6FBEFF; }
+#edge-top { top: 0; }
+#edge-bottom { bottom: 0; background-color: #EEF6FF; }

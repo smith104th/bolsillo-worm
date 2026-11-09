@@ -104,7 +104,7 @@ export async function todaySheet(app) {
     const tA = { day: today, part: 'answer', about: 'answer' }, tP = { day: today, part: 'photo', about: 'photo of the day' };
     const theirAnswer = t.their_answer
       ? h('div.answer', h('span.who', them), h('p', t.their_answer), reactRow(app, tA))
-      : t.their_answered ? h('div.answer.buried', h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
+      : t.their_answered ? h('div.answer.buried', { style: { '--grain': soilGrainURL() } }, h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
 
     const layers = rows.filter((r) => String(r.day).slice(0, 10) < today && (r.my_answer || r.their_answer)).length;
 

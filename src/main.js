@@ -173,6 +173,7 @@ function enterPocket(data) {
 
 async function onVisible() {
   if (document.hidden) { backend.track(false); return; }
+  navigator.serviceWorker?.getRegistration?.().then((r) => r?.update()).catch(() => {});
   backend.track(true);
   try {
     const data = await backend.load();
@@ -207,6 +208,9 @@ function updateSky() {
   shelf?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.top);
+  document.documentElement.style.backgroundColor = sky.top;
+  $('#edge-top').style.backgroundColor = sky.top;
+  $('#edge-bottom').style.backgroundColor = sky.bottom;
 }
 
 const TABS = [

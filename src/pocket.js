@@ -193,6 +193,86 @@ export class Pocket {
     if (this.worm) { this.worm.surprise = 1.2; this.worm.gaze = { x: this.W / 2, y: 0 }; }
   }
 
+  // two worms share one pocket: bodies never overlap, and when their faces meet, they kiss
+  meet(a, b, dt) {
+    this.kissCool = Math.max(0, (this.kissCool || 0) - dt);
+    const A = a.pts, B = b.pts, fa = a.grab ? a.grab.i : -1, fb = b.grab ? b.grab.i : -1;
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = 0; i < A.length; i++) {
+        const p = A[i], ra = a.radius(i);
+        for (let j = 0; j < B.length; j++) {
+          const q = B[j], rs = (ra + b.radius(j)) * 0.92;
+          let dx = q.x - p.x, dy = q.y - p.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= rs * rs) continue;
+          let d = Math.sqrt(d2);
+          if (d < 0.01) { dx = rand(-1, 1); dy = rand(-1, 1); d = Math.hypot(dx, dy) || 1; }
+          let ka = i === fa ? 0 : 0.5, kb = j === fb ? 0 : 0.5;
+          if (!ka && !kb) continue;
+          if (!ka) kb = 1; else if (!kb) ka = 1;
+          const k = (rs - d) / d, ox = dx * k, oy = dy * k;
+          p.x -= ox * ka; p.y -= oy * ka; p.px -= ox * ka; p.py -= oy * ka;
+          q.x += ox * kb; q.y += oy * kb; q.px += ox * kb; q.py += oy * kb;
+        }
+      }
+    }
+
+    const ha = a.head(), hb = b.head();
+    const dh = Math.hypot(hb.x - ha.x, hb.y - ha.y), kd = a.radius(0) + b.radius(0);
+    if (this.kissT > 0) {
+      // hold the kiss: faces touching, never inside each other
+      this.kissT -= dt;
+      if (dh > kd * 0.95) {
+        const k = Math.min(1, dt * 6) * 0.5 * (dh - kd * 0.95) / dh;
+        if (!a.grab) { ha.x += (hb.x - ha.x) * k; ha.y += (hb.y - ha.y) * k; }
+        if (!b.grab) { hb.x -= (hb.x - ha.x) * k; hb.y -= (hb.y - ha.y) * k; }
+      }
+      a.gaze = { x: hb.x, y: hb.y }; b.gaze = { x: ha.x, y: ha.y };
+      if (this.kissT <= 0) this.kissEnd(a, b);
+      return;
+    }
+    if (this.kissCool <= 0 && dh < kd * 1.3 && a.mode !== 'knot' && b.mode !== 'knot') { this.kissStart(a, b); return; }
+
+    // otherwise steer around each other's bodies instead of pushing through
+    for (const [w, o] of [[a, b], [b, a]]) {
+      w.avoidT = Math.max(0, (w.avoidT || 0) - dt);
+      if (w.mode !== 'wander' || w.follow || w.grab || w.seek || w.avoidT > 0) continue;
+      const h = w.head();
+      let near = null, best = (o.R * 2.1) ** 2;
+      for (let j = 4; j < o.pts.length; j++) { const q = o.pts[j], d2 = (q.x - h.x) ** 2 + (q.y - h.y) ** 2; if (d2 < best) { best = d2; near = q; } }
+      if (!near) continue;
+      const dx = h.x - near.x, dy = h.y - near.y, d = Math.hypot(dx, dy) || 1, bb = this.bounds, mm = this.R * 3;
+      w.wp = { x: clamp(h.x + (dx / d) * this.R * 6, bb.l + mm, bb.r - mm), y: clamp(h.y + (dy / d) * this.R * 6, bb.t + mm, bb.b - mm) };
+      w.wpT = 2.5; w.rest = 0; w.avoidT = 1.2;
+    }
+    // every so often, one of them goes looking for a kiss
+    if (this.kissCool <= 0 && a.mode === 'wander' && !a.follow && !a.grab && Math.random() < dt / 16) { a.seek = true; a.wp = { x: hb.x, y: hb.y }; a.wpT = 7; a.rest = 0; }
+    if (a.seek) { if (a.wpT <= 0) a.seek = false; else a.wp = { x: hb.x, y: hb.y }; }
+  }
+  kissStart(a, b) {
+    this.kissT = 1.6; this.kissCool = 14;
+    for (const [w, o] of [[a, b], [b, a]]) {
+      w.seek = false;
+      w.pucker = 1.8; w.love = Math.max(w.love, 2.4); w.happy = Math.max(w.happy, 2); w.blush = Math.min(1, w.blush + 0.2);
+      if (w.mode === 'wander') { w.rest = 1.8; w.wp = null; }
+      w.heading = Math.atan2(o.head().y - w.head().y, o.head().x - w.head().x);
+    }
+    const ha = a.head(), hb = b.head(), mx = (ha.x + hb.x) / 2, my = (ha.y + hb.y) / 2;
+    this.parts.push({ type: 'emojiout', ch: '💋', x: mx, y: my - this.R * 0.8, vx: 0, vy: -40, delay: 0.1, life: 1.5, max: 1.5, size: this.R * 1.3, grow: 0.8, rot: rand(-0.2, 0.2) });
+    this.burst('heart', mx, my - this.R * 0.4, 5);
+    sfx.kiss(1, 2); buzz([10, 50, 10]);
+    this.hooks.onWormKiss?.();
+  }
+  kissEnd(a, b) {
+    for (const [w, o] of [[a, b], [b, a]]) {
+      w.gaze = null;
+      if (w.mode !== 'wander' || w.grab || w.follow) continue;
+      const h = w.head(), oh = o.head(), dx = h.x - oh.x, dy = h.y - oh.y, d = Math.hypot(dx, dy) || 1, bb = this.bounds, mm = this.R * 3;
+      w.wp = { x: clamp(h.x + (dx / d) * this.R * 7, bb.l + mm, bb.r - mm), y: clamp(h.y + (dy / d) * this.R * 7, bb.t + mm, bb.b - mm) };
+      w.wpT = 3; w.rest = 0; w.avoidT = 2;
+    }
+  }
+
   burst(type, x, y, n = 8) {
     for (let i = 0; i < n; i++) {
       const a = rand(Math.PI * 2), sp = rand(30, 140);
@@ -375,6 +455,7 @@ export class Pocket {
       }
       m.update(dt, env);
     }
+    if (w && m && m.alpha > 0.4) this.meet(w, m, dt);
 
     // touching through the hole
     if (this.live && this.myFinger && this.theirFinger && this.knotCool <= 0) {
