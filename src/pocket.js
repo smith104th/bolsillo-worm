@@ -221,6 +221,8 @@ export class Pocket {
     if (it) ptr.item = it;
     else if (this.worm && this.worm.hit(p.x, p.y) >= 0) { ptr.worm = this.worm; ptr.seg = this.worm.hit(p.x, p.y); }
     else if (this.mine && this.mine.hit(p.x, p.y) >= 0) { ptr.worm = this.mine; ptr.seg = this.mine.hit(p.x, p.y); ptr.isMine = true; }
+    ptr.empty = !ptr.item && !ptr.worm;
+    ptr.edge = p.x < 24 || p.x > this.W - 24;
     this.ptr = ptr;
     ptr.longT = setTimeout(() => {
       if (this.ptr === ptr && ptr.worm && ptr.moved < 10) {
@@ -234,6 +236,21 @@ export class Pocket {
   move(e) {
     const ptr = this.ptr; if (!ptr || e.pointerId !== ptr.id) return;
     const p = this.pos(e);
+    // a sideways flick on empty space (or any drag from the edge) turns the page
+    if ((ptr.empty || ptr.edge) && !ptr.decided) {
+      const ax = Math.abs(p.x - ptr.x0), ay = Math.abs(p.y - ptr.y0);
+      if (ax > 14 || ay > 14) {
+        ptr.decided = true;
+        const quick = performance.now() - ptr.t0 < 260;
+        if ((ptr.empty || !ptr.item) && (ptr.edge || quick || !this.live) && ax > ay * 1.3 && this.hooks.onSwipe?.({ pointerId: e.pointerId, clientX: e.clientX - (p.x - ptr.x0) })) {
+          clearTimeout(ptr.longT);
+          if (ptr.item) ptr.item.held = false;
+          this.ptr = null; this.myFinger = null; this.hooks.onFinger?.(null, false);
+          try { this.cv.releasePointerCapture(e.pointerId); } catch { /* */ }
+          return;
+        }
+      }
+    }
     const dx = p.x - ptr.x, dy = p.y - ptr.y, d = Math.hypot(dx, dy);
     ptr.moved += d; ptr.x = p.x; ptr.y = p.y;
     ptr.hist.push({ x: p.x, y: p.y, t: performance.now() }); if (ptr.hist.length > 6) ptr.hist.shift();

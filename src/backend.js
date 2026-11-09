@@ -57,6 +57,14 @@ export function supabaseBackend(cfg) {
     unplant: (day) => rpc('wh_unplant', { p_day: day }),
     planted: () => rpc('wh_planted'),
     stats: (from, to) => rpc('wh_stats', { p_from: from, p_to: to }),
+    seal: (payload, body, photo = null, mime = null) => rpc('wh_seal', { p_payload: payload, p_body: body, p_photo: photo, p_mime: mime }),
+    unseal: (id) => rpc('wh_unseal', { p_id: id }),
+    // the shelf: everything left for later, plus what either of you kept
+    async shelf() {
+      const { data, error } = await sb.from('events').select(EVENT_COLS).or('kind.eq.later,kept.eq.true').order('created_at', { ascending: false }).limit(300);
+      if (error) throw new Error(error.message);
+      return data || [];
+    },
     // everything that ever came through the hole, newest first, a page at a time
     async archive({ before = null, after = null, limit = 80 } = {}) {
       let q = sb.from('events').select(EVENT_COLS).in('kind', ARCHIVE_KINDS).order('created_at', { ascending: false }).limit(limit);

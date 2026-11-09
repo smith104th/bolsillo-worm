@@ -6,6 +6,7 @@ import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { soilSheet, plantSheet, viewPhoto, soilGrain as soilGrainURL } from './soil.js';
+import { leaveSheet } from './shelf.js';
 import { sfx } from './feel.js';
 
 
@@ -46,6 +47,7 @@ export function dropSheet(app) {
     tile('doodle', 'Doodle', 'draw something', composeDoodle),
     tile('wiggle', 'Wiggle', 'a buzz rhythm', composeWiggle),
     tile('trinket', 'Found thing', 'a pebble, a ticket…', composeTrinket),
+    tile('later', 'For later', 'open when… or on a date', (a) => leaveSheet(a)),
     tile('knock', 'Knock', 'thinking of you', () => app.knock()),
     tile('ring', 'Call them in', 'open the hole', () => app.ring()),
   ));
@@ -186,7 +188,7 @@ export function peekSheet(app) {
       feed: `fed you ${FOODS[p.food] || 'a crumb'}`, mist: 'misted you', note: 'dropped a note', doodle: 'drew you something',
       photo: 'sent a polaroid', whisper: 'whispered', wiggle: `wiggled${p.label ? ` “${p.label}”` : ''}`, trinket: `found you ${TRINKETS[p.what] || 'something'}`,
       knock: 'knocked', ring: 'called you in', touch: 'touched fingertips with you', daily: p.part === 'photo' ? 'posted today\'s photo' : 'answered today\'s question',
-      reunion: 'set the countdown', plant: 'planted a question for you', arrived: 'crawled into your pocket', tunnel: 'finished a tunnel with you',
+      reunion: 'set the countdown', plant: 'planted a question for you', later: p.mode === 'date' ? 'wrapped a time capsule for you' : `left you an envelope: when ${p.label}`, unsealed: p.mode === 'date' ? 'unwrapped your time capsule' : `opened “when ${p.label}”`, arrived: 'crawled into your pocket', tunnel: 'finished a tunnel with you',
     }[e.kind];
     return t ? h('li', h('span', t), h('span.mono.small', ago(e.created_at))) : null;
   };

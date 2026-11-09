@@ -12,11 +12,13 @@ import { onboard, installGate, fmtCode, nice } from './onboarding.js';
 import { openItem } from './compose.js';
 import { questionFor } from './questions.js';
 import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } from './sheets.js';
+import { Pager } from './pager.js';
+import { Shelf } from './shelf.js';
 
-const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), stashed: new Set(store('stashed') || []) };
+const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
 const COMPOST_H = 72; // opened things settle into the soil after three days
-let backend, pocket;
+let backend, pocket, shelf, pager;
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
 
@@ -35,6 +37,16 @@ const app = {
     return { q: questionFor(day, app.seed()), by: null };
   },
   composted: (e) => !!e.opened_at && !e.kept && hoursSince(e.opened_at) > COMPOST_H,
+  shelfChanged(e) {
+    if (!e?.id) return;
+    const prev = S.shelf.get(e.id);
+    const ev = { ...(prev || {}), ...e };
+    if (ev.kind === 'later' || ev.kept) S.shelf.set(e.id, ev); else S.shelf.delete(e.id);
+    const i = S.events.findIndex((x) => x.id === e.id); if (i >= 0) S.events[i] = { ...S.events[i], ...e };
+    if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
+    shelfBadge();
+  },
+  goTo: (i) => pager?.go(i),
   loadPlanted,
   seed: () => hash(S.hole?.code || 'bw') % 997,
   defaultUnits: () => (/^en-US/i.test(navigator.language) ? 'mi' : 'km'),
@@ -91,7 +103,7 @@ function applyData({ hole, members, events }) {
 
 function pocketItems() {
   const theirs = S.events.filter((e) => ITEM_KINDS.includes(e.kind) && e.from_slot !== S.slot && !S.stashed.has(e.id));
-  const pinned = theirs.filter((e) => !e.opened_at || e.kept);
+  const pinned = theirs.filter((e) => !e.opened_at && !e.kept); // kept things live on the shelf
   const rest = theirs.filter((e) => e.opened_at && !e.kept && !app.composted(e)).slice(0, Math.max(0, 12 - pinned.length));
   return [...pinned, ...rest].slice(0, 22).map(app.asItem);
 }
@@ -119,12 +131,22 @@ function enterPocket(data) {
   applyData(data);
   $('#app').hidden = false;
   buildChrome();
+  shelf = Shelf(app, $('#screen-shelf'));
+  pager = Pager([$('#screen-pocket'), $('#screen-shelf')], {
+    labels: ['Pocket', 'Shelf'],
+    onChange: (i) => {
+      sfx.tick();
+      if (i === 1) { shelf.show(); markShelfSeen(); pocket?.stop(); } else { shelf.hide(); pocket?.start(); }
+    },
+  });
+  pager.watch($('#screen-shelf'));
   pocket = new Pocket($('#pocket'), {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
       const dock = $('#dock').getBoundingClientRect();
-      return { top: Math.max(top, 80), bottom: window.innerHeight - dock.top + 8 };
+      return { top: Math.max(top, 80), bottom: window.innerHeight - dock.top + 30 };
     },
+    onSwipe: (e) => pager?.begin(e),
     onPet: throttle(() => act('pet', {}), 4000),
     onBoop: throttle(() => act('boop', {}), 2500),
     onOpenItem: (it) => openItem(app, it),
@@ -144,6 +166,7 @@ function enterPocket(data) {
   document.addEventListener('visibilitychange', onVisible);
   backend.updateMe({}).catch(() => {});
   loadPlanted();
+  loadShelf();
   syncPush();
   setTimeout(welcome, 900);
 }
@@ -154,7 +177,7 @@ async function onVisible() {
   try {
     const data = await backend.load();
     const hadThem = !!app.them();
-    applyData(data); refreshPocket(); loadPlanted();
+    applyData(data); refreshPocket(); loadPlanted(); loadShelf();
     if (!hadThem && app.them()) toast(`${app.them().name} crawled in.`, { tone: 'love' });
     if (backend.channelState && backend.channelState() !== 'joined') backend.connect(S.hole.id, S.slot, realtime);
   } catch { /* offline: keep what we have */ }
@@ -181,12 +204,13 @@ function updateSky() {
   const sky = skyFor(app.them()?.place, new Date(), alt);
   S.sky = sky;
   pocket?.setSky(sky);
+  shelf?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.top);
 }
 
 const TABS = [
-  ['pocket', 'Pocket', () => {}],
+  ['pocket', 'Pocket', () => pager?.go(0)],
   ['feed', 'Feed', () => (app.them() ? feedSheet(app) : waitToast())],
   ['drop', 'Drop', () => (app.them() ? dropSheet(app) : waitToast())],
   ['today', 'Today', () => todaySheet(app)],
@@ -336,6 +360,34 @@ function upsertEvent(ev) {
   if (i >= 0) S.events[i] = { ...S.events[i], ...ev }; else S.events.unshift(ev);
 }
 
+async function loadShelf() {
+  try {
+    const rows = await backend.shelf();
+    S.shelf = new Map(rows.map((e) => [e.id, e]));
+    if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
+    shelfBadge();
+    // capsules whose day has come: say so once
+    const today = app.today();
+    const told = new Set(store('readyTold') || []);
+    const ready = rows.filter((e) => e.kind === 'later' && e.from_slot !== S.slot && !e.opened_at && e.payload?.mode === 'date' && e.payload.on <= today && !told.has(e.id));
+    if (ready.length) {
+      ready.forEach((e) => told.add(e.id)); store('readyTold', [...told].slice(-200));
+      setTimeout(() => toast(`Something on your shelf is ready to open 🎁 Swipe left.`, { tone: 'love', ms: 5000 }), 1800);
+    }
+  } catch { /* the shelf can wait */ }
+}
+function markShelfSeen() {
+  const seen = new Set(store('shelfSeen') || []);
+  for (const e of S.shelf.values()) if (e.from_slot !== S.slot) seen.add(e.id);
+  store('shelfSeen', [...seen].slice(-400));
+  shelfBadge();
+}
+function shelfBadge() {
+  const seen = new Set(store('shelfSeen') || []);
+  const fresh = [...S.shelf.values()].some((e) => e.kind === 'later' && e.from_slot !== S.slot && !e.opened_at && !seen.has(e.id));
+  pager?.dots.children[1]?.classList.toggle('new', fresh);
+}
+
 async function loadPlanted() {
   try {
     const rows = await backend.planted();
@@ -360,6 +412,7 @@ const realtime = {
     const prev = S.events.find((e) => e.id === ev.id);
     upsertEvent(ev);
     const fromThem = ev.from_slot !== S.slot;
+    if (ev.kind === 'later' || ev.kept || S.shelf.has(ev.id)) app.shelfChanged(ev);
     if (type === 'INSERT' && !prev) react(ev, fromThem);
     else if (type === 'UPDATE' && fromThem && (ev.kind === 'pet' || ev.kind === 'boop') && (ev.payload?.n || 1) > (prev?.payload?.n || 1)) react(ev, true);
     refreshPocket();
@@ -421,6 +474,14 @@ function react(ev, fromThem) {
       break;
     case 'tunnel': celebrateTunnel(p); break;
     case 'reunion': toast(`${name} set the countdown${p.note ? `: ${p.note}` : ''}.`); break;
+    case 'later':
+      toast(p.mode === 'date' ? `${name} wrapped a time capsule for you 🎁 It opens ${whenDay(p.on)}.` : `${name} left you an envelope 💌 Open when ${p.label}.`, { tone: 'love' });
+      sfx.chime(); buzz([15, 40, 15]);
+      break;
+    case 'unsealed':
+      toast(p.mode === 'date' ? `${name} unwrapped your time capsule 🎁` : `${name} opened “when ${p.label}” 💌`, { tone: 'love' });
+      sfx.chime();
+      break;
     case 'plant': toast(`${name} planted a question 🌱 It comes up ${whenDay(p.day)}.`, { tone: 'love' }); sfx.chime(); loadPlanted(); break;
     case 'arrived': toast(`${name} crawled into your pocket.`, { tone: 'love' }); onVisible(); break;
   }
@@ -531,7 +592,8 @@ function welcome() {
       h('li', h('b', 'Hold'), ' the kiss button. Longer hold, bigger kiss.'),
       h('li', h('b', 'Feed'), ' it crumbs and mist it so it doesn\'t dry out.'),
       h('li', h('b', 'Today'), ': one photo and one answer each. Buried until you both dig.'),
-      h('li', 'When you\'re both in here at once, the hole opens. ', h('b', 'Touch fingertips'), '.')),
+      h('li', 'When you\'re both in here at once, the hole opens. ', h('b', 'Touch fingertips'), '.'),
+      h('li', h('b', 'Swipe left'), ' for your shelf: envelopes for later, photos that open on a date, and everything you keep.')),
     canPush ? btn('Turn on notifications', async () => { await enablePush(); }, 'primary') : null,
     needsTilt ? btn('Let the pocket feel tilt', () => enableMotion(true), 'ghost') : null,
     btn('Got it', () => s.close(), canPush ? 'ghost' : 'primary'),

@@ -266,11 +266,13 @@ export function openItem(app, it) {
       body = [h('div.trinket-big', trinketCanvas(p.what, 150, p.text)), h('p.big-quote', TRINKETS[p.what] || 'Something'), p.inscription ? h('p.handwriting.center', p.inscription) : null];
       break;
   }
-  const keepBtn = h('button.btn.ghost', { type: 'button' }, icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' Kept' : ' Keep in pocket');
+  const keepBtn = h('button.btn.ghost', { type: 'button' }, icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' On your shelf' : ' Put on your shelf');
   keepBtn.onclick = async () => {
     it.kept = !it.kept;
-    keepBtn.replaceChildren(icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' Kept' : ' Keep in pocket');
+    keepBtn.replaceChildren(icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' On your shelf' : ' Put on your shelf');
+    if (it.kept) { sfx.chime(); toast('On your shelf. Swipe left to find it.'); }
     try { await app.backend.open(it.id, it.kept); } catch { /* */ }
+    app.shelfChanged({ ...it, kept: it.kept });
     app.refreshPocket();
   };
   const stash = btn('Put in the jar', () => { app.stash(it.id); s.close(); }, 'ghost');

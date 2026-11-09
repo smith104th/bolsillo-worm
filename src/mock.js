@@ -10,6 +10,7 @@ export function mockBackend() {
   const events = [];
   const dailies = {};
   const planted = {};
+  const sealed = new Map();
   const media = new Map();
   let on = {};
   let present = true;
@@ -63,6 +64,20 @@ export function mockBackend() {
       dailies[day] = { 0: { answer: a }, 1: { answer: b } };
       if (i % 2 === 0) { dailies[day][0].thumb = fakeThumb(['#FFD3A5', '#FD6585'], ['☕', '🌳', '🚲'][i / 2]); dailies[day][0].photo = -1; dailies[day][1].thumb = fakeThumb(['#A1C4FD', '#C2E9FB'], ['🌧', '🍊', '🧣'][i / 2]); dailies[day][1].photo = -1; }
     });
+    const day = (n) => dayIn(tz, new Date(Date.now() + n * 86400000));
+    const later = (from, payload, body, hAgo, opened = null, photo = null) => {
+      const e = { id: ++id, hole_id: hole.id, from_slot: from, kind: 'later', payload: { paper: 'rosa', photo: !!photo, ...payload }, media_id: null, created_at: old(hAgo), opened_at: opened, kept: false };
+      events.push(e); sealed.set(e.id, { body, photo, mime: photo ? 'image/jpeg' : null });
+    };
+    later(1, { mode: 'when', label: 'you\'re sad', paper: 'rosa' }, { text: 'Hey. Put the kettle on, then read this twice. You are the best thing in my week, every week. The sad part ends. I will be right here when it does.' }, 40);
+    later(1, { mode: 'when', label: 'you can\'t sleep', paper: 'celeste' }, { text: 'Count my worms. There are two. One is yours. Now close your eyes, gusano.' }, 24 * 6, old(24 * 3));
+    later(1, { mode: 'when', label: 'you miss me', paper: 'limon' }, { text: 'Look at the moon. Same one. I am looking too, probably with a croissant.' }, 24 * 2);
+    later(1, { mode: 'date', on: day(45) }, { text: 'Merry worm-mas.', caption: 'for December' }, 24 * 3, null, fakeThumb(['#FF9A8B', '#FF6A88'], '🎄'));
+    later(1, { mode: 'date', on: day(-1) }, { text: 'One month of this pocket. Look how small we were.', caption: 'month one' }, 24 * 9, null, fakeThumb(['#A18CD1', '#FBC2EB'], '🪱'));
+    later(0, { mode: 'when', label: 'you need a laugh', paper: 'limon' }, { text: 'Remember the pigeon at Retiro that stole your entire sandwich and then looked at you like you owed it more.' }, 24 * 4);
+    later(0, { mode: 'date', on: day(17) }, { text: 'See you tomorrow. For real.', caption: '' }, 24 * 1);
+    events.push({ id: ++id, hole_id: hole.id, from_slot: 1, kind: 'photo', payload: { thumb: fakeThumb(['#F6D365', '#FDA085'], '🌅'), caption: 'our sunset' }, media_id: null, created_at: old(24 * 7), opened_at: old(24 * 7 - 1), kept: true });
+    events.push({ id: ++id, hole_id: hole.id, from_slot: 1, kind: 'note', payload: { text: 'You make Tuesdays feel like Fridays.', paper: 'celeste' }, media_id: null, created_at: old(24 * 12), opened_at: old(24 * 12 - 1), kept: true });
     const y = dayIn(tz, new Date(Date.now() - 2 * 86400000));
     planted[y] = { from_slot: 1, question: 'What is a song you would play at our worm wedding?' };
     planted[dayIn(tz, new Date(Date.now() + 3 * 86400000))] = { from_slot: 1, question: 'A secret for later.' };
@@ -148,6 +163,22 @@ export function mockBackend() {
       }));
     },
     async media(mid) { return media.get(mid); },
+    async shelf() { return events.filter((e) => e.kind === 'later' || e.kept).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).map((e) => ({ ...e })); },
+    async seal(payload, body, photo = null, mime = null) {
+      const e = ev(0, 'later', { mode: payload.mode, label: payload.label || null, on: payload.on || null, photo: !!photo, paper: payload.paper || 'rosa' });
+      sealed.set(e.id, { body, photo, mime });
+      if (payload.mode === 'when') setTimeout(() => { e.opened_at = now(); on.event?.({ ...e }, 'UPDATE'); ev(1, 'unsealed', { to: e.id, label: payload.label, mode: 'when' }); }, 9000);
+      return e;
+    },
+    async unseal(eid) {
+      const e = events.find((x) => x.id === eid); const s2 = sealed.get(eid);
+      if (!e || !s2) throw new Error('not_found');
+      if (e.from_slot !== 0) {
+        if (e.payload.mode === 'date' && e.payload.on > dayIn(mine()?.place?.tz || 'UTC')) throw new Error('not_yet');
+        if (!e.opened_at) { e.opened_at = now(); setTimeout(() => on.event?.({ ...e }, 'UPDATE'), 20); }
+      }
+      return { body: s2.body, photo: s2.photo, mime: s2.mime, opened_at: e.opened_at };
+    },
     async planted() {
       const today = dayIn(mine()?.place?.tz || 'UTC');
       return Object.entries(planted).filter(([d, v]) => v.from_slot === 0 || d <= today).sort((a, b) => (a[0] < b[0] ? 1 : -1)).map(([day, v]) => ({ day, ...v }));

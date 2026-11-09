@@ -131,6 +131,33 @@ await fails(U.A, `select * from planted`, [], /permission denied/);
 const stats = await as(U.A, `select * from wh_stats(now() - interval '1 day', now() + interval '1 day')`);
 assert.ok(stats.find((r) => r.kind === 'plant' && r.from_slot === 0 && Number(r.n) === 7), 'stats count plants');
 
+// the shelf: sealed until opened, capsules locked until their day
+const tomorrow = new Date(new Date(holeDay).getTime() + dayMs).toISOString().slice(0, 10);
+const [env] = await as(U.A, `select * from wh_seal('{"mode":"when","label":"you are sad","paper":"celeste"}', '{"text":"You are my favorite person."}')`);
+assert.equal(env.kind, 'later'); assert.equal(env.payload.label, 'you are sad'); assert.equal(env.payload.photo, false);
+assert.equal(JSON.stringify(env.payload).includes('favorite'), false, 'the outside of the envelope does not carry the letter');
+const [cap] = await as(U.A, `select * from wh_seal($1, '{"text":"Merry worm-mas","caption":"us"}', 'data:image/jpeg;base64,AAAA', 'image/jpeg')`, [JSON.stringify({ mode: 'date', on: tomorrow })]);
+assert.equal(cap.payload.photo, true);
+await fails(U.B, `select * from sealed`, [], /permission denied/);
+await fails(U.A, `select * from wh_seal('{"mode":"date","on":"2001-01-01"}', '{"text":"x"}')`, [], /bad_date/);
+await fails(U.A, `select * from wh_seal('{"mode":"when","label":""}', '{"text":"x"}')`, [], /bad_label/);
+await fails(U.A, `select * from wh_seal('{"mode":"when","label":"bored"}', '{}')`, [], /empty/);
+await fails(U.A, `select * from wh_seal('{"mode":"never"}', '{"text":"x"}')`, [], /bad_mode/);
+await fails(U.C, `select * from wh_seal('{"mode":"when","label":"hi"}', '{"text":"x"}')`, [], /no_hole/);
+await fails(U.B, `select wh_unseal($1)`, [cap.id], /not_yet/);
+const [{ wh_unseal: mine }] = await as(U.A, `select wh_unseal($1)`, [cap.id]);
+assert.equal(mine.body.text, 'Merry worm-mas', 'sender can look inside their own');
+assert.equal(mine.opened_at, null, 'looking at your own does not open it');
+const [{ wh_unseal: envOpen }] = await as(U.B, `select wh_unseal($1)`, [env.id]);
+assert.equal(envOpen.body.text, "You are my favorite person."); assert.ok(envOpen.opened_at);
+const unsealedEv = await as(U.A, `select * from events where kind = 'unsealed'`);
+assert.equal(unsealedEv.length, 1); assert.equal(unsealedEv[0].payload.label, 'you are sad');
+await as(U.B, `select wh_unseal($1)`, [env.id]);
+assert.equal((await as(U.A, `select * from events where kind = 'unsealed'`)).length, 1, 'opening twice tells them once');
+await db.query(`update events set payload = jsonb_set(payload, '{on}', to_jsonb($1::text)) where id = $2`, [holeDay, cap.id]);
+const [{ wh_unseal: capOpen }] = await as(U.B, `select wh_unseal($1)`, [cap.id]);
+assert.equal(capOpen.photo, 'data:image/jpeg;base64,AAAA', 'capsule opens on its day');
+
 // tunnel completes and loops
 await db.exec(`update holes set tunnel_km = 100, dug_km = 90`);
 await as(U.B, `select wh_act('note', '{"text":"x"}')`);

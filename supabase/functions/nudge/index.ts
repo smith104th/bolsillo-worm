@@ -56,6 +56,12 @@ function compose(kind: string, me: any, extra: any = {}) {
       if (extra.both) return { title: `Today's ${extra.part === "photo" ? "photos are" : "answers are"} up`, body: `Go see what ${n} ${extra.part === "photo" ? "saw" : "said"}.` };
       return { title: extra.part === "photo" ? `${n} took today's photo` : `${n} answered today's question`, body: "It's buried until you do yours." };
     case "reunion": return { title: `${n} set the countdown`, body: extra.note ? `Same pocket: ${extra.note}` : "Same pocket soon." };
+    case "later":   return extra.mode === "date"
+      ? { title: `${n} wrapped a time capsule for you 🎁`, body: `It opens ${extra.when ?? "soon"}. Swipe to your shelf.` }
+      : { title: `${n} left you an envelope 💌`, body: extra.label ? `Open when ${extra.label}.` : "It's on your shelf." };
+    case "unsealed": return extra.mode === "date"
+      ? { title: `${n} unwrapped your time capsule 🎁`, body: "It was worth the wait." }
+      : { title: `${n} opened your envelope 💌`, body: extra.label ? `“Open when ${extra.label}”` : "The one you left on their shelf." };
     case "plant":   return { title: `${n} planted a question 🌱`, body: `It comes up ${extra.when ?? "soon"} as your question of the day.` };
     default:        return { title: "Something moved in your pocket", body: `From ${n}.` };
   }

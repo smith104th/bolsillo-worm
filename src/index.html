@@ -21,10 +21,13 @@
 </head>
 <body>
   <div id="app" hidden>
-    <canvas id="pocket" aria-label="Your pocket"></canvas>
-    <header id="label" role="button" aria-label="Look through the hole"></header>
-    <button id="peek" class="glass" type="button" aria-label="Through the hole"></button>
-    <div id="waiting" hidden></div>
+    <section id="screen-pocket" class="screen">
+      <canvas id="pocket" aria-label="Your pocket"></canvas>
+      <header id="label" role="button" aria-label="Look through the hole"></header>
+      <button id="peek" class="glass" type="button" aria-label="Through the hole"></button>
+      <div id="waiting" hidden></div>
+    </section>
+    <section id="screen-shelf" class="screen" aria-label="Your shelf"></section>
     <nav id="dock"></nav>
   </div>
   <div id="onboard" hidden></div>
