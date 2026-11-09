@@ -94,7 +94,7 @@ function refreshPocket() {
     pocket.setNeeds({ hungry: clamp(hoursSince(them.fed_at) / 36, 0, 1), dry: clamp(hoursSince(them.misted_at) / 30, 0, 1) });
   }
   if (me) pocket.setMyWorm(me.worm, inchesFor(me.love));
-  if (them && !S.weather && !S.weatherLoading) loadWeather();
+  if (them && !S.weather && !S.weatherLoading && Date.now() - (S.weatherAt || 0) > 120000) loadWeather();
   renderHeader();
   renderDockDots();
   $('#waiting').hidden = !!them;
@@ -373,7 +373,7 @@ function celebrateTunnel(p) {
 async function loadWeather() {
   const pl = app.them()?.place;
   if (!pl?.lat) return;
-  S.weatherLoading = true;
+  S.weatherLoading = true; S.weatherAt = Date.now();
   try {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pl.lat}&longitude=${pl.lon}&current=temperature_2m,weather_code,is_day&timezone=auto`);
     const j = await r.json();
