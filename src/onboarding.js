@@ -143,8 +143,16 @@ export async function onboard(backend, { code: presetCode } = {}) {
       } catch { list.replaceChildren(h('p.small.muted', 'Can\'t search right now. Type your city and tap Next.')); }
     };
     q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(search, 300); });
-    const next = () => {
-      if (!draft.place && q.value.trim()) draft.place = { city: q.value.trim(), tz: myTz() };
+    const next = async () => {
+      const term = q.value.trim();
+      if (term && (!draft.place || draft.place.city.toLowerCase() !== term.toLowerCase())) {
+        // typed but didn't pick: take the best match so time, weather and distance work
+        try {
+          const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(term)}&count=1&language=en&format=json`);
+          const c = (await r.json()).results?.[0];
+          draft.place = c ? { city: c.name, country: c.country || '', region: c.admin1 || '', lat: +c.latitude.toFixed(3), lon: +c.longitude.toFixed(3), tz: c.timezone || myTz() } : { city: term, tz: myTz() };
+        } catch { draft.place = { city: term, tz: myTz() }; }
+      }
       if (!draft.place) { toast('Where are you?'); return q.focus(); }
       save(); res();
     };

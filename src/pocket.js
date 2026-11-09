@@ -185,7 +185,7 @@ export class Pocket {
     }
   }
 
-  setTheirFinger(f) { this.theirFinger = f && f.down ? { x: this.bounds.l + f.x * (this.bounds.r - this.bounds.l), y: this.bounds.t + f.y * (this.bounds.b - this.bounds.t), at: performance.now() } : null; }
+  setTheirFinger(f) { this.theirFinger = f && (f.d || f.down) ? { x: this.bounds.l + f.x * (this.bounds.r - this.bounds.l), y: this.bounds.t + f.y * (this.bounds.b - this.bounds.t), at: performance.now() } : null; }
   norm(x, y) { const b = this.bounds; return { x: clamp((x - b.l) / (b.r - b.l), 0, 1), y: clamp((y - b.t) / (b.b - b.t), 0, 1) }; }
 
   // ── input
@@ -199,7 +199,7 @@ export class Pocket {
   pos(e) { const r = this.cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   down(e) {
     if (this.ptr) return;
-    this.cv.setPointerCapture?.(e.pointerId);
+    try { this.cv.setPointerCapture(e.pointerId); } catch { /* synthetic or already released */ }
     const p = this.pos(e);
     const ptr = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y, t0: performance.now(), moved: 0, petDist: 0, lastPet: 0, hist: [] };
     const it = [...this.items].reverse().find((i) => !i.diving && (i.x - p.x) ** 2 + (i.y - p.y) ** 2 < (i.r + 10) ** 2);

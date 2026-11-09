@@ -1,5 +1,5 @@
 // Bolsillo Worm service worker: keeps the pocket working offline and delivers buzzes.
-const VERSION = '59faf877';
+const VERSION = 'f9d7db2e';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
