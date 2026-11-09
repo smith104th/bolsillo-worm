@@ -32,55 +32,65 @@ export function buzz(pattern = 12) {
   } catch { /* fine */ }
 }
 
+let out = null;
 function ac() {
   if (settings().sound === false || !unlocked) return null;
   try {
-    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      // a soft bus: gentle lowpass + a small echo so every ding rings out
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; lp.Q.value = 0.3;
+      const master = ctx.createGain(); master.gain.value = 0.9;
+      const delay = ctx.createDelay(1); delay.delayTime.value = 0.21;
+      const fb = ctx.createGain(); fb.gain.value = 0.26;
+      const wet = ctx.createGain(); wet.gain.value = 0.2;
+      master.connect(lp); lp.connect(ctx.destination);
+      lp.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(ctx.destination);
+      out = master;
+    }
     if (ctx.state === 'suspended') ctx.resume();
     return ctx;
   } catch { return null; }
 }
 export function unlockAudio() { unlocked = true; ac(); }
 
-function tone({ f = 440, f2, d = 0.12, type = 'sine', v = 0.12, at = 0 }) {
+// a little bell: a sine with two faint overtones and a long soft tail
+function ding(freq, { at = 0, vol = 0.07, dur = 0.9 } = {}) {
   const a = ac(); if (!a) return;
   const t = a.currentTime + at;
-  const o = a.createOscillator(); const g = a.createGain();
-  o.type = type; o.frequency.setValueAtTime(f, t);
-  if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  const g = a.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(v, t + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  o.connect(g).connect(a.destination);
-  o.start(t); o.stop(t + d + 0.02);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  g.connect(out);
+  for (const [mult, v] of [[1, 1], [2, 0.18], [3.01, 0.05]]) {
+    const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq * mult, t);
+    const og = a.createGain(); og.gain.value = v;
+    o.connect(og).connect(g);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
 }
-function noise({ d = 0.15, v = 0.08, f = 1200, q = 1, type = 'bandpass', f2, at = 0 }) {
-  const a = ac(); if (!a) return;
-  const t = a.currentTime + at;
-  const len = Math.ceil(a.sampleRate * d);
-  const buf = a.createBuffer(1, len, a.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-  const src = a.createBufferSource(); src.buffer = buf;
-  const fl = a.createBiquadFilter(); fl.type = type; fl.frequency.setValueAtTime(f, t); fl.Q.value = q;
-  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + d);
-  const g = a.createGain(); g.gain.value = v;
-  src.connect(fl).connect(g).connect(a.destination);
-  src.start(t);
-}
+// notes from C6 on a major pentatonic, so anything played together sounds sweet
+const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+const note = (step, base = 1046.5) => base * Math.pow(2, (PENTA[((step % PENTA.length) + PENTA.length) % PENTA.length] + 12 * Math.floor(step / PENTA.length)) / 12);
+let petStep = 0;
 
 export const sfx = {
-  pop: () => tone({ f: 620, f2: 240, d: 0.09, v: 0.1 }),
-  boop: () => { tone({ f: 330, f2: 520, d: 0.08, v: 0.12 }); tone({ f: 520, f2: 300, d: 0.1, v: 0.06, at: 0.07 }); },
-  squish: () => noise({ d: 0.12, v: 0.12, f: 500, f2: 1600, q: 3 }),
-  coo: () => { tone({ f: 700, f2: 980, d: 0.12, v: 0.05, type: 'triangle' }); tone({ f: 980, f2: 760, d: 0.14, v: 0.05, type: 'triangle', at: 0.12 }); },
-  kiss: (lvl = 1) => { noise({ d: 0.06 + lvl * 0.02, v: 0.1 + lvl * 0.02, f: 2400, f2: 700, q: 6 }); tone({ f: 900 + lvl * 80, f2: 400, d: 0.06, v: 0.04, at: 0.03 }); },
-  paper: () => { noise({ d: 0.18, v: 0.06, f: 3500, type: 'highpass' }); noise({ d: 0.12, v: 0.04, f: 2500, type: 'highpass', at: 0.12 }); },
-  knock: () => { tone({ f: 140, f2: 90, d: 0.09, v: 0.3 }); tone({ f: 140, f2: 90, d: 0.09, v: 0.3, at: 0.16 }); },
-  chime: () => { tone({ f: 784, d: 0.5, v: 0.05 }); tone({ f: 1175, d: 0.6, v: 0.04, at: 0.09 }); },
-  plop: () => { tone({ f: 200, f2: 700, d: 0.07, v: 0.1 }); },
-  chomp: () => noise({ d: 0.05, v: 0.1, f: 900, q: 2 }),
-  mist: () => noise({ d: 0.35, v: 0.05, f: 6000, type: 'highpass' }),
-  tick: () => tone({ f: 1400, d: 0.03, v: 0.04, type: 'square' }),
-  knot: () => [523, 659, 784, 1047].forEach((f, i) => tone({ f, d: 0.35, v: 0.05, at: i * 0.08, type: 'triangle' })),
+  pop: () => ding(note(3), { vol: 0.05, dur: 0.6 }),
+  boop: () => { ding(note(0), { vol: 0.06, dur: 0.6 }); ding(note(2), { at: 0.08, vol: 0.05, dur: 0.7 }); },
+  squish: () => ding(note(-3), { vol: 0.05, dur: 0.7 }),
+  coo: () => { petStep = (petStep + 1 + (Math.random() < 0.3 ? 1 : 0)) % 8; ding(note(petStep), { vol: 0.035, dur: 0.8 }); },
+  kiss: (lvl = 1, only = 0) => {
+    if (only) return ding(note(only + 1), { vol: 0.045, dur: 0.7 });
+    for (let i = 0; i < lvl; i++) ding(note(i * 1 + 2), { at: i * 0.09, vol: 0.05, dur: 0.9 });
+  },
+  paper: () => ding(note(7), { vol: 0.012, dur: 0.35 }),
+  knock: () => { ding(note(-2), { vol: 0.07, dur: 0.5 }); ding(note(-2), { at: 0.17, vol: 0.06, dur: 0.6 }); },
+  chime: () => [0, 2, 4].forEach((s, i) => ding(note(s + 2), { at: i * 0.11, vol: 0.05, dur: 1.1 })),
+  plop: () => ding(note(1), { vol: 0.04, dur: 0.5 }),
+  chomp: () => ding(note(-4 + ((Math.random() * 3) | 0)), { vol: 0.025, dur: 0.3 }),
+  mist: () => [8, 7, 6, 5, 4].forEach((s, i) => ding(note(s), { at: i * 0.05, vol: 0.022, dur: 0.6 })),
+  tick: () => ding(note(5), { vol: 0.02, dur: 0.25 }),
+  knot: () => [0, 2, 3, 5, 7, 9].forEach((s, i) => ding(note(s), { at: i * 0.075, vol: 0.045, dur: 1.2 })),
+  react: () => { ding(note(4), { vol: 0.045, dur: 0.7 }); ding(note(7), { at: 0.1, vol: 0.04, dur: 0.9 }); },
 };

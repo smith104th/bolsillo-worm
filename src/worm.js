@@ -1,7 +1,7 @@
 // The worm: a soft verlet chain that crawls, curls, gets petted and kissed.
 import { clamp, rand, hash } from './util.js';
-import { drawLips, mixHex } from './draw.js';
-import { dab, band } from './brush.js';
+import { mixHex } from './draw.js';
+import { dab, band, drawEmoji } from './brush.js';
 
 export const COLORS = {
   lombriz: { label: 'Rosa',    body: '#F2A1A6', dark: '#DE6B72', light: '#FCD6D3', saddle: '#EA8A91', spot: '#E0606A', nose: '#E04A4F' },
@@ -331,7 +331,7 @@ export class Worm {
     for (const k of this.marks) {
       const i = Math.min(k.i, n - 2), a = P[i - 1] || P[i], c = P[i + 1], p = P[i];
       let nx = -(c.y - a.y), ny = c.x - a.x; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
-      drawLips(ctx, p.x + nx * k.side * R * 0.35, p.y + ny * k.side * R * 0.35, R * k.s, Math.atan2(ny, nx) + k.rot, 'rgba(226,52,84,0.9)');
+      drawEmoji(ctx, '💋', p.x + nx * k.side * R * 0.35, p.y + ny * k.side * R * 0.35, R * k.s * 0.9, k.rot * 0.6);
     }
 
     if (this.design.acc === 'pearls' || this.design.acc === 'scarf') this.neckwear(ctx);

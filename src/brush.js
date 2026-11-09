@@ -72,3 +72,27 @@ export function band(x, color, cx, cy, r, angle, along = 0.42, kind = 'body', al
   x.drawImage(stamp(color, kind), -s * along, -s, s * 2 * along, s * 2);
   x.restore();
 }
+
+// emoji, rendered once at a good size and reused
+export const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",sans-serif';
+const emojiCache = new Map();
+function emojiCanvas(ch) {
+  let c = emojiCache.get(ch);
+  if (c) return c;
+  c = document.createElement('canvas');
+  c.width = c.height = 112;
+  const x = c.getContext('2d');
+  x.font = `88px ${EMOJI_FONT}`;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(ch, 56, 62);
+  emojiCache.set(ch, c);
+  return c;
+}
+export function drawEmoji(x, ch, cx, cy, size, rot = 0, alpha = 1) {
+  const c = emojiCanvas(ch), s = size * 1.27;
+  x.save();
+  x.translate(cx, cy); if (rot) x.rotate(rot);
+  if (alpha !== 1) x.globalAlpha *= alpha;
+  x.drawImage(c, -s / 2, -s / 2, s, s);
+  x.restore();
+}

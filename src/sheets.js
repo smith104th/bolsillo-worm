@@ -1,14 +1,13 @@
 // The paper slips: feed, drop, today, us, peek, settings, the jar.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
 import { sheet, btn, icon, toast, field, segmented, confirmBox } from './ui.js';
-import { FOODS, drawFood, TRINKETS } from './draw.js';
+import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
 import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
-import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas } from './compose.js';
+import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { questionFor } from './questions.js';
 import { sfx } from './feel.js';
 
-const KISS_NAMES = ['', 'piquito', 'besito', 'beso', 'besote', 'BESAZO'];
 
 function foodCanvas(kind, size = 54) {
   const c = h('canvas', { width: size * 2, height: size * 2, style: { width: size + 'px', height: size + 'px' } });
@@ -90,7 +89,7 @@ export async function todaySheet(app) {
 
     const ans = h('textarea', { rows: 3, maxLength: 1000, placeholder: 'Your answer…', value: t.my_answer || '' });
     const answerBox = t.my_answer
-      ? h('div.answer.mine', h('span.who', 'You'), h('p', t.my_answer))
+      ? h('div.answer.mine', h('span.who', 'You'), h('p', t.my_answer), theirReactions(app, { day: today, part: 'answer' }))
       : h('div.answer-form', ans, btn('Bury my answer', async (e) => {
         if (!ans.value.trim()) return ans.focus();
         e.currentTarget.disabled = true;
@@ -100,8 +99,9 @@ export async function todaySheet(app) {
           sfx.chime(); render();
         } catch { e.currentTarget.disabled = false; toast('Couldn\'t bury it. Try again.'); }
       }, 'primary'));
+    const tA = { day: today, part: 'answer', about: 'answer' }, tP = { day: today, part: 'photo', about: 'photo of the day' };
     const theirAnswer = t.their_answer
-      ? h('div.answer', h('span.who', them), h('p', t.their_answer))
+      ? h('div.answer', h('span.who', them), h('p', t.their_answer), reactRow(app, tA))
       : t.their_answered ? h('div.answer.buried', h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
 
     const layers = rows.filter((r) => r.day !== today).map((r) => {
@@ -118,6 +118,8 @@ export async function todaySheet(app) {
       h('div.today-head', h('span.mono', prettyDay(today)), streak ? h('span.streak', `${streak} day${streak > 1 ? 's' : ''} in a row`) : h('span.streak.dim', 'Start a streak')),
       h('h3', 'Photo of the day'),
       h('div.slots', myPhoto, theirPhoto),
+      t.their_thumb ? reactRow(app, tP) : null,
+      t.my_thumb ? theirReactions(app, { day: today, part: 'photo' }) : null,
       h('h3', 'Question of the day'),
       h('p.question', q),
       answerBox, theirAnswer,
@@ -126,6 +128,7 @@ export async function todaySheet(app) {
     ].filter(Boolean));
   };
   app.onDailyChange = () => { if (s.el.isConnected) render(); };
+  app.onReact = (ev) => { if (s.el.isConnected && ev?.payload?.day) render(); };
   render();
 }
 
@@ -188,7 +191,7 @@ export function peekSheet(app) {
   const line = (e) => {
     const p = e.payload || {};
     const t = {
-      pet: `petted you${p.n > 1 ? ` ×${p.n}` : ''}`, boop: `booped you${p.n > 1 ? ` ×${p.n}` : ''}`, kiss: `sent a ${KISS_NAMES[p.level || 1]}`,
+      pet: `petted you${p.n > 1 ? ` ×${p.n}` : ''}`, boop: `booped you${p.n > 1 ? ` ×${p.n}` : ''}`, kiss: `sent a ${KISS_NAMES[p.level || 1]} ${KISS_EMOJI[p.level || 1]}`, react: p.about ? `reacted ${p.emoji} to your ${p.about}` : `sent ${p.emoji}`,
       feed: `fed you ${FOODS[p.food] || 'a crumb'}`, mist: 'misted you', note: 'dropped a note', doodle: 'drew you something',
       photo: 'sent a polaroid', whisper: 'whispered', wiggle: `wiggled${p.label ? ` “${p.label}”` : ''}`, trinket: `found you ${TRINKETS[p.what] || 'something'}`,
       knock: 'knocked', ring: 'called you in', touch: 'touched fingertips with you', daily: p.part === 'photo' ? 'posted today\'s photo' : 'answered today\'s question',
@@ -284,4 +287,3 @@ function changeCity(app) {
   const s = sheet('Your city', [field('City', q), list]);
 }
 
-export { KISS_NAMES };

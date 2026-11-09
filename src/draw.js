@@ -4,7 +4,7 @@ import { wobblyCircle, dab } from './brush.js';
 
 
 // ── light-wash denim, flat color + woven texture ─────────────
-export const DENIM = '#A3BEDD';
+export const DENIM = '#8EC8FF';
 export const THREAD = '#E3A23F';
 
 export function mixHex(a, b, t) {
@@ -17,43 +17,34 @@ export function hexA(hex, a) {
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`;
 }
 
-export function makeDenim(W, H, dpr, seed = 7) {
+// ── the pocket: a soft daytime sky, light blue fading to white, with fine grain ──
+export const KISS_EMOJI = ['', '😗', '😙', '😘', '💋', '😍'];
+export const KISS_NAMES = ['', 'piquito', 'besito', 'beso', 'besote', 'BESAZO'];
+export const REACTIONS = ['❤️', '🥰', '🥺', '😂', '🔥', '🫶', '✨', '😴'];
+export const SKY = { top: '#6FBEFF', mid: '#B7E0FF', bottom: '#EEF6FF' };
+export function makeSky(W, H, dpr) {
   const c = document.createElement('canvas');
   c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
   const x = c.getContext('2d');
   x.scale(dpr, dpr);
-  const r = seeded(seed);
-  x.fillStyle = DENIM; x.fillRect(0, 0, W, H);
-  // twill: a fine diagonal weave
-  x.lineWidth = 0.7;
-  for (let i = -H; i < W; i += 2) {
-    x.strokeStyle = (Math.floor(i / 2) % 2) ? 'rgba(255,255,255,0.08)' : 'rgba(38,70,120,0.06)';
-    x.beginPath(); x.moveTo(i, 0); x.lineTo(i + H * 0.36, H); x.stroke();
+  const g = x.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, SKY.top); g.addColorStop(0.55, SKY.mid); g.addColorStop(1, SKY.bottom);
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const bloom = (cx, cy, r, col, a) => {
+    const rg = x.createRadialGradient(cx, cy, 0, cx, cy, r);
+    rg.addColorStop(0, hexA(col, a)); rg.addColorStop(1, hexA(col, 0));
+    x.fillStyle = rg; x.fillRect(cx - r, cy - r, r * 2, r * 2);
+  };
+  bloom(W * 0.22, H * 0.78, W * 0.95, SKY.bottom, 0.5);
+  bloom(W * 0.85, H * 0.18, W * 0.8, SKY.top, 0.35);
+  // fine grain
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  const img = x.getImageData(0, 0, c.width, c.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 14;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
   }
-  // white weft flecks and indigo flecks
-  for (let i = 0; i < (W * H) / 45; i++) {
-    const light = r() > 0.45;
-    x.fillStyle = light ? `rgba(255,255,255,${0.1 + r() * 0.25})` : `rgba(40,72,128,${0.06 + r() * 0.14})`;
-    x.fillRect(r() * W, r() * H, 1 + r() * 1.8, 0.8);
-  }
-  // slubs run with the warp, mostly up and down
-  for (let i = 0; i < 90; i++) {
-    const sx = r() * W, sy = r() * H, len = 6 + r() * 16;
-    x.strokeStyle = `rgba(255,255,255,${0.1 + r() * 0.14})`; x.lineWidth = 1 + r() * 1.2; x.lineCap = 'round';
-    x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + (r() - 0.5) * 2, sy + len); x.stroke();
-  }
-  // a few worn whiskers
-  for (let i = 0; i < 6; i++) {
-    const wx = W * (0.15 + r() * 0.7), wy = H * (0.2 + r() * 0.6), len = 30 + r() * 60;
-    x.strokeStyle = 'rgba(255,255,255,0.16)'; x.lineWidth = 2.5 + r() * 2;
-    x.beginPath(); x.moveTo(wx, wy); x.quadraticCurveTo(wx + len * 0.5, wy - 6 + r() * 12, wx + len, wy + r() * 8 - 4); x.stroke();
-  }
-  // lint in the corners
-  for (let i = 0; i < 8; i++) {
-    const lx = r() < 0.5 ? 18 + r() * 40 : W - 18 - r() * 40, ly = H * (0.5 + r() * 0.35);
-    x.strokeStyle = 'rgba(255,255,255,0.5)'; x.lineWidth = 0.7;
-    for (let k = 0; k < 12; k++) { x.beginPath(); x.moveTo(lx + (r() - 0.5) * 6, ly + (r() - 0.5) * 6); x.quadraticCurveTo(lx + (r() - 0.5) * 14, ly + (r() - 0.5) * 14, lx + (r() - 0.5) * 12, ly + (r() - 0.5) * 12); x.stroke(); }
-  }
+  x.putImageData(img, 0, 0);
   return c;
 }
 

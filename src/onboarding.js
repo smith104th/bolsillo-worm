@@ -1,7 +1,7 @@
 // Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
 import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
-import { makeDenim, drawHole } from './draw.js';
+import { makeSky, drawHole } from './draw.js';
 import { btn, field, icon, toast } from './ui.js';
 import { sfx, unlockAudio } from './feel.js';
 
@@ -12,7 +12,7 @@ export function wormPreview(canvas, design, { segs = 18 } = {}) {
   const W = canvas.clientWidth || 300, H = canvas.clientHeight || 200;
   canvas.width = W * dpr; canvas.height = H * dpr;
   const x = canvas.getContext('2d');
-  const bg = makeDenim(W, H, dpr, 5);
+  const bg = makeSky(W, H, dpr);
   const R = Math.min(16, W * 0.05);
   const w = new Worm(design, { x: W * 0.6, y: H * 0.55, R, segs, angle: -0.3 });
   w.speedBase = R * 2.6;
@@ -79,7 +79,7 @@ function heroScene(canvas) {
   const W = canvas.clientWidth, H = canvas.clientHeight;
   canvas.width = W * dpr; canvas.height = H * dpr;
   const x = canvas.getContext('2d');
-  const bg = makeDenim(W, H, dpr, 13);
+  const bg = makeSky(W, H, dpr);
   const R = Math.min(22, W * 0.055);
   const hole = { x: W * 0.68, y: H * 0.3 };
   const w = new Worm({ name: 'hero', color: 'lombriz', pattern: 'stripes', acc: 'beanie' }, { x: hole.x, y: hole.y, R, segs: 16, angle: -2.4 });

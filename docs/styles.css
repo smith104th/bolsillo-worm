@@ -64,7 +64,7 @@ body.dark .tab.on { color: #fff; background: rgba(255,255,255,0.16); }
 .tab:active { transform: scale(0.94); }
 .tab .dot { position: absolute; top: 8px; right: calc(50% - 16px); width: 8px; height: 8px; background: var(--pink); opacity: 1; }
 .kissbtn { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; touch-action: none; transition: transform 0.15s; }
-.kissbtn svg { width: 30px; height: 30px; color: var(--pink); }
+.kissbtn span { font-size: 30px; line-height: 1; }
 .kissbtn:active { transform: scale(0.94); }
 
 #waiting { position: fixed; z-index: 4; inset: 0; display: grid; place-items: center; padding: 150px 24px 140px; pointer-events: none; }
@@ -76,7 +76,7 @@ body.dark .tab.on { color: #fff; background: rgba(255,255,255,0.16); }
 /* kiss meter */
 .kiss-meter { position: fixed; z-index: 20; left: 50%; bottom: calc(var(--safe-b) + 96px); transform: translate(-50%, 16px) scale(0.96); opacity: 0; pointer-events: none; transition: opacity 0.15s, transform 0.2s; border-radius: 28px; padding: 16px 26px 14px; text-align: center; min-width: 210px; }
 .kiss-meter.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
-.kiss-lips { width: 70px; margin: 0 auto; transform-origin: 50% 60%; }
+.kiss-face { font-size: 64px; line-height: 1; transform-origin: 50% 60%; }
 .kiss-name { font: 700 30px/1 var(--sans); letter-spacing: -0.04em; margin-top: 8px; min-height: 30px; }
 .kiss-meter[data-level="5"] .kiss-name { color: var(--pink); font-size: 38px; }
 .kiss-dots { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
@@ -87,12 +87,29 @@ body.dark .kiss-dots span { background: rgba(255,255,255,0.22); }
 .kiss-layer { position: fixed; z-index: 40; inset: 0; background: rgba(255,45,85,0.06); animation: fadein 0.3s; }
 .kiss-layer.out { opacity: 0; transition: opacity 0.7s; }
 .stamp { position: absolute; opacity: 0; animation: stamp 0.28s cubic-bezier(.2,1.6,.4,1) forwards; filter: drop-shadow(0 2px 3px rgba(120,0,30,0.2)); }
-.stamp svg { width: 100%; height: auto; display: block; }
+.stamp { line-height: 1; }
 @keyframes stamp { from { opacity: 0; scale: 1.9; } to { opacity: 0.92; scale: 1; } }
 .kiss-caption { position: absolute; left: 50%; bottom: calc(var(--safe-b) + 110px); transform: translateX(-50%); padding: 12px 22px; border-radius: 24px; text-align: center; white-space: nowrap; }
 .kiss-caption .mono { font-size: 11px; text-transform: uppercase; opacity: 0.6; }
 .kiss-caption b { display: block; font: 600 22px/1.2 var(--sans); letter-spacing: -0.03em; }
 @keyframes fadein { from { opacity: 0; } }
+
+/* emoji tray (tap the kiss button) */
+.tray { position: fixed; z-index: 21; right: 12px; bottom: calc(var(--safe-b) + 86px); border-radius: 30px; padding: 8px 10px 9px; transform: translateY(12px) scale(0.92); transform-origin: 90% 100%; opacity: 0; transition: transform 0.22s cubic-bezier(.2,1.4,.4,1), opacity 0.18s; }
+.tray.in { transform: none; opacity: 1; }
+.tray-row { display: flex; gap: 2px; }
+.tray-emo { width: 40px; height: 44px; font-size: 27px; line-height: 1; border-radius: 14px; transition: transform 0.12s; }
+.tray-emo:active { transform: scale(1.35) translateY(-6px); }
+.tray-hint { text-align: center; font: 500 11px var(--sans); opacity: 0.6; margin-top: 2px; }
+.react-row { display: flex; justify-content: space-between; gap: 2px; background: var(--fill); border-radius: 22px; padding: 6px 8px; }
+.react-emo { width: 38px; height: 38px; font-size: 24px; line-height: 1; border-radius: 50%; transition: transform 0.15s, background 0.15s; }
+.react-emo.on { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.react-emo.pop { animation: reactpop 0.4s cubic-bezier(.2,1.6,.4,1); }
+@keyframes reactpop { 0% { transform: scale(1); } 40% { transform: scale(1.5) translateY(-6px); } 100% { transform: scale(1); } }
+.answer .react-row { background: rgba(255,255,255,0.7); margin-top: 10px; }
+.their-reacts { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--fill); border-radius: 18px; padding: 10px 14px; }
+.answer .their-reacts { background: rgba(255,255,255,0.7); margin-top: 10px; }
+.their-reacts .emos { font-size: 22px; letter-spacing: 2px; }
 
 /* toasts: glass banners */
 .toasts { position: fixed; z-index: 30; top: calc(var(--safe-t) + 10px); left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
@@ -167,7 +184,7 @@ canvas.preview.small { height: 160px; }
 .ob-card .step { font: 500 12px var(--mono); color: var(--ink-3); margin: 0; }
 
 /* welcome: denim, a stitched hole, a worm */
-#onboard.hero { background: #A3BEDD; }
+#onboard.hero { background: #B7E0FF; }
 .hero-card { position: relative; min-height: 100%; padding: calc(var(--safe-t) + 34px) 26px calc(var(--safe-b) + 30px); display: flex; flex-direction: column; color: var(--ink); overflow: hidden; }
 .hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; touch-action: none; }
 .hero-card > :not(canvas) { position: relative; z-index: 1; pointer-events: none; }

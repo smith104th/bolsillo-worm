@@ -1,8 +1,9 @@
 // The pocket: canvas scene with the worm(s), things that fell through the hole,
 // crumbs, weather from the other side, and live fingertips.
 import { Worm, heart, star, segsFor } from './worm.js';
-import { makeDenim, drawSeams, drawHole, drawItem, drawFood, drawLips, itemRadius } from './draw.js';
-import { dab } from './brush.js';
+import { makeSky, drawHole, drawItem, drawFood, itemRadius } from './draw.js';
+import { dab, drawEmoji } from './brush.js';
+import { KISS_EMOJI } from './draw.js';
 import { clamp, rand, pick } from './util.js';
 import { sfx, buzz } from './feel.js';
 
@@ -48,10 +49,7 @@ export class Pocket {
     this.R = clamp(Math.min(W, H) * 0.044, 12, 19);
     this.holeR = Math.min(W * 0.115, 48);
     this.hole = { x: W / 2, y: this.bounds.b - this.holeR * 1.7 };
-    const denim = makeDenim(W, H, dpr, 29);
-    const dx = denim.getContext('2d');
-    drawSeams(dx, W, H, this.bounds.b + 34);
-    this.denim = denim;
+    this.denim = makeSky(W, H, dpr);
     for (const w of [this.worm, this.mine]) if (w) { w.R = this.R; w.spacing = this.R * 0.62; w.speedBase = this.R * 3.4; }
   }
 
@@ -85,7 +83,7 @@ export class Pocket {
   setAsleep(on) { this.asleep = on; if (this.worm) this.worm.sleep(on); }
   setNeeds(n) { this.needs = n; if (this.worm) { this.worm.dry = clamp((n.dry - 0.5) * 2, 0, 1); } }
   setWeather(kind, day) { this.weather = { kind, day }; }
-  setSky() { /* the pocket is always light denim now */ }
+  setSky() { /* the pocket is always the soft day sky */ }
   setMarks(n) { if (!this.worm) return; while (this.worm.marks.length < Math.min(n, 12)) this.worm.addMark(((this.worm.marks.length + 1) * 0.6180339) % 1); }
 
   setTilt(gx, gy) {
@@ -154,7 +152,7 @@ export class Pocket {
     const h = this.worm.head();
     const n = level >= 5 ? 6 : level >= 3 ? 3 : 1;
     for (let k = 0; k < n; k++) {
-      this.parts.push({ type: 'lipsfly', x: this.W / 2 + rand(-30, 30), y: this.H - 60, tx: h, delay: k * 0.12, life: 0.75, max: 0.75, size: 14 + level * 5, level, rot: rand(-0.3, 0.3) });
+      this.parts.push({ type: 'emojifly', ch: k === 0 ? KISS_EMOJI[level] : '💋', x: this.W - 48 + rand(-10, 10), y: this.H - 60, tx: h, delay: k * 0.12, life: 0.75, max: 0.75, size: 22 + level * 6, level, rot: rand(-0.3, 0.3), hits: k === 0 });
     }
   }
   blowKiss(level) {
@@ -162,7 +160,19 @@ export class Pocket {
     const w = this.worm; if (!w) return;
     w.pucker = 1.4 + level * 0.2;
     const h = w.head();
-    for (let k = 0; k < level + 1; k++) this.parts.push({ type: 'lipsout', x: h.x, y: h.y, vx: rand(-60, 60), vy: rand(-90, -30), delay: 0.25 + k * 0.12, life: 1.1, max: 1.1, size: 10, grow: 3 + level, rot: rand(-0.4, 0.4) });
+    for (let k = 0; k < level + 1; k++) this.parts.push({ type: 'emojiout', ch: '💋', x: h.x, y: h.y, vx: rand(-60, 60), vy: rand(-90, -30), delay: 0.25 + k * 0.12, life: 1.1, max: 1.1, size: 16, grow: 2 + level * 0.6, rot: rand(-0.4, 0.4) });
+  }
+  // an emoji comes out of the hole and floats up
+  reaction(ch) {
+    const { x, y } = this.hole;
+    this.parts.push({ type: 'emojibig', ch, x, y, vx: rand(-20, 20), vy: -150, life: 2.6, max: 2.6, size: 64, rot: rand(-0.2, 0.2) });
+    for (let k = 0; k < 6; k++) this.parts.push({ type: 'emojiout', ch, x, y, vx: rand(-140, 140), vy: rand(-220, -90), delay: 0.15 + k * 0.05, life: 1.3, max: 1.3, size: 18, grow: 0.4, rot: rand(-0.6, 0.6) });
+    this.glow = 1;
+    if (this.worm) { this.worm.happy = 2; this.worm.dance = 0.8; this.worm.danceAmp = this.R * 0.45; this.worm.gaze = { x, y: y - 120 }; }
+  }
+  // my emoji dives into the hole
+  sendReaction(ch) {
+    this.parts.push({ type: 'emojifly', ch, x: this.W - 48, y: this.H - 60, tx: this.hole, life: 0.7, max: 0.7, size: 46, rot: 0, toHole: true });
   }
   wiggle(pattern) {
     // pattern: [on, off, on, off...] in ms, played as dance pulses on whichever worm lives here
@@ -415,13 +425,17 @@ export class Pocket {
     for (const p of this.parts) {
       if (p.delay > 0) { p.delay -= dt; continue; }
       p.life -= dt;
-      if (p.type === 'lipsfly') {
+      if (p.type === 'emojifly') {
         const k = 1 - p.life / p.max, tx = p.tx.x, ty = p.tx.y;
         p.x += (tx - p.x) * Math.min(1, dt * 7); p.y += (ty - p.y) * Math.min(1, dt * 7) - Math.sin(k * Math.PI) * 4;
-        if (p.life <= 0 && !p.hit) { p.hit = true; this.worm?.kiss(p.level); this.burst('heart', tx, ty, 3 + p.level); sfx.kiss(p.level); }
+        if (p.life <= 0 && !p.hit) {
+          p.hit = true;
+          if (p.toHole) { this.glow = 1; this.burst('spark', tx, ty, 8); sfx.plop(); }
+          else if (p.hits) { this.worm?.kiss(p.level); this.burst('heart', tx, ty, 3 + p.level); sfx.kiss(p.level); }
+        }
         continue;
       }
-      p.vy = (p.vy || 0) + (p.type === 'heart' ? -20 : p.type === 'drop' ? 300 : p.type === 'z' ? -10 : 120) * dt * (p.type === 'lipsout' ? 0 : 1);
+      p.vy = (p.vy || 0) + (p.type === 'heart' ? -20 : p.type === 'drop' ? 300 : p.type === 'z' ? -10 : p.type === 'emojibig' ? 40 : 120) * dt * (p.type === 'emojiout' ? 0.6 : 1);
       p.x += (p.vx || 0) * dt; p.y += p.vy * dt;
     }
     this.parts = this.parts.filter((p) => p.life > 0 || p.delay > 0);
@@ -501,14 +515,15 @@ export class Pocket {
       const a = clamp(p.life / (p.max * 0.4), 0, 1);
       x.save(); x.globalAlpha = a;
       switch (p.type) {
-        case 'heart': heart(x, p.x, p.y, p.size, '#EE4F6E'); break;
+        case 'heart': drawEmoji(x, '❤️', p.x, p.y, p.size * 1.1, p.rot); break;
         case 'spark': star(x, p.x, p.y, p.size * 0.6, '#FFFFFF'); break;
         case 'drop': x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.ellipse(p.x, p.y, p.size * 0.6, p.size * 1.3, 0, 0, 7); x.fill(); break;
         case 'crumb': x.fillStyle = '#F2B544'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
         case 'z': x.fillStyle = 'rgba(38,50,77,0.75)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
         case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
-        case 'lipsfly': { const k = 1 - p.life / p.max; drawLips(x, p.x, p.y, p.size * (0.6 + k * 0.5), p.rot, '#FF2D55'); break; }
-        case 'lipsout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawLips(x, p.x, p.y, p.size * (1 + k * p.grow), p.rot, '#FF2D55'); break; }
+        case 'emojifly': { const k = 1 - p.life / p.max; drawEmoji(x, p.ch, p.x, p.y, p.size * (p.toHole ? 1 - k * 0.7 : 0.7 + k * 0.4), p.rot); break; }
+        case 'emojiout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawEmoji(x, p.ch, p.x, p.y, p.size * (1 + k * p.grow), p.rot + Math.sin(this.t * 6 + p.size) * 0.15); break; }
+        case 'emojibig': { const k = 1 - p.life / p.max; const pop = k < 0.15 ? k / 0.15 : 1; x.globalAlpha = Math.min(1, p.life * 1.5); drawEmoji(x, p.ch, p.x + Math.sin(this.t * 3) * 10, p.y, p.size * (0.4 + 0.75 * pop), p.rot + Math.sin(this.t * 4) * 0.12); break; }
       }
       x.restore();
     }
@@ -516,13 +531,13 @@ export class Pocket {
     // weather layer
     for (const d of this.drops) {
       if (d.snow) {
-        x.fillStyle = `rgba(255,255,255,${d.splash != null ? 0.8 * (1 - d.splash / 2.5) : 0.85})`;
-        x.beginPath(); x.arc(d.x, d.y, 2.2, 0, 7); x.fill();
+        x.fillStyle = `rgba(255,255,255,${d.splash != null ? 0.9 * (1 - d.splash / 2.5) : 0.95})`;
+        x.beginPath(); x.arc(d.x, d.y, 2.4, 0, 7); x.fill(); x.strokeStyle = 'rgba(80,130,190,0.3)'; x.lineWidth = 0.8; x.stroke();
       } else if (d.splash != null) {
-        const k = d.splash / 0.35; x.strokeStyle = `rgba(255,255,255,${0.55 * (1 - k)})`; x.lineWidth = 1;
+        const k = d.splash / 0.35; x.strokeStyle = `rgba(60,110,170,${0.35 * (1 - k)})`; x.lineWidth = 1;
         x.beginPath(); x.ellipse(d.x, d.y, 2 + k * 8, 1 + k * 3, 0, 0, 7); x.stroke();
       } else {
-        x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 1.2;
+        x.strokeStyle = 'rgba(60,110,170,0.35)'; x.lineWidth = 1.2;
         x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(d.x - 4, d.y - 18); x.stroke();
       }
     }

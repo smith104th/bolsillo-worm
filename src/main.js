@@ -3,14 +3,14 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
-import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, lipsSVG, DENIM } from './draw.js';
+import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, DENIM, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
 import { onboard, installGate, fmtCode, nice } from './onboarding.js';
 import { openItem } from './compose.js';
-import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet, KISS_NAMES } from './sheets.js';
+import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } from './sheets.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, stashed: new Set(store('stashed') || []) };
 let backend, pocket;
@@ -30,8 +30,9 @@ const app = {
   asItem: (e) => ({ ...e, opened: !!e.opened_at, mine: e.from_slot === S.slot }),
   stash(id) { S.stashed.add(id); store('stashed', [...S.stashed].slice(-500)); app.refreshPocket(); },
   refreshPocket,
-  send, feed, mist, knock, ring, enablePush, enableMotion,
+  send, feed, mist, knock, ring, react: sendReact, enablePush, enableMotion,
   onDailyChange: null,
+  onReact: null,
 };
 
 // ─────────────────────────────────────────────── boot
@@ -218,34 +219,45 @@ function renderDockDots() {
   if (dot) dot.hidden = did(S.slot);
 }
 
-// Kiss: hold to charge, five strengths
+// Kiss: tap for the emoji tray, hold to charge a kiss (five strengths)
 function kissBtn() {
   const dots = h('div.kiss-dots', [1, 2, 3, 4, 5].map(() => h('span')));
-  const meter = h('div.kiss-meter.glass', h('div.kiss-lips', { html: lipsSVG('#FF2D55') }), h('div.kiss-name'), dots);
-  document.body.append(meter);
-  let t0 = 0, level = 0, raf = 0;
-  const b = h('button.kissbtn.glass', { type: 'button', 'aria-label': 'Kiss (hold for a bigger one)', html: ICON.kissFill });
+  const face = h('div.kiss-face', '💋');
+  const meter = h('div.kiss-meter.glass', face, h('div.kiss-name'), dots);
+  const tray = h('div.tray.glass', { hidden: true },
+    h('div.tray-row', REACTIONS.map((e) => h('button.tray-emo', { type: 'button', onclick: () => { closeTray(); sendReact(e); } }, e))),
+    h('div.tray-hint', 'Hold 💋 for a bigger kiss'));
+  document.body.append(meter, tray);
+  const closeTray = () => { tray.classList.remove('in'); setTimeout(() => { if (!tray.classList.contains('in')) tray.hidden = true; }, 220); };
+  const openTray = () => { tray.hidden = false; requestAnimationFrame(() => tray.classList.add('in')); sfx.tick(); };
+  document.addEventListener('pointerdown', (e) => { if (!tray.hidden && !tray.contains(e.target) && !b.contains(e.target)) closeTray(); });
+
+  let t0 = 0, level = 0, raf = 0, holdT = 0, charging = false;
+  const b = h('button.kissbtn.glass', { type: 'button', 'aria-label': 'Kiss: tap for reactions, hold for a bigger kiss' }, h('span', '💋'));
   const tick = () => {
     const el = (performance.now() - t0) / 1000;
     const lv = Math.min(5, 1 + Math.floor(el / 0.55));
     if (lv !== level) {
-      level = lv; buzz(8 + lv * 6); sfx.tick();
+      level = lv; buzz(8 + lv * 6); sfx.kiss(1, lv);
+      face.textContent = KISS_EMOJI[lv];
       meter.querySelector('.kiss-name').textContent = KISS_NAMES[lv]; meter.dataset.level = lv;
       [...dots.children].forEach((d, i) => d.classList.toggle('on', i < lv));
     }
-    meter.querySelector('.kiss-lips').style.transform = `scale(${0.8 + Math.min(1, el / 2.4) * 0.9}) rotate(${Math.sin(el * 20) * level}deg)`;
+    face.style.transform = `scale(${0.85 + Math.min(1, el / 2.4) * 0.7}) rotate(${Math.sin(el * 20) * level * 1.5}deg)`;
     raf = requestAnimationFrame(tick);
   };
   b.addEventListener('pointerdown', (e) => {
     if (!app.them()) return toast('Waiting for your person to crawl in.');
     e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* */ }
-    t0 = performance.now(); level = 0; meter.classList.add('on'); tick();
-    if (pocket?.worm) pocket.worm.pucker = 3;
+    t0 = performance.now(); level = 0; charging = false;
+    holdT = setTimeout(() => { charging = true; closeTray(); meter.classList.add('on'); tick(); if (pocket?.worm) pocket.worm.pucker = 3; }, 230);
   });
   const release = () => {
     if (!t0) return;
+    clearTimeout(holdT);
+    if (!charging) { t0 = 0; tray.hidden ? openTray() : closeTray(); return; }
     cancelAnimationFrame(raf); meter.classList.remove('on');
-    const lv = level || 1; t0 = 0;
+    const lv = level || 1; t0 = 0; charging = false;
     kiss(lv);
   };
   b.addEventListener('pointerup', release); b.addEventListener('pointercancel', release);
@@ -290,6 +302,16 @@ async function knock() {
 }
 async function ring() {
   if (await act('ring', {})) { backend.nudge('ring'); toast(`Called. ${app.them()?.name || 'They'} will get a buzz.`); }
+}
+
+async function sendReact(emoji, extra = {}) {
+  if (!app.them()) return;
+  if (!extra.to && !extra.day) pocket.sendReaction(emoji);
+  sfx.react();
+  buzz(10);
+  const ev = await act('react', { emoji, ...extra });
+  if (ev) backend.nudge('react', { emoji, about: extra.about || null });
+  return ev;
 }
 
 function upsertEvent(ev) {
@@ -343,6 +365,12 @@ function react(ev, fromThem) {
       pocket.burst('heart', pocket.hole.x, pocket.hole.y, 4);
       break;
     case 'kiss': beingKissed(name, p.level || 1); break;
+    case 'react':
+      pocket.reaction(p.emoji || '❤️');
+      sfx.react(); buzz([12, 50, 12]);
+      toast(p.about ? `${name} reacted ${p.emoji} to your ${p.about}` : `${name} sent ${p.emoji}`, { tone: 'love' });
+      app.onReact?.(ev);
+      break;
     case 'feed': toast(`${name} fed you ${FOODS[p.food] || 'a crumb'}. Ñam.`, { icon: 'feed' }); pocket.burst('crumb', pocket.hole.x, pocket.hole.y, 10); break;
     case 'mist': toast(`${name} misted you. Fresh.`, { icon: 'mist' }); pocket.burst('drop', pocket.hole.x, pocket.hole.y, 12); break;
     case 'knock': pocket.knocked(); sfx.knock(); buzz([40, 90, 40]); toast(`Knock knock. ${name} is thinking of you.`, { icon: 'knock' }); break;
@@ -371,13 +399,13 @@ function beingKissed(name, level) {
   document.body.append(layer);
   pocket.blowKiss(level);
   for (let i = 0; i < n; i++) {
-    const s = h('div.stamp', { html: lipsSVG(level >= 4 ? '#E0123F' : '#FF2D55') });
-    const big = level === 5 && i === n - 1;
-    Object.assign(s.style, { left: big ? '50%' : `${rand(8, 92)}%`, top: big ? '46%' : `${rand(12, 82)}%`, width: big ? '58vw' : `${rand(16, 30)}vw`, transform: `translate(-50%,-50%) rotate(${rand(-30, 30)}deg)`, animationDelay: `${0.35 + i * 0.12}s` });
+    const big = i === n - 1;
+    const s = h('div.stamp', big ? KISS_EMOJI[level] : '💋');
+    Object.assign(s.style, { left: big ? '50%' : `${rand(8, 92)}%`, top: big ? '44%' : `${rand(12, 80)}%`, fontSize: big ? `${90 + level * 14}px` : `${rand(34, 64)}px`, transform: `translate(-50%,-50%) rotate(${rand(-25, 25)}deg)`, animationDelay: `${0.35 + i * 0.12}s` });
     layer.append(s);
-    setTimeout(() => { buzz(level >= 4 ? 22 : 12); sfx.kiss(level); }, 350 + i * 120);
+    setTimeout(() => { buzz(level >= 4 ? 22 : 12); sfx.kiss(level, Math.min(5, 1 + (i % 5))); }, 350 + i * 120);
   }
-  layer.append(h('div.kiss-caption.glass', h('span.mono', 'incoming'), h('b', `${name} sent you a ${KISS_NAMES[level]}`)));
+  layer.append(h('div.kiss-caption.glass', h('span.mono', 'incoming'), h('b', `${name} sent you a ${KISS_NAMES[level]} ${KISS_EMOJI[level]}`)));
   setTimeout(() => layer.classList.add('out'), 2600 + n * 120);
   setTimeout(() => layer.remove(), 3400 + n * 120);
 }

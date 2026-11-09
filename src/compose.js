@@ -1,7 +1,7 @@
 // Making things to drop through the hole, and opening things that came out of it.
 import { h, ago, clamp } from './util.js';
 import { sheet, btn, icon, toast, field, segmented } from './ui.js';
-import { PAPERS, TRINKETS, drawTrinket, renderStrokes } from './draw.js';
+import { PAPERS, TRINKETS, drawTrinket, renderStrokes, REACTIONS } from './draw.js';
 import { photoFromFile, Recorder, blobToDataURL } from './media.js';
 import { sfx, buzz } from './feel.js';
 
@@ -192,6 +192,25 @@ export function composeTrinket(app) {
   ], { wide: true });
 }
 
+// ── emoji reactions on things
+const match = (e, t) => e.kind === 'react' && (t.to ? e.payload?.to === t.to : e.payload?.day === t.day && e.payload?.part === t.part);
+export function reactionsOn(app, target, fromThem = true) {
+  return app.S.events.filter((e) => match(e, target) && (fromThem ? e.from_slot !== app.slot() : e.from_slot === app.slot())).map((e) => e.payload.emoji);
+}
+export function reactRow(app, target) {
+  const sent = new Set(reactionsOn(app, target, false));
+  const row = h('div.react-row', REACTIONS.map((e) => h(`button.react-emo${sent.has(e) ? '.on' : ''}`, { type: 'button', onclick: async (ev) => {
+    const b = ev.currentTarget; if (b.classList.contains('on')) return;
+    b.classList.add('on', 'pop');
+    await app.react(e, target);
+  } }, e)));
+  return row;
+}
+export function theirReactions(app, target) {
+  const list = reactionsOn(app, target, true);
+  return list.length ? h('div.their-reacts', h('span.small.muted', `${app.them()?.name || 'They'} reacted`), h('span.emos', list.join(' '))) : null;
+}
+
 // ── opening things
 export function openItem(app, it) {
   const p = it.payload || {};
@@ -255,7 +274,9 @@ export function openItem(app, it) {
     app.refreshPocket();
   };
   const stash = btn('Put in the jar', () => { app.stash(it.id); s.close(); }, 'ghost');
-  const s = sheet(titleFor(it), [...body, meta, h('div.row', keepBtn, it.mine ? null : stash)], { onClose });
+  const about = { note: 'note', doodle: 'doodle', photo: 'polaroid', whisper: 'whisper', wiggle: 'wiggle', trinket: 'found thing' }[it.kind];
+  const target = { to: it.id, about };
+  const s = sheet(titleFor(it), [...body, meta, it.mine ? theirReactions(app, target) : reactRow(app, target), h('div.row', keepBtn, it.mine ? null : stash)], { onClose });
   if (!it.mine && !it.opened_at) { it.opened_at = new Date().toISOString(); it.opened = true; app.backend.open(it.id).catch(() => {}); app.refreshPocket(); }
   sfx.paper();
 }

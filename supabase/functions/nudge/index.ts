@@ -35,6 +35,7 @@ function vapid(): Promise<string> {
 }
 
 const KISS = ["", "a piquito", "a besito", "a beso", "a besote", "a BESAZO"];
+const KISS_EMOJI = ["", "😗", "😙", "😘", "💋", "😍"];
 
 function compose(kind: string, me: any, extra: any = {}) {
   const n = me?.name ?? "Your worm";
@@ -46,7 +47,8 @@ function compose(kind: string, me: any, extra: any = {}) {
     case "whisper": return { title: `${n} whispered something`, body: "Hold it up to your ear." };
     case "wiggle":  return { title: `${w} wiggled at you`, body: extra.label ?? "Feel it." };
     case "trinket": return { title: `${n} found you ${extra.what ?? "something"}`, body: extra.inscription || "It's in your pocket." };
-    case "kiss":    return { title: `${n} sent you ${KISS[extra.level ?? 1] ?? "a kiss"}`, body: "💋".repeat(Math.max(1, Math.min(5, extra.level ?? 1))) };
+    case "kiss":    return { title: `${n} sent you ${KISS[extra.level ?? 1] ?? "a kiss"} ${KISS_EMOJI[extra.level ?? 1] ?? "💋"}`, body: "💋".repeat(Math.max(1, Math.min(5, extra.level ?? 1))) };
+    case "react":   return extra.about ? { title: `${n} reacted ${extra.emoji ?? "❤️"}`, body: `To your ${extra.about}.` } : { title: `${n} sent you ${extra.emoji ?? "❤️"}`, body: "Through the hole." };
     case "knock":   return { title: "Knock knock", body: `${n} is thinking about you.` };
     case "ring":    return { title: `${n} is in the pocket right now`, body: "Come say hi. The hole is open." };
     case "feed":    return { title: `${n} fed you`, body: extra.food ? `${extra.food[0].toUpperCase()}${extra.food.slice(1)}. Ñam.` : "A little crumb. Ñam." };

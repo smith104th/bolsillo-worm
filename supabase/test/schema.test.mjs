@@ -68,6 +68,8 @@ await as(U.A, `select wh_act('kiss', '{"level":4}')`);
 await as(U.A, `select wh_act('note', '{"text":"hola gusanita"}')`);
 await as(U.A, `select wh_act('photo', '{"caption":"medialunas"}', 'data:image/jpeg;base64,AAAA', 'image/jpeg')`);
 await fails(U.A, `select wh_act('rm -rf', '{}')`, [], /bad_kind/);
+await as(U.B, `select wh_act('react', '{"emoji":"🥺"}')`);
+assert.equal((await as(U.A, `select payload->>'emoji' e from events where kind = 'react'`))[0].e, '🥺');
 const her = (await as(U.B, 'select * from members where slot = 1'))[0];
 assert.equal(her.love, 3 + 8 + 4 + 4, 'love: 3 pets + kiss lvl4 + note + photo');
 const photo = (await as(U.B, `select * from events where kind = 'photo'`))[0];
