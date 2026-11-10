@@ -1,4 +1,4 @@
-// Making things to drop through the hole, and opening things that came out of it.
+// Making things to send up into their sky, and opening things that fell into yours.
 import { h, ago, clamp } from './util.js';
 import { sheet, btn, icon, toast, field, segmented } from './ui.js';
 import { PAPERS, TRINKETS, renderStrokes, REACTIONS } from './draw.js';

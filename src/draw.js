@@ -1,6 +1,6 @@
 // Everything that lives in a pocket, drawn by hand on canvas.
 import { seeded, hash } from './util.js';
-import { wobblyCircle, drawEmoji } from './brush.js';
+import { drawEmoji } from './brush.js';
 import { envelopeImage, iconShadow, noShadow, roundRect, drawGlyphTile, trinketEmoji, drawRecord } from './icons.js';
 import { PROVIDERS } from './music.js';
 
@@ -129,37 +129,6 @@ export function drawSeams(x, W, H, bottom) {
   };
   stitchPath(x, curve(0), 3);
   stitchPath(x, curve(7), 9);
-}
-
-// the hole: a black circle sewn into the denim
-export function drawHole(x, cx, cy, r, t, glow = 0) {
-  x.save();
-  if (glow > 0.35) {
-    x.strokeStyle = `rgba(255,255,255,${(glow - 0.35) * 1.2})`; x.lineWidth = 2.5; x.setLineDash([3, 6]);
-    wobblyCircle(x, cx, cy, r * (1.5 + (1 - glow) * 0.6), 5, 0.04); x.stroke(); x.setLineDash([]);
-  }
-  // a soft shadow ring where the fabric folds in
-  x.fillStyle = 'rgba(30,55,100,0.18)';
-  wobblyCircle(x, cx + 1.5, cy + 2.5, r * 1.06, 7, 0.05); x.fill();
-  x.fillStyle = '#0D0F14';
-  wobblyCircle(x, cx, cy, r, 7, 0.05); x.fill();
-  // a sliver of depth
-  x.strokeStyle = '#26324D'; x.lineWidth = r * 0.08; x.lineCap = 'round';
-  x.beginPath(); x.arc(cx, cy + r * 0.12, r * 0.72, Math.PI * 1.15, Math.PI * 1.55); x.stroke();
-  // blanket stitch around the edge
-  const n = Math.max(16, Math.round(r * 0.42));
-  const pop = 1 + glow * 0.12;
-  x.strokeStyle = 'rgba(20,40,80,0.2)'; x.lineWidth = 2.6; x.lineCap = 'round';
-  wobblyCircle(x, cx + 0.8, cy + 1.2, r * 1.2 * pop, 2, 0.02); x.stroke();
-  x.strokeStyle = THREAD;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + 0.04 * Math.sin(i * 7.3);
-    const r0 = r * 0.93, r1 = r * 1.2 * pop;
-    x.beginPath(); x.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); x.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1); x.stroke();
-  }
-  x.lineWidth = 2.4;
-  wobblyCircle(x, cx, cy, r * 1.2 * pop, 2, 0.02); x.stroke();
-  x.restore();
 }
 
 // rounded rect path helper

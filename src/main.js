@@ -318,7 +318,7 @@ function callInBtn(them) {
       if (S.asleep && !(await confirmBox(`It's ${timeIn(them.place?.tz)} for ${them.name} and they look asleep. Buzz them anyway?`, 'Buzz them'))) return;
       ring();
     },
-  }, icon('ring'), recently ? `Buzzed ${them.name}. Waiting at the hole.` : `Call ${them.name} in`);
+  }, icon('ring'), recently ? `Buzzed ${them.name}. Waiting in the pocket.` : `Call ${them.name} in`);
 }
 
 function renderDockDots() {
@@ -392,7 +392,7 @@ async function act(kind, payload, media = null, mime = null) {
 async function send(kind, payload, extra = {}, media = null, mime = null) {
   const ev = await act(kind, payload, media, mime);
   if (!ev) return false;
-  pocket.sendIntoHole(kind, payload);
+  pocket.sendToSky(kind, payload);
   backend.nudge(kind, extra);
   toast(`Dropped into ${app.them()?.name || 'their'}'s pocket.`, { icon: 'drop' });
   return true;
@@ -420,7 +420,6 @@ async function ring() {
     backend.nudge('ring'); buzz([15, 40, 15]);
     S.calledAt = Date.now(); renderHeader();
     setTimeout(renderHeader, 120500);
-    if (pocket) pocket.glow = 1.3;
   }
 }
 
@@ -525,7 +524,7 @@ function react(ev, fromThem) {
   switch (ev.kind) {
     case 'pet': case 'boop':
       petToast(name); buzz(12);
-      pocket.burst('heart', pocket.hole.x, pocket.hole.y, 4);
+      pocket.skyBurst('heart', 4);
       break;
     case 'kiss': beingKissed(name, p.level || 1); break;
     case 'react':
@@ -534,10 +533,10 @@ function react(ev, fromThem) {
       toast(p.about ? `${name} reacted ${p.emoji} to your ${p.about}` : `${name} sent ${p.emoji}`, { tone: 'love' });
       app.onReact?.(ev);
       break;
-    case 'feed': toast(`${name} fed you ${foodName(p.food)}. Ñam.`, { icon: 'feed' }); pocket.burst('crumb', pocket.hole.x, pocket.hole.y, 10); break;
-    case 'mist': toast(`${name} misted you. Fresh.`, { icon: 'mist' }); pocket.burst('drop', pocket.hole.x, pocket.hole.y, 12); break;
+    case 'feed': toast(`${name} fed you ${foodName(p.food)}. Ñam.`, { icon: 'feed' }); pocket.skyBurst('crumb', 10); break;
+    case 'mist': toast(`${name} misted you. Fresh.`, { icon: 'mist' }); pocket.skyBurst('drop', 16); break;
     case 'knock': pocket.knocked(); sfx.knock(); buzz([40, 90, 40]); toast(`Knock knock. ${name} is thinking of you.`, { icon: 'knock' }); break;
-    case 'ring': toast(`${name} is waiting at the hole.`, { icon: 'ring', tone: 'love' }); buzz([20, 60, 20]); break;
+    case 'ring': toast(`${name} is waiting in the pocket.`, { icon: 'ring', tone: 'love' }); buzz([20, 60, 20]); break;
     case 'note': case 'doodle': case 'photo': case 'whisper': case 'wiggle': case 'song': case 'trinket': {
       const words = { note: 'slipped a note into your pocket', doodle: 'drew you something', photo: 'dropped a polaroid in', whisper: 'whispered something', wiggle: 'sent a wiggle', song: `sent you a song${p.title ? `: ${p.title}` : ''} 🎵`, trinket: `found you ${TRINKETS[p.what] || 'something'}` };
       pocket.addItem(app.asItem(ev), true);
@@ -670,7 +669,7 @@ function welcome() {
       h('li', h('b', 'Hold'), ' the kiss button. Longer hold, bigger kiss.'),
       h('li', h('b', 'Feed'), ' it crumbs and mist it so it doesn\'t dry out.'),
       h('li', h('b', 'Today'), ': one photo and one answer each. Buried until you both dig.'),
-      h('li', 'When you\'re both in here at once, the hole opens. ', h('b', 'Touch fingertips'), '.'),
+      h('li', 'When you\'re both in here at once, your worm drops in too. ', h('b', 'Touch fingertips'), '.'),
       h('li', h('b', 'Swipe left'), ' for your shelf: envelopes for later, photos that open on a date, and everything you keep.')),
     canPush ? btn('Turn on notifications', async () => { await enablePush(); }, 'primary') : null,
     needsTilt ? btn('Let the pocket feel tilt', () => enableMotion(true), 'ghost') : null,

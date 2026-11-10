@@ -226,7 +226,7 @@ export function usSheet(app) {
 }
 const stat = (n, label) => h('div.stat', h('b', String(n)), h('span', label));
 
-// ── through the hole: how you look from their side
+// ── their side: how you look in their pocket
 export function peekSheet(app) {
   const me = app.me(), them = app.them();
   const cv = h('canvas.preview.small');
@@ -242,7 +242,7 @@ export function peekSheet(app) {
     }[e.kind];
     return t ? h('li', h('span', t), h('span.mono.small', ago(e.created_at))) : null;
   };
-  const s = sheet('Through the hole', [
+  const s = sheet(`In ${them?.name || 'their'}'s pocket`, [
     h('p.small.muted', `This is you, living in ${them?.name || 'their'}'s pocket. It's ${timeIn(them?.place?.tz)} there.`),
     cv,
     h('div.meters', careLine('Fed', me?.fed_at, 20, 'hungry'), careLine('Misted', me?.misted_at, 18, 'dry'), careLine('Petted', me?.petted_at, 12, 'lonely')),

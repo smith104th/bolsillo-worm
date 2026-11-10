@@ -67,7 +67,7 @@ await skyPNG(180, 180, `${OUT}/icons/apple-touch-icon.png`);
 await skyPNG(512, 512, `${OUT}/icons/icon-maskable-512.png`);
 await skyPNG(1200, 630, `${OUT}/og.jpg`, { jpeg: true });
 await skyPNG(64, 64, `${OUT}/icons/favicon-64.png`);
-// the worm-and-hole drawing lives on as the in-app logo
+// the worm drawing lives on as the in-app logo
 await sharp(readFileSync('src/icon.svg')).resize(192, 192).png().toFile(`${OUT}/icons/logo-192.png`);
 // monochrome badge for Android's status bar
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><path d="M30 70c0-14-6-20-10-26-6-8 0-18 10-17 8 1 12 7 20 3" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><ellipse cx="34" cy="74" rx="20" ry="8" fill="#fff"/></svg>`;

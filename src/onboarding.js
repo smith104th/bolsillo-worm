@@ -1,7 +1,7 @@
 // Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
 import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
-import { makeSky, drawHole } from './draw.js';
+import { makeSky } from './draw.js';
 import { btn, field, icon, toast, sheet } from './ui.js';
 import { canPasskey, restoreWithPasskey, passkeyError } from './passkey.js';
 import { sfx, unlockAudio } from './feel.js';
@@ -74,7 +74,7 @@ function logo() {
   return h('div.logo-mark', h('img', { src: 'icons/logo-192.png', alt: '', width: 72, height: 72 }));
 }
 
-// the welcome scene: light denim, a stitched hole, a worm poking out
+// the welcome scene: the pocket sky with a worm wandering in it
 function heroScene(canvas) {
   const dpr = Math.min(devicePixelRatio || 1, 2);
   const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -82,8 +82,8 @@ function heroScene(canvas) {
   const x = canvas.getContext('2d');
   const bg = makeSky(W, H, dpr);
   const R = Math.min(22, W * 0.055);
-  const hole = { x: W * 0.68, y: H * 0.3 };
-  const w = new Worm({ name: 'hero', color: 'lombriz', pattern: 'stripes', acc: 'beanie' }, { x: hole.x, y: hole.y, R, segs: 16, angle: -2.4 });
+  const start = { x: W * 0.68, y: H * 0.3 };
+  const w = new Worm({ name: 'hero', color: 'lombriz', pattern: 'stripes', acc: 'beanie' }, { x: start.x, y: start.y, R, segs: 16, angle: -2.4 });
   w.speedBase = R * 2.2;
   const bounds = { l: W * 0.18, r: W - 16, t: H * 0.08, b: H * 0.5 };
   let run = true, last = performance.now(), t = 0;
@@ -93,7 +93,6 @@ function heroScene(canvas) {
     w.update(dt, { bounds, gx: 0, gy: 0 });
     x.setTransform(dpr, 0, 0, dpr, 0, 0);
     x.drawImage(bg, 0, 0, W, H);
-    drawHole(x, hole.x, hole.y, R * 2.4, t, 0);
     w.draw(x);
     requestAnimationFrame(loop);
   };

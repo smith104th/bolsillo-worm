@@ -1,7 +1,8 @@
-// The pocket: canvas scene with the worm(s), things that fell through the hole,
+// The pocket: canvas scene with the worm(s), things that fell from the sky,
 // crumbs, weather from the other side, and live fingertips.
+// Everything from them falls in from the top; everything you send flies up and out.
 import { Worm, heart, star, segsFor } from './worm.js';
-import { makeSky, drawHole, drawItem, drawFood, itemRadius, SKY } from './draw.js';
+import { makeSky, drawItem, drawFood, itemRadius, SKY } from './draw.js';
 import { preloadIcons } from './icons.js';
 import { dab, drawEmoji } from './brush.js';
 import { KISS_EMOJI } from './draw.js';
@@ -19,13 +20,13 @@ export class Pocket {
     this.parts = [];
     this.drops = [];
     this.worm = null;     // their worm, living here
-    this.mine = null;     // my worm, only visible when the hole is open (both here)
+    this.mine = null;     // my worm, only here while we're both in the app
     this.live = false;
     this.asleep = false;
     this.weather = { kind: 'none', day: true };
     this.needs = { hungry: 0, dry: 0 };
     this.g = { x: 0, y: 0 }; this.gRaw = { x: 0, y: 0 }; this.gBase = null;
-    this.glow = 0; this.flash = 0; this.shake = 0;
+    this.flash = 0; this.shake = 0;
     this.myFinger = null; this.theirFinger = null; this.matchT = 0; this.knotUntil = 0; this.knotCool = 0;
     this.ptr = null;
     this.t = 0;
@@ -49,8 +50,6 @@ export class Pocket {
     const ins = this.insets();
     this.bounds = { l: 14, r: W - 14, t: ins.top, b: H - ins.bottom };
     this.R = clamp(Math.min(W, H) * 0.044, 12, 19);
-    this.holeR = Math.min(W * 0.115, 48);
-    this.hole = { x: W / 2, y: this.bounds.b - this.holeR * 1.7 };
     this.denim = makeSky(W, H, dpr, this.sky || SKY);
     this.stars = Array.from({ length: Math.round(W * H / 5200) }, (_, i) => { const r = seeded(i * 7919 + 13); return { x: r() * W, y: r() * H * 0.78, s: 0.5 + r() * 1.3, ph: r() * 6.28, sp: 0.6 + r() * 1.6 }; });
     for (const w of [this.worm, this.mine]) if (w) { w.R = this.R; w.spacing = this.R * 0.62; w.speedBase = this.R * 3.4; }
@@ -74,13 +73,14 @@ export class Pocket {
     if (on === this.live) return;
     this.live = on;
     if (on && this.myDesign) {
-      this.mine = new Worm(this.myDesign, { x: this.hole.x, y: this.hole.y, R: this.R, segs: segsFor(this.myInches || 4), angle: -Math.PI / 2 });
-      this.mine.alpha = 0;
-      this.mine.wp = { x: this.hole.x + rand(-60, 60), y: this.hole.y - 120 };
-      this.burst('spark', this.hole.x, this.hole.y, 14);
-      sfx.plop();
+      // my worm drops in from the sky, head first
+      const segs = segsFor(this.myInches || 4), b = this.bounds;
+      const m = this.mine = new Worm(this.myDesign, { x: this.W / 2 + rand(-50, 50), y: -this.R * 2, R: this.R, segs, angle: Math.PI / 2 });
+      const len = (segs - 1) * m.spacing;
+      m.alpha = 0; m.rest = 1.4;
+      m.drop = { t: 0, dur: 1.05, at: -this.R * 2, from: -this.R * 2, to: Math.min(b.b - this.R * 3, b.t + this.R + len + 24) };
     }
-    if (!on) { this.theirFinger = null; this.leaving = this.mine; }
+    if (!on) { this.theirFinger = null; if (this.mine) { this.mine.drop = null; this.mine.lift = { t: 0, dur: 0.95, at: 0 }; } }
   }
 
   setAsleep(on) { this.asleep = on; if (this.worm) this.worm.sleep(on); }
@@ -107,30 +107,39 @@ export class Pocket {
   // ── items
   syncItems(list) {
     const keep = new Set(list.map((i) => i.id));
-    this.items = this.items.filter((i) => keep.has(i.id) || i.diving != null);
+    this.items = this.items.filter((i) => keep.has(i.id) || i.rise);
     for (const it of list) {
       const have = this.items.find((x) => x.id === it.id);
       if (have) { Object.assign(have, { payload: it.payload, opened: it.opened, kept: it.kept }); continue; }
       this.addItem(it, false);
     }
   }
-  addItem(it, fromHole = true) {
+  addItem(it, fromSky = true) {
     const r = itemRadius(it.kind);
     const b = this.bounds;
-    const x = fromHole ? this.hole.x : rand(b.l + 40, b.r - 40);
-    const y = fromHole ? this.hole.y : rand(b.t + 60, b.b - 80);
-    const o = { ...it, r, x, y, px: x - (fromHole ? rand(-3, 3) : 0), py: y + (fromHole ? rand(9, 14) : 0), rot: rand(-0.5, 0.5), vr: fromHole ? rand(-0.15, 0.15) : 0, seed: rand(10), s: fromHole ? 0 : 1, hop: 0, hopT: rand(3, 9) };
+    const x = rand(b.l + 40 + r, b.r - 40 - r);
+    const y = fromSky ? -r * 2.2 : rand(b.t + 60, b.b - 80);
+    const o = { ...it, r, x, y, px: x, py: y, rot: rand(-0.5, 0.5), vr: 0, seed: rand(10), s: 1, hop: 0, hopT: rand(3, 9) };
+    // falls in from above the screen, swaying a little, and settles where it lands
+    if (fromSky) o.fall = { vy: rand(60, 110), land: rand(b.t + 70, b.b - 90), x0: x, ph: rand(6.28), sway: rand(8, 16), t: 0 };
     this.items.push(o);
-    if (fromHole) { this.burst('spark', this.hole.x, this.hole.y, 10); this.glow = 1; sfx.plop(); }
     return o;
   }
   removeItem(id) { this.items = this.items.filter((i) => i.id !== id); }
-  sendIntoHole(kind, payload = {}) {
-    // my outgoing thing: pops up from the bottom and dives into the hole
+  sendToSky(kind, payload = {}) {
+    // my outgoing thing: pops up from the bottom, hangs for a beat, then flies up and out the top
     const it = { id: 'out' + Math.random(), kind, payload, mine: true, opened: true };
     const o = this.addItem(it, false);
-    o.x = o.px = this.W / 2; o.y = o.py = this.H + 30;
-    o.diving = 0; o.r = itemRadius(kind);
+    const x0 = this.W / 2 + rand(-24, 24);
+    o.x = o.px = x0; o.y = o.py = this.H + 40;
+    o.rise = { t: 0, x0, x1: x0 + rand(-70, 70), y0: this.H + 40, y1: this.H * rand(0.5, 0.58), y2: -o.r * 3 - 40 };
+  }
+  // a few particles drifting down from the top of the pocket
+  skyBurst(type, n = 8) {
+    const W = this.W, small = type === 'drop';
+    for (let i = 0; i < n; i++) {
+      this.parts.push({ type, x: rand(W * 0.22, W * 0.78), y: rand(-20, this.bounds.t * 0.7), vx: rand(-25, 25), vy: rand(80, 160), delay: i * 0.05, life: rand(1.3, 1.9), max: 1.9, size: small ? rand(1.6, 3) : rand(6, 11), rot: rand(-0.5, 0.5) });
+    }
   }
 
   image(src) {
@@ -143,7 +152,7 @@ export class Pocket {
   // ── care
   dropFood(kind) {
     const b = this.bounds;
-    const f = { kind, x: rand(b.l + 60, b.r - 60), y: b.t - 20, vy: 0, land: rand(b.t + 80, b.b - 110), left: 1, s: 1 };
+    const f = { kind, x: rand(b.l + 60, b.r - 60), y: -20, vy: 0, land: rand(b.t + 80, b.b - 110), left: 1, s: 1 };
     this.food.push(f);
     sfx.pop();
   }
@@ -169,17 +178,16 @@ export class Pocket {
     const h = w.head();
     for (let k = 0; k < level + 1; k++) this.parts.push({ type: 'emojiout', ch: '💋', x: h.x, y: h.y, vx: rand(-60, 60), vy: rand(-90, -30), delay: 0.25 + k * 0.12, life: 1.1, max: 1.1, size: 16, grow: 2 + level * 0.6, rot: rand(-0.4, 0.4) });
   }
-  // an emoji comes out of the hole and floats up
+  // an emoji floats down from the sky, then pops into little ones
   reaction(ch) {
-    const { x, y } = this.hole;
-    this.parts.push({ type: 'emojibig', ch, x, y, vx: rand(-20, 20), vy: -150, life: 2.6, max: 2.6, size: 64, rot: rand(-0.2, 0.2) });
-    for (let k = 0; k < 6; k++) this.parts.push({ type: 'emojiout', ch, x, y, vx: rand(-140, 140), vy: rand(-220, -90), delay: 0.15 + k * 0.05, life: 1.3, max: 1.3, size: 18, grow: 0.4, rot: rand(-0.6, 0.6) });
-    this.glow = 1;
-    if (this.worm) { this.worm.happy = 2; this.worm.dance = 0.8; this.worm.danceAmp = this.R * 0.45; this.worm.gaze = { x, y: y - 120 }; }
+    const x = this.W / 2 + rand(-40, 40), y = this.bounds.t + (this.bounds.b - this.bounds.t) * 0.32;
+    this.parts.push({ type: 'emojibig', ch, x, y: -50, ty: y, life: 2.8, max: 2.8, size: 64, rot: rand(-0.2, 0.2) });
+    for (let k = 0; k < 6; k++) this.parts.push({ type: 'emojiout', ch, x, y, vx: rand(-140, 140), vy: rand(-200, -70), delay: 0.6 + k * 0.05, life: 1.3, max: 1.3, size: 18, grow: 0.4, rot: rand(-0.6, 0.6) });
+    if (this.worm) { this.worm.happy = 2; this.worm.dance = 0.8; this.worm.danceAmp = this.R * 0.45; this.worm.gaze = { x, y }; }
   }
-  // my emoji dives into the hole
+  // my emoji flies up and out the top
   sendReaction(ch) {
-    this.parts.push({ type: 'emojifly', ch, x: this.W - 48, y: this.H - 60, tx: this.hole, life: 0.7, max: 0.7, size: 46, rot: 0, toHole: true });
+    this.parts.push({ type: 'emojifly', ch, x: this.W - 48, y: this.H - 60, tx: { x: this.W / 2 + rand(-40, 40), y: -70 }, life: 0.8, max: 0.8, size: 46, rot: 0, toSky: true });
   }
   wiggle(pattern) {
     // pattern: [on, off, on, off...] in ms, played as dance pulses on whichever worm lives here
@@ -299,7 +307,7 @@ export class Pocket {
     try { this.cv.setPointerCapture(e.pointerId); } catch { /* synthetic or already released */ }
     const p = this.pos(e);
     const ptr = { id: e.pointerId, x0: p.x, y0: p.y, x: p.x, y: p.y, t0: performance.now(), moved: 0, petDist: 0, lastPet: 0, hist: [] };
-    const it = [...this.items].reverse().find((i) => !i.diving && (i.x - p.x) ** 2 + (i.y - p.y) ** 2 < (i.r + 10) ** 2);
+    const it = [...this.items].reverse().find((i) => !i.rise && !i.fall && (i.x - p.x) ** 2 + (i.y - p.y) ** 2 < (i.r + 10) ** 2);
     if (it) ptr.item = it;
     else if (this.worm && this.worm.hit(p.x, p.y) >= 0) { ptr.worm = this.worm; ptr.seg = this.worm.hit(p.x, p.y); }
     else if (this.mine && this.mine.hit(p.x, p.y) >= 0) { ptr.worm = this.mine; ptr.seg = this.mine.hit(p.x, p.y); ptr.isMine = true; }
@@ -413,7 +421,6 @@ export class Pocket {
     this.g.x += (tgx - this.g.x) * Math.min(1, dt * 6); this.g.y += (tgy - this.g.y) * Math.min(1, dt * 6);
     const env = { bounds: b, gx: this.g.x, gy: this.g.y };
 
-    this.glow = Math.max(this.live ? 0.3 + 0.15 * Math.sin(this.t * 2) : 0, this.glow - dt * 0.6);
     this.shake = Math.max(0, this.shake - dt);
     this.flash = Math.max(0, this.flash - dt * 2);
     this.knotCool = Math.max(0, this.knotCool - dt);
@@ -444,22 +451,37 @@ export class Pocket {
       w.update(dt, env);
       if (!this.ptr && Math.random() < dt * 0.15) w.gaze = null;
     }
-    // my worm, during live mode
+    // my worm, during live mode: drops in from the sky, lifts back up and out when one of us leaves
     const m = this.mine;
     if (m) {
-      if (this.live) {
+      const open = { ...env, bounds: { ...b, t: -this.H } }; // no ceiling while it's coming or going
+      const shift = (dy) => { for (const p of m.pts) { p.y += dy; p.py += dy; } };
+      if (m.lift) {
+        const d = m.lift; d.t += dt;
+        if (d.dist == null) d.dist = Math.max(...m.pts.map((p) => p.y)) + this.R * 2 + 20; // until the tail clears the top
+        const k = Math.min(1, d.t / d.dur), e = k * k * k, y = -e * d.dist;
+        shift(y - d.at); d.at = y;
+        m.follow = null; m.rest = 1; m.alpha = Math.min(m.alpha, 1 - k * 0.6);
+        m.update(dt, open);
+        if (k >= 1) this.mine = null;
+      } else if (m.drop) {
+        const d = m.drop; d.t += dt;
+        const k = Math.min(1, d.t / d.dur), e = 1 - Math.pow(1 - k, 3);
+        const y = d.from + (d.to - d.from) * e;
+        shift(y - d.at); d.at = y;
+        m.alpha = Math.min(1, m.alpha + dt * 3);
+        m.update(dt, open);
+        if (k >= 1) { m.drop = null; m.squish = 1; m.happy = 1.5; const hd = m.head(); this.burst('spark', hd.x, hd.y, 10); sfx.plop(); }
+      } else {
         m.alpha = Math.min(1, m.alpha + dt * 2);
         if (this.ptr && !this.ptr.item && !(this.ptr.worm === this.worm)) m.follow = { x: this.ptr.x, y: this.ptr.y };
         else if (m.mode !== 'knot') m.follow = null;
-      } else {
-        m.follow = { x: this.hole.x, y: this.hole.y }; m.alpha -= dt * 1.5;
-        if (m.alpha <= 0) { this.mine = null; }
+        m.update(dt, env);
       }
-      m.update(dt, env);
     }
-    if (w && m && m.alpha > 0.4) this.meet(w, m, dt);
+    if (w && this.mine && !m.drop && !m.lift && m.alpha > 0.4) this.meet(w, m, dt);
 
-    // touching through the hole
+    // touching fingertips
     if (this.live && this.myFinger && this.theirFinger && this.knotCool <= 0) {
       const d = Math.hypot(this.myFinger.x - this.theirFinger.x, this.myFinger.y - this.theirFinger.y);
       if (d < Math.max(46, this.W * 0.12)) {
@@ -483,13 +505,34 @@ export class Pocket {
     const damp = Math.pow(0.9, dt * 60);
     for (const it of this.items) {
       it.s = Math.min(1, (it.s ?? 1) + dt * 2.5);
-      if (it.diving != null) {
-        it.diving += dt;
-        const k = Math.min(1, it.diving / 0.9);
-        it.x += (this.hole.x - it.x) * Math.min(1, dt * 5); it.y = this.H + 30 + (this.hole.y - this.H - 30) * Math.sin(k * Math.PI / 2) - Math.sin(k * Math.PI) * 120;
-        it.s = 1 - Math.max(0, (it.diving - 0.75) / 0.35);
-        it.rot += dt * 4;
-        if (it.diving > 1.1) { it.gone = true; this.glow = 1; this.burst('spark', this.hole.x, this.hole.y, 12); sfx.plop(); }
+      if (it.rise) {
+        // up from the bottom (0.42 s), a beat, then away into the sky
+        const r = it.rise; r.t += dt;
+        const A = 0.42, P = 0.12, B = 0.7;
+        if (r.t < A) { const k = r.t / A, e = 1 - Math.pow(1 - k, 3); it.y = r.y0 + (r.y1 - r.y0) * e; it.x = r.x0; }
+        else if (r.t < A + P) { it.y = r.y1 + Math.sin(((r.t - A) / P) * Math.PI) * -6; }
+        else {
+          const k = Math.min(1, (r.t - A - P) / B), e = k * k * (2.2 - 1.2 * k);
+          it.y = r.y1 + (r.y2 - r.y1) * e; it.x = r.x0 + (r.x1 - r.x0) * e + Math.sin(k * Math.PI) * 18;
+          it.s = 1 - k * 0.3; it.rot += dt * 2.4;
+          if (Math.random() < dt * 26) this.parts.push({ type: 'spark', x: it.x + rand(-it.r, it.r) * 0.5, y: it.y + it.r * 0.8, vx: rand(-20, 20), vy: rand(20, 70), life: 0.5, max: 0.5, size: rand(4, 8), rot: 0 });
+          if (k >= 1) it.gone = true;
+        }
+        it.px = it.x; it.py = it.y;
+        continue;
+      }
+      if (it.fall) {
+        // drifting down from the sky: gravity with drag, a little sway, then it settles
+        const f = it.fall; f.t += dt;
+        f.vy = Math.min(f.vy + 620 * dt, 430);
+        it.y += f.vy * dt;
+        it.x = f.x0 + Math.sin(f.t * 3.1 + f.ph) * f.sway * clamp((f.land - it.y) / 90, 0, 1); // sway fades as it lands
+        it.rot += Math.sin(f.t * 2.3 + f.ph) * dt * 0.8;
+        if (it.y >= f.land) {
+          it.fall = null;
+          it.px = it.x; it.py = it.y - Math.min(6, f.vy * dt * 0.7); // keeps easing down a touch as it lands
+          this.burst('spark', it.x, it.y + it.r * 0.6, 8); sfx.plop();
+        } else { it.px = it.x; it.py = it.y; }
         continue;
       }
       if (it.held) continue;
@@ -505,7 +548,7 @@ export class Pocket {
     }
     this.items = this.items.filter((i) => !i.gone);
     // collisions: items vs items, items vs worms
-    const its = this.items.filter((i) => i.diving == null);
+    const its = this.items.filter((i) => !i.rise && !i.fall);
     for (let i = 0; i < its.length; i++) {
       const a = its[i];
       for (let j = i + 1; j < its.length; j++) {
@@ -535,11 +578,11 @@ export class Pocket {
         p.x += (tx - p.x) * Math.min(1, dt * 7); p.y += (ty - p.y) * Math.min(1, dt * 7) - Math.sin(k * Math.PI) * 4;
         if (p.life <= 0 && !p.hit) {
           p.hit = true;
-          if (p.toHole) { this.glow = 1; this.burst('spark', tx, ty, 8); sfx.plop(); }
-          else if (p.hits) { this.worm?.kiss(p.level); this.burst('heart', tx, ty, 3 + p.level); sfx.kiss(p.level); }
+          if (p.hits) { this.worm?.kiss(p.level); this.burst('heart', tx, ty, 3 + p.level); sfx.kiss(p.level); }
         }
         continue;
       }
+      if (p.ty != null) { p.y += (p.ty - p.y) * Math.min(1, dt * 3.4); continue; } // floating down to a spot
       p.vy = (p.vy || 0) + (p.type === 'heart' ? -20 : p.type === 'drop' ? 300 : p.type === 'z' ? -10 : p.type === 'emojibig' ? 40 : 120) * dt * (p.type === 'emojiout' ? 0.6 : 1);
       p.x += (p.vx || 0) * dt; p.y += p.vy * dt;
     }
@@ -606,7 +649,6 @@ export class Pocket {
       }
       x.globalAlpha = 1;
     }
-    drawHole(x, this.hole.x, this.hole.y, this.holeR, this.t, this.glow);
 
     for (const f of this.food) { x.save(); x.translate(f.x, f.y); x.scale(f.left, f.left); x.shadowColor = 'rgba(0,0,10,0.4)'; x.shadowBlur = 4; x.shadowOffsetY = 2; drawFood(x, f.kind, 9); x.restore(); }
 
@@ -636,7 +678,7 @@ export class Pocket {
         case 'crumb': x.fillStyle = '#F2B544'; x.fillRect(p.x, p.y, 2.5, 2.5); break;
         case 'z': x.fillStyle = this.sky?.dark ? 'rgba(255,255,255,0.85)' : 'rgba(38,50,77,0.75)'; x.font = `600 ${p.size}px Geist, system-ui, sans-serif`; x.fillText('z', p.x, p.y); break;
         case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
-        case 'emojifly': { const k = 1 - p.life / p.max; drawEmoji(x, p.ch, p.x, p.y, p.size * (p.toHole ? 1 - k * 0.7 : 0.7 + k * 0.4), p.rot); break; }
+        case 'emojifly': { const k = 1 - p.life / p.max; drawEmoji(x, p.ch, p.x, p.y, p.size * (p.toSky ? 1 - k * 0.55 : 0.7 + k * 0.4), p.rot); break; }
         case 'emojiout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawEmoji(x, p.ch, p.x, p.y, p.size * (1 + k * p.grow), p.rot + Math.sin(this.t * 6 + p.size) * 0.15); break; }
         case 'emojibig': { const k = 1 - p.life / p.max; const pop = k < 0.15 ? k / 0.15 : 1; x.globalAlpha = Math.min(1, p.life * 1.5); drawEmoji(x, p.ch, p.x + Math.sin(this.t * 3) * 10, p.y, p.size * (0.4 + 0.75 * pop), p.rot + Math.sin(this.t * 4) * 0.12); break; }
       }

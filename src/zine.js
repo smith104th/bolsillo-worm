@@ -2,7 +2,7 @@
 // then bound into a PDF right here on the phone. No server, no libraries.
 import { h, fmtDistance, store } from './util.js';
 import { sheet, btn, toast, segmented } from './ui.js';
-import { makeSky, skyFor, drawHole, PAPERS, TRINKETS, renderStrokes, mixHex, SKY } from './draw.js';
+import { makeSky, skyFor, PAPERS, TRINKETS, renderStrokes, mixHex, SKY } from './draw.js';
 import { drawEmoji } from './brush.js';
 import { trinketEmoji, drawGlyphTile, drawRecord } from './icons.js';
 import { PROVIDERS } from './music.js';
@@ -209,7 +209,6 @@ function coverPage(x, app, data, names) {
   font(x, 600, 58); x.fillText('Bolsillo', M - 2, 112); x.fillText('Worm', M - 2, 164);
   font(x, 400, 15); x.fillText(`${names[0]} & ${names[1]}`, M, 196);
   const hx = PW / 2, hy = PH - 150;
-  drawHole(x, hx, hy, 46, 0, 0);
   wormOn(x, them?.worm, hx - 70, hy - 120, 15, 18, -0.6);
   wormOn(x, me?.worm, hx + 60, hy - 60, 15, 16, 2.4, 220);
   font(x, 600, 64); x.fillStyle = INK; x.fillText(String(data.year), M - 2, PH - 44);
@@ -262,7 +261,8 @@ function monthPage(x, monthDay, count) {
 function backPage(x, app) {
   const dusk = skyFor(null, new Date(), 3);
   x.drawImage(makeSky(PW, PH, U, dusk), 0, 0, PW, PH);
-  drawHole(x, PW / 2, PH / 2 - 40, 34, 0, 0);
+  wormOn(x, app.them()?.worm, PW / 2 - 40, PH / 2 - 48, 11, 13, -0.3, 30);
+  wormOn(x, app.me()?.worm, PW / 2 + 40, PH / 2 - 62, 11, 13, Math.PI + 0.3, 30);
   font(x, 600, 18); x.fillStyle = INK; x.textAlign = 'center';
   x.fillText('Same pocket soon.', PW / 2, PH / 2 + 40);
   font(x, 500, 6.5, true); x.fillStyle = INK;
