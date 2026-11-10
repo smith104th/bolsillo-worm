@@ -44,9 +44,18 @@ create table if not exists public.events (
   media_id    bigint,
   created_at  timestamptz not null default now(),
   opened_at   timestamptz,
-  kept        boolean not null default false
+  kept        boolean not null default false,
+  updated_at  timestamptz not null default now()
 );
 create index if not exists events_hole_time on public.events (hole_id, created_at desc);
+-- updated_at lets a phone ask only for what changed since it last looked (opens, keeps,
+-- pet counts), so coming back to the app doesn't reload the whole pocket.
+alter table public.events add column if not exists updated_at timestamptz not null default now();
+create index if not exists events_hole_updated on public.events (hole_id, updated_at desc);
+create or replace function public.wh_touch() returns trigger language plpgsql as $$
+begin new.updated_at := now(); return new; end $$;
+drop trigger if exists events_touch on public.events;
+create trigger events_touch before update on public.events for each row execute function public.wh_touch();
 
 -- Photos and whispers. New ones live in Cloudflare R2 (`r2` = the object key, put there
 -- by the media edge function, which also hands out short-lived links to read them).

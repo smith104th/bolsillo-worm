@@ -1,7 +1,7 @@
 // Talks to Supabase: anonymous sign-in, RPCs, realtime presence + fingertips.
 import { createClient } from '@supabase/supabase-js';
 
-const EVENT_COLS = 'id,hole_id,from_slot,kind,payload,media_id,created_at,opened_at,kept';
+const EVENT_COLS = 'id,hole_id,from_slot,kind,payload,media_id,created_at,opened_at,kept,updated_at';
 const ARCHIVE_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
 
 export function supabaseBackend(cfg) {
@@ -101,6 +101,17 @@ export function supabaseBackend(cfg) {
       ]);
       for (const r of [h, m, e]) if (r.error) throw new Error(r.error.message);
       return { hole: h.data, members: m.data || [], events: e.data || [] };
+    },
+    // what changed since the phone last looked (new things, opens, keeps, pet counts), oldest first.
+    // Comes back full (`more`) when there's too much to merge; the caller reloads instead.
+    async since(ts, limit = 400) {
+      const [h, m, e] = await Promise.all([
+        sb.from('holes').select('*').maybeSingle(),
+        sb.from('members').select('*').order('slot'),
+        sb.from('events').select(EVENT_COLS).gt('updated_at', ts).order('updated_at', { ascending: true }).limit(limit),
+      ]);
+      for (const r of [h, m, e]) if (r.error) throw new Error(r.error.message);
+      return { hole: h.data, members: m.data || [], events: e.data || [], more: (e.data || []).length >= limit };
     },
     create: (name, worm, place) => rpc('wh_create', { p_name: name, p_worm: worm, p_place: place }),
     join: (code, name, worm, place) => rpc('wh_join', { p_code: code, p_name: name, p_worm: worm, p_place: place }),

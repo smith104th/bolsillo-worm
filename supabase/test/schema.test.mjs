@@ -130,6 +130,15 @@ await fails(U.B, 'select wh_daily($1, null, $2, $3, $4)', [yday, `media:${b1}`, 
 const legacy = (await db.query(`select count(*)::int n from media where data is not null and r2 is null`)).rows[0].n;
 assert.ok(legacy >= 1, 'old photos keep their bytes until they move');
 
+// updated_at follows every change to an event
+{
+  const [e0] = await as(U.A, `select id, updated_at from events order by id limit 1`);
+  await db.query(`select pg_sleep(0.01)`);
+  await as(U.B, `select wh_open($1, null)`, [e0.id]);
+  const [e1] = await as(U.A, `select updated_at from events where id = $1`, [e0.id]);
+  assert.ok(new Date(e1.updated_at) > new Date(e0.updated_at), 'opening bumps updated_at');
+}
+
 // planted questions: next free day, hidden from the partner until it comes up
 const [{ wh_plant: d1 }] = await as(U.A, `select wh_plant('  What would you name our dog?  ')`);
 const [{ wh_plant: d2 }] = await as(U.B, `select wh_plant('Where should we go in March?')`);

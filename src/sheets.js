@@ -367,7 +367,7 @@ export function settingsSheet(app) {
         ? 'You\'re the only worm in this pocket. Crawling out deletes the pocket and everything in it, for good. Save everything first if you want a copy.'
         : 'This removes your worm from the pocket on this phone. Your partner keeps their side, and you can come back with the code or your Face ID backup.';
       if (!(await confirmBox(msg, alone ? 'Delete it all' : 'Crawl out'))) return;
-      await app.backend.leave(); localStorage.clear(); location.reload();
+      await app.backend.leave(); await app.forgetCopy(); localStorage.clear(); location.reload();
     }, 'danger wide'),
     h('p.tiny.muted.center', 'Bolsillo Worm · made for two'),
   ]);

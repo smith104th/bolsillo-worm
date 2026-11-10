@@ -18,6 +18,7 @@ import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } f
 import { Pager } from './pager.js';
 import { Shelf, SHELF_BOTTOM } from './shelf.js';
 import { SoilPage, SOIL_BG } from './soil.js';
+import { cache, offlineError } from './cache.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
@@ -59,6 +60,7 @@ const app = {
   stash(id) { S.stashed.add(id); store('stashed', [...S.stashed].slice(-500)); app.refreshPocket(); },
   refreshPocket,
   send, feed, mist, knock, ring, react: sendReact, enablePush, enableMotion, backupChanged: () => {},
+  forgetCopy: () => cache.clear(),
   onDaily: (fn) => dailyFns.add(fn),
   dailyChanged: () => { for (const f of dailyFns) if (f() === false) dailyFns.delete(f); },
   onReact: null,
@@ -81,6 +83,15 @@ async function boot() {
   window.__bw = { backend, app };
   if (!DEMO) await installGate(store('pendingCode'));
   await backend.init();
+  // Open from the copy on the phone when there is one, then catch up in the background.
+  // First run (or after crawling out) still needs the server.
+  const copy = DEMO ? null : await cache.get('data');
+  if (copy?.hole && copy.members?.some((m) => m.user_id === backend.userId)) {
+    S.syncedAt = copy.syncedAt || null;
+    S.shelf = new Map(((await cache.get('shelf')) || []).map((e) => [e.id, e]));
+    enterPocket(copy, { fromCache: true });
+    return;
+  }
   let data = await backend.load();
   if (!data.hole) {
     if (DEMO && !params.has('onboard')) {
@@ -102,12 +113,23 @@ function fatal(e) {
 }
 
 // ─────────────────────────────────────────────── state
-function applyData({ hole, members, events }) {
+function applyData({ hole, members, events, fullLoadAt = null }, { fresh = true } = {}) {
   S.hole = hole; S.members = members;
   S.events = events.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   S.eventsCapped = events.length >= 500; // load() stops at 500; older ones come from backend.archive()
   const mine = members.find((m) => m.user_id === backend.userId);
   if (mine) S.slot = mine.slot;
+  S.syncedAt = newest(S.events) || S.syncedAt || null;
+  S.fullLoadAt = fresh ? Date.now() : (fullLoadAt || 0);
+  saveCopy();
+}
+const newest = (events) => events.reduce((m, e) => (e.updated_at && e.updated_at > m ? e.updated_at : m), '') || null;
+// the copy on the phone: written a moment after anything changes
+let saveTimer = 0;
+function saveCopy() {
+  if (DEMO || !S.hole) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => cache.set('data', { hole: S.hole, members: S.members, events: S.events.slice(0, 500), syncedAt: S.syncedAt, fullLoadAt: S.fullLoadAt }), 600);
 }
 
 function pocketItems() {
@@ -145,8 +167,8 @@ function refreshPocket() {
 }
 
 // ─────────────────────────────────────────────── the pocket
-function enterPocket(data) {
-  applyData(data);
+function enterPocket(data, { fromCache = false } = {}) {
+  applyData(data, { fresh: !fromCache });
   $('#app').hidden = false;
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
@@ -191,7 +213,9 @@ function enterPocket(data) {
   document.addEventListener('visibilitychange', onVisible);
   backend.updateMe({}).catch(() => {});
   loadPlanted();
-  loadShelf();
+  if (fromCache) sync(); else loadShelf();
+  flushOutbox();
+  window.addEventListener('online', () => { sync(); });
   syncPush();
   setTimeout(() => { if (!welcome()) setTimeout(afterArrival, 1200); }, 900);
   navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'bw-go') openTarget(e.data.to); });
@@ -232,14 +256,90 @@ async function onVisible() {
   if (document.hidden) { backend.track(false); markSeen(); return; }
   navigator.serviceWorker?.getRegistration?.().then((r) => r?.update()).catch(() => {});
   backend.track(true);
+  comingBack();
+  await sync();
+  loadPlanted();
+}
+
+// Catch up with the server: only what changed since the phone last looked. A full reload
+// happens when there's no sync point yet, the last full load is old, or too much changed.
+const FULL_EVERY = 6 * 3600 * 1000, SHELF_KINDS = ['later', 'unsealed'];
+let syncing = null;
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timed out')), ms))]);
+// one sync at a time; a request made during one runs again right after it (the signal may
+// have come back while the first was failing)
+function sync() {
+  if (syncing) { syncing.again = true; return syncing; }
+  const run = withTimeout(doSync(), 20000).catch(() => {}).finally(() => {
+    const again = syncing?.again; syncing = null;
+    if (again) sync();
+  });
+  syncing = run;
+  return run;
+}
+async function doSync() {
+  const hadThem = !!app.them();
   try {
-    const data = await backend.load();
-    const hadThem = !!app.them();
-    comingBack();
-    applyData(data); refreshPocket(); loadPlanted(); loadShelf();
+    let shelfTouched = false;
+    if (!S.syncedAt || DEMO || Date.now() - (S.fullLoadAt || 0) > FULL_EVERY) {
+      const data = await backend.load();
+      if (!data.hole) return leftPocket();
+      applyData(data); shelfTouched = true;
+    } else {
+      const d = await backend.since(S.syncedAt);
+      if (d.more) { const data = await backend.load(); if (!data.hole) return leftPocket(); applyData(data); shelfTouched = true; }
+      else {
+        if (!d.hole) return leftPocket();
+        S.hole = d.hole; S.members = d.members;
+        const mine = d.members.find((m) => m.user_id === backend.userId); if (mine) S.slot = mine.slot;
+        for (const ev of d.events) { upsertEvent(ev); if (SHELF_KINDS.includes(ev.kind) || ev.kept || S.shelf.has(ev.id)) shelfTouched = true; }
+        trimEvents();
+        saveCopy();
+      }
+    }
+    refreshPocket(); updateAsleep();
+    if (shelfTouched) loadShelf();
     if (!hadThem && app.them()) toast(`${app.them().name} crawled in.`, { tone: 'love' });
     if (backend.channelState && backend.channelState() !== 'joined') backend.connect(S.hole.id, S.slot, realtime);
-  } catch { /* offline: keep what we have */ }
+    flushOutbox();
+  } catch (e) { if (!offlineError(e)) console.warn(e); /* offline: keep what we have */ }
+}
+function trimEvents() {
+  S.events.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  if (S.events.length > 500) { S.events.length = 500; S.eventsCapped = true; }
+}
+// the pocket is gone on the server (crawled out from another phone): start over
+async function leftPocket() { await cache.clear(); location.reload(); }
+
+// ── outbox: things sent with no signal wait on the phone and go when it's back
+let flushing = false;
+async function enqueue(item) {
+  const box = (await cache.get('outbox')) || [];
+  box.push(item); await cache.set('outbox', box);
+  S.waiting = box.length;
+}
+async function flushOutbox() {
+  if (flushing || DEMO) return;
+  flushing = true;
+  let sent = 0;
+  try {
+    let box = (await cache.get('outbox')) || [];
+    S.waiting = box.length;
+    while (box.length) {
+      const it = box[0];
+      try {
+        const ev = await backend.act(it.kind, it.payload, it.media, it.mime);
+        if (ev) upsertEvent(ev);
+        if (it.nudge) backend.nudge(...it.nudge);
+        sent++;
+      } catch (e) {
+        if (offlineError(e)) break; // still no signal; try again later
+        console.warn('outbox: dropped', it.kind, e); // the server refused it; don't retry forever
+      }
+      box = box.slice(1); await cache.set('outbox', box); S.waiting = box.length;
+    }
+    if (sent) { refreshPocket(); toast(sent === 1 ? 'Sent what was waiting.' : `Sent the ${sent} things that were waiting.`, { icon: 'drop' }); }
+  } finally { flushing = false; }
 }
 
 function refreshNeeds() {
@@ -436,27 +536,31 @@ function kissBtn() {
 }
 
 // ─────────────────────────────────────────────── doing things
-async function act(kind, payload, media = null, mime = null) {
+// `nudge` = [kind, extra] to push to them once it has gone through (now, or later from the outbox).
+// With no signal the thing waits in the outbox and this returns { queued: true }.
+async function act(kind, payload, media = null, mime = null, nudge = null) {
   try {
     const ev = await backend.act(kind, payload, media, mime);
     if (ev) upsertEvent(ev);
+    if (ev && nudge) backend.nudge(...nudge);
     return ev;
-  } catch (e) { console.warn(e); toast(nice(e)); return null; }
+  } catch (e) {
+    if (!DEMO && offlineError(e)) { await enqueue({ kind, payload, media, mime, nudge, at: Date.now() }); return { queued: true }; }
+    console.warn(e); toast(nice(e)); return null;
+  }
 }
 
 async function send(kind, payload, extra = {}, media = null, mime = null) {
-  const ev = await act(kind, payload, media, mime);
+  const ev = await act(kind, payload, media, mime, [kind, extra]);
   if (!ev) return false;
   pocket.sendToSky(kind, payload);
-  backend.nudge(kind, extra);
-  toast(`Dropped into ${app.them()?.name || 'their'}'s pocket.`, { icon: 'drop' });
+  toast(ev.queued ? 'No signal. It drops in when you\'re back.' : `Dropped into ${app.them()?.name || 'their'}'s pocket.`, { icon: 'drop' });
   return true;
 }
 
 function kiss(level) {
   pocket.kissFly(level);
-  act('kiss', { level });
-  backend.nudge('kiss', { level });
+  act('kiss', { level }, null, null, ['kiss', { level }]);
   if (level >= 4) buzz([20, 40, 20, 40, 60]);
 }
 
@@ -468,11 +572,12 @@ function feed(kind) {
 }
 function mist() { pocket.mist(); act('mist', {}); }
 async function knock() {
-  if (await act('knock', {})) { backend.nudge('knock'); sfx.knock(); buzz([30, 80, 30]); toast('Knocked.'); }
+  const ev = await act('knock', {}, null, null, ['knock']);
+  if (ev) { sfx.knock(); buzz([30, 80, 30]); toast(ev.queued ? 'Knocked. It lands when you have signal.' : 'Knocked.'); }
 }
 async function ring() {
-  if (await act('ring', {})) {
-    backend.nudge('ring'); buzz([15, 40, 15]);
+  if (await act('ring', {}, null, null, ['ring'])) {
+    buzz([15, 40, 15]);
     S.calledAt = Date.now(); renderHeader();
     setTimeout(renderHeader, 120500);
   }
@@ -482,20 +587,21 @@ async function sendReact(emoji, extra = {}) {
   if (!app.them()) return;
   if (!extra.to && !extra.day) pocket.sendReaction(emoji);
   buzz(10);
-  const ev = await act('react', { emoji, ...extra });
-  if (ev) backend.nudge('react', { emoji, about: extra.about || null });
-  return ev;
+  return act('react', { emoji, ...extra }, null, null, ['react', { emoji, about: extra.about || null }]);
 }
 
 function upsertEvent(ev) {
   const i = S.events.findIndex((e) => e.id === ev.id);
   if (i >= 0) S.events[i] = { ...S.events[i], ...ev }; else S.events.unshift(ev);
+  if (ev.updated_at && (!S.syncedAt || ev.updated_at > S.syncedAt)) S.syncedAt = ev.updated_at;
+  saveCopy();
 }
 
 async function loadShelf() {
   try {
     const rows = await backend.shelf();
     S.shelf = new Map(rows.map((e) => [e.id, e]));
+    if (!DEMO) cache.set('shelf', rows);
     if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
     shelfBadge(); updateBadge();
     // capsules whose day has come: say so once
@@ -772,4 +878,4 @@ function throttle(fn, ms, trailing = false) {
   };
 }
 
-window.__bwDebug = { S, app, sleep };
+window.__bwDebug = { S, app, sleep, sync, flushOutbox, get syncing() { return !!syncing; }, get pocket() { return pocket; } };

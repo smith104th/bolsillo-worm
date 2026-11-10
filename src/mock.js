@@ -118,6 +118,7 @@ export function mockBackend() {
     kind: 'mock',
     async init() { return me; },
     get userId() { return me; },
+    async since() { return { hole: members.length ? { ...hole } : null, members: members.map((m) => ({ ...m })), events: [], more: true }; },
     async load() { return { hole: members.length ? { ...hole } : null, members: members.map((m) => ({ ...m })), events: events.map((e) => ({ ...e })) }; },
     async create(name, worm, place) { seed(name, worm, place); botLoop(); return { hole_id: hole.id, code: hole.code, slot: 0 }; },
     async join(code, name, worm, place) { seed(name, worm, place); botLoop(); return { hole_id: hole.id, code: hole.code, slot: 0 }; },
