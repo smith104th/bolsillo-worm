@@ -190,9 +190,12 @@ export function lipsSVG(color = '#C41E3A') {
 // ── food ─────────────────────────────────────────────────────
 export const FOODS = {
   medialuna: 'a medialuna crumb', alfajor: 'a bite of alfajor', frutilla: 'a strawberry',
-  manzana: 'an apple peel', galletita: 'a cookie crumb', banana: 'a bit of banana',
-  empanada: 'an empanada corner', hoja: 'a fresh leaf', cafe: 'coffee grounds',
+  manzana: 'an apple peel', galletita: 'a cookie crumb', arroz: 'a bit of white rice',
+  empanada: 'an empanada corner', hoja: 'a fresh leaf', pochoclo: 'some popcorn',
 };
+// Foods that were retired keep their names so old feed messages still read right.
+const RETIRED_FOODS = { banana: 'a bit of banana', cafe: 'coffee grounds' };
+export const foodName = (k) => FOODS[k] || RETIRED_FOODS[k] || 'a crumb';
 export function drawFood(x, kind, s = 10) {
   x.save();
   switch (kind) {
@@ -222,11 +225,19 @@ export function drawFood(x, kind, s = 10) {
       x.fillStyle = '#D8A55E'; x.beginPath(); for (let k = 0; k < 9; k++) { const a = (k / 9) * 7, r = s * (0.85 + (k % 2) * 0.15); x.lineTo(Math.cos(a) * r, Math.sin(a) * r); } x.fill();
       x.fillStyle = '#5B3524'; for (const [a, b] of [[-0.3, -0.3], [0.35, 0.1], [-0.1, 0.45], [0.3, -0.45]]) { x.beginPath(); x.arc(a * s, b * s, s * 0.13, 0, 7); x.fill(); }
       break;
-    case 'banana':
-      x.fillStyle = '#F2D45C'; x.beginPath(); x.arc(0, 0, s * 0.9, 0, 7); x.fill();
-      x.fillStyle = '#FBF1C4'; x.beginPath(); x.arc(0, 0, s * 0.68, 0, 7); x.fill();
-      x.fillStyle = '#B79A4A'; for (let k = 0; k < 3; k++) { const a = (k / 3) * 7; x.beginPath(); x.arc(Math.cos(a) * s * 0.22, Math.sin(a) * s * 0.22, s * 0.07, 0, 7); x.fill(); }
+    case 'arroz': {
+      // a little mound of white rice: slim grains piled from the bottom up
+      const grains = [[-0.72, 0.46, 0.35], [-0.34, 0.54, -0.15], [0.06, 0.52, 0.3], [0.46, 0.5, -0.4], [0.8, 0.4, 0.2],
+        [-0.52, 0.16, -0.55], [-0.14, 0.2, 0.25], [0.26, 0.16, -0.2], [0.6, 0.12, 0.6],
+        [-0.3, -0.14, 0.45], [0.1, -0.16, -0.35], [0.44, -0.18, 0.1], [-0.08, -0.46, 0.2], [0.26, -0.48, -0.5]];
+      for (const [gx, gy, a] of grains) {
+        x.save(); x.translate(gx * s, gy * s); x.rotate(a);
+        x.fillStyle = '#FFFFFF'; x.strokeStyle = '#E3DCCD'; x.lineWidth = Math.max(0.5, s * 0.045);
+        x.beginPath(); x.ellipse(0, 0, s * 0.27, s * 0.11, 0, 0, 7); x.fill(); x.stroke();
+        x.restore();
+      }
       break;
+    }
     case 'empanada':
       x.fillStyle = '#D79B4F'; x.beginPath(); x.arc(0, s * 0.3, s, Math.PI, 0); x.closePath(); x.fill();
       x.fillStyle = '#B9772E'; for (let k = 0; k < 7; k++) { const a = Math.PI + (k / 6) * Math.PI; x.beginPath(); x.arc(Math.cos(a) * s * 0.95, s * 0.3 + Math.sin(a) * s * 0.95, s * 0.17, 0, 7); x.fill(); }
@@ -234,9 +245,16 @@ export function drawFood(x, kind, s = 10) {
     case 'hoja':
       leafShape(x, s * 1.2, '#6DAA4F', '#4E8536');
       break;
-    case 'cafe':
-      for (let k = 0; k < 14; k++) { x.fillStyle = k % 2 ? '#3A2318' : '#5A3826'; x.beginPath(); x.arc(Math.sin(k * 2.1) * s * 0.7, Math.cos(k * 1.3) * s * 0.6, s * 0.18, 0, 7); x.fill(); }
+    case 'pochoclo': {
+      // one puffy popped kernel: creamy lobes, a toasted hull peeking out
+      const lobes = [[-0.42, 0.1, 0.5], [0.4, 0.14, 0.48], [0, -0.38, 0.52], [-0.12, 0.34, 0.44], [0.26, -0.12, 0.4]];
+      x.fillStyle = '#FFF6DF'; x.strokeStyle = '#E8CF94'; x.lineWidth = Math.max(0.6, s * 0.07);
+      for (const [lx, ly, r] of lobes) { x.beginPath(); x.arc(lx * s, ly * s, r * s, 0, 7); x.fill(); x.stroke(); }
+      x.fillStyle = '#FFF6DF'; for (const [lx, ly, r] of lobes) { x.beginPath(); x.arc(lx * s, ly * s, r * s * 0.86, 0, 7); x.fill(); }
+      x.fillStyle = '#E3A93B'; x.beginPath(); x.ellipse(s * 0.1, s * 0.62, s * 0.24, s * 0.15, -0.3, 0, 7); x.fill();
+      x.fillStyle = 'rgba(255,255,255,0.9)'; x.beginPath(); x.arc(-s * 0.1, -s * 0.5, s * 0.14, 0, 7); x.fill();
       break;
+    }
   }
   x.restore();
 }

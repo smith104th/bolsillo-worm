@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
-import { ITEM_KINDS, FOODS, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
+import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON, confirmBox } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
@@ -493,7 +493,7 @@ function react(ev, fromThem) {
       toast(p.about ? `${name} reacted ${p.emoji} to your ${p.about}` : `${name} sent ${p.emoji}`, { tone: 'love' });
       app.onReact?.(ev);
       break;
-    case 'feed': toast(`${name} fed you ${FOODS[p.food] || 'a crumb'}. Ñam.`, { icon: 'feed' }); pocket.burst('crumb', pocket.hole.x, pocket.hole.y, 10); break;
+    case 'feed': toast(`${name} fed you ${foodName(p.food)}. Ñam.`, { icon: 'feed' }); pocket.burst('crumb', pocket.hole.x, pocket.hole.y, 10); break;
     case 'mist': toast(`${name} misted you. Fresh.`, { icon: 'mist' }); pocket.burst('drop', pocket.hole.x, pocket.hole.y, 12); break;
     case 'knock': pocket.knocked(); sfx.knock(); buzz([40, 90, 40]); toast(`Knock knock. ${name} is thinking of you.`, { icon: 'knock' }); break;
     case 'ring': toast(`${name} is waiting at the hole.`, { icon: 'ring', tone: 'love' }); buzz([20, 60, 20]); break;

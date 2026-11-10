@@ -1,7 +1,7 @@
 // The paper slips: feed, drop, today, us, peek, settings, the jar.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
 import { sheet, btn, icon, toast, field, segmented, confirmBox, closeAllSheets } from './ui.js';
-import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS, renderStrokes } from './draw.js';
+import { FOODS, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS, renderStrokes } from './draw.js';
 import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketArt, reactRow, theirReactions } from './compose.js';
 import { envelopeIcon, glyphTile, GLYPH_COLORS } from './icons.js';
@@ -32,7 +32,7 @@ export function feedSheet(app) {
   const s = sheet(`Feed ${w.name || 'them'}`, [
     h('div.meters', careLine('Fed', them?.fed_at, 20, 'hungry'), careLine('Misted', them?.misted_at, 18, 'dry'), careLine('Petted', them?.petted_at, 12, 'lonely')),
     h('h3', 'Pick a crumb'),
-    h('div.foods', Object.entries(FOODS).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(an?|a bit of|a bite of) /, ''))))),
+    h('div.foods', Object.entries(FOODS).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(a bite of|a bit of|some|an?) /, ''))))),
     btn([icon('mist'), ' Mist them'], () => { s.close(); app.mist(); }, 'primary wide'),
     h('p.small.muted.center', 'Stroke the worm to pet it. Tap its head to boop.'),
   ]);
@@ -218,7 +218,7 @@ export function peekSheet(app) {
     const p = e.payload || {};
     const t = {
       pet: `petted you${p.n > 1 ? ` ×${p.n}` : ''}`, boop: `booped you${p.n > 1 ? ` ×${p.n}` : ''}`, kiss: `sent a ${KISS_NAMES[p.level || 1]} ${KISS_EMOJI[p.level || 1]}`, react: p.about ? `reacted ${p.emoji} to your ${p.about}` : `sent ${p.emoji}`,
-      feed: `fed you ${FOODS[p.food] || 'a crumb'}`, mist: 'misted you', note: 'dropped a note', doodle: 'drew you something',
+      feed: `fed you ${foodName(p.food)}`, mist: 'misted you', note: 'dropped a note', doodle: 'drew you something',
       photo: 'sent a polaroid', whisper: 'whispered', wiggle: `wiggled${p.label ? ` “${p.label}”` : ''}`, trinket: `found you ${TRINKETS[p.what] || 'something'}`,
       knock: 'knocked', ring: 'called you in', touch: 'touched fingertips with you', daily: p.part === 'photo' ? 'posted today\'s photo' : 'answered today\'s question',
       reunion: 'set the countdown', plant: 'planted a question for you', later: p.mode === 'date' ? 'wrapped a time capsule for you' : `left you an envelope: when ${p.label}`, unsealed: p.mode === 'date' ? 'unwrapped your time capsule' : `opened “when ${p.label}”`, arrived: 'crawled into your pocket', tunnel: 'finished a tunnel with you',
