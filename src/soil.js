@@ -80,19 +80,21 @@ export function SoilPage(app, root) {
         } }, 'Dig up')))) : null));
 
     // everything answered before today, newest first, by month
-    const past = list.filter((r) => dayKey(r) < today && (r.my_answer || r.their_answer)).sort((a, b) => (dayKey(a) < dayKey(b) ? 1 : -1));
+    const past = list.filter((r) => dayKey(r) < today && (r.my_answer || r.their_answer || r.my_thumb || r.their_thumb)).sort((a, b) => (dayKey(a) < dayKey(b) ? 1 : -1));
     const earlier = [h('div.s-label', 'Earlier')];
     let month = null;
     for (const r of past) {
       const d = dayKey(r), m = d.slice(0, 7);
       if (m !== month) { month = m; earlier.push(h('h3.s-month', monthName(d), yearOf(d) !== today.slice(0, 4) ? h('span', ` ${yearOf(d)}`) : null)); }
       const q = app.questionFor(d);
+      // that day's photo sits under each answer, in the same column (Manu, Nov 10)
+      const pic = (mediaId, thumb, who) => (thumb ? h('button.s-pic', { type: 'button', 'aria-label': `${who}'s photo, ${prettyDay(d)}`, onclick: () => viewPhoto(app, mediaId, thumb, prettyDay(d)) }, h('img', { src: thumb, alt: '' })) : null);
       earlier.push(h('article.s-entry',
         h('div.s-date', prettyDay(d).toUpperCase(), q.by ? h('span', q.mine ? ' · YOU PLANTED THIS' : ` · ${q.by.toUpperCase()} PLANTED THIS`) : null),
         h('h3.s-eq', q.q),
         h('div.s-pair',
-          h('div', h('span.s-who', 'You'), h(`p${r.my_answer ? '' : '.none'}`, r.my_answer || 'No answer')),
-          h('div', h('span.s-who', them), h(`p${r.their_answer ? '' : '.none'}`, r.their_answer || (r.their_answered ? 'Buried. You never dug it up.' : 'No answer'))))));
+          h('div', h('span.s-who', 'You'), h(`p${r.my_answer ? '' : '.none'}`, r.my_answer || 'No answer'), pic(r.my_photo, r.my_thumb, 'Your')),
+          h('div', h('span.s-who', them), h(`p${r.their_answer ? '' : '.none'}`, r.their_answer || (r.their_answered ? 'Buried. You never dug it up.' : 'No answer')), pic(r.their_photo, r.their_thumb, them)))));
     }
     if (!past.length) earlier.push(h('p.s-note', rows ? 'Every question you both answer settles here, newest on top.' : 'Digging…'));
     out.push(h('section.s-earlier', earlier));
@@ -107,7 +109,9 @@ export function SoilPage(app, root) {
 
   app.onDaily(() => { if (visible) load(); });
   return {
-    show() { visible = true; render(); load(); },
+    // seeds get re-dealt whenever either of you plants or digs up: refresh them on
+    // every visit too (loadPlanted fires onDaily, which re-renders)
+    show() { visible = true; render(); load(); app.loadPlanted(); },
     hide() { visible = false; },
     refresh() { if (visible) load(); },
   };

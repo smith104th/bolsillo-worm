@@ -137,6 +137,23 @@ const [{ hd: holeDay }] = (await db.query(`select wh_today(id) hd from holes`)).
 const dayMs = 86400000;
 assert.equal(new Date(d1) - new Date(holeDay), dayMs, 'first seed comes up tomorrow');
 assert.equal(new Date(d2) - new Date(holeDay), 2 * dayMs, 'second seed takes the next free day');
+// seeds always alternate: A plants three more, B one → A B A B A A, no gaps
+for (const q of ['A two?', 'A three?', 'A four?']) await as(U.A, `select wh_plant('${q}')`);
+const [{ wh_plant: b2 }] = await as(U.B, `select wh_plant('B two?')`);
+const dealt = async () => (await db.query(`select from_slot, question, day::text from planted order by day`)).rows;
+let deal = await dealt();
+assert.deepEqual(deal.map((r) => r.from_slot), [0, 1, 0, 1, 0, 0], 'seeds alternate while both have some');
+assert.deepEqual(deal.map((r) => Math.round((new Date(r.day) - new Date(holeDay)) / dayMs)), [1, 2, 3, 4, 5, 6], 'days are dealt from tomorrow with no gaps');
+assert.equal(new Date(b2) - new Date(holeDay), 4 * dayMs, 'wh_plant returns the day the new seed landed on');
+assert.deepEqual((await as(U.A, `select payload->>'day' d from events where kind = 'plant' order by 1`)).map((r) => r.d), deal.map((r) => r.day), 'plant events carry the re-dealt days');
+await as(U.A, `select wh_unplant($1)`, [deal[2].day]);
+deal = await dealt();
+assert.deepEqual(deal.map((r) => r.from_slot), [0, 1, 0, 1, 0], 'digging one up closes the gap');
+assert.deepEqual(deal.map((r) => Math.round((new Date(r.day) - new Date(holeDay)) / dayMs)), [1, 2, 3, 4, 5], 'still no gaps');
+assert.equal((await db.query(`select count(*)::int n from events where kind = 'plant'`)).rows[0].n, 5, 'its plant event went too');
+for (let x; (x = (await dealt()).find((r) => /^[AB] /.test(r.question)));) await as(x.from_slot === 0 ? U.A : U.B, `select wh_unplant($1)`, [x.day]);
+deal = await dealt();
+assert.deepEqual(deal.map((r) => Math.round((new Date(r.day) - new Date(holeDay)) / dayMs)), [1, 2], 'back to the first two seeds');
 let seen = await as(U.A, 'select * from wh_planted()');
 assert.deepEqual(seen.map((r) => r.question), ['What would you name our dog?'], 'only my own future seed');
 await db.query(`update planted set day = $1 where question like 'Where%'`, [holeDay]);

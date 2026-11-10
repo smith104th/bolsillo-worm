@@ -301,8 +301,9 @@ function tuckDock(pos, animate, dots) {
   dock.inert = k > 0.5;
 }
 
+// No Pocket tab: the bar only shows on the pocket, so you're already there (Manu, Nov 10).
+// setTab('pocket') still clears the highlight once every sheet is closed.
 const TABS = [
-  ['pocket', 'Pocket', () => pager?.go(0)],
   ['feed', 'Feed', () => (app.them() ? feedSheet(app) : waitToast())],
   ['drop', 'Drop', () => (app.them() ? dropSheet(app) : waitToast())],
   ['today', 'Today', () => todaySheet(app)],
@@ -316,8 +317,8 @@ function buildChrome() {
   $('#peek').replaceChildren(icon('peek'));
   $('#peek').onclick = () => (app.them() ? peekSheet(app) : waitToast());
   const bar = h('div.tabbar.glass', TABS.map(([id, label, fn]) =>
-    h(`button.tab${id === 'pocket' ? '.on' : ''}`, { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { closeAllSheets(); setTab(id); fn(); } },
-      icon(id === 'pocket' ? 'pocket' : id === 'drop' ? 'drop' : id), h('span.lbl', label), id === 'today' ? h('span.dot', { hidden: true }) : null)));
+    h('button.tab', { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { closeAllSheets(); setTab(id); fn(); } },
+      icon(id), h('span.lbl', label), id === 'today' ? h('span.dot', { hidden: true }) : null)));
   $('#dock').replaceChildren(bar, kissBtn());
   // Soil scrolls between its white and green zones: keep the bottom edge in step
   let edgeRaf = 0;
