@@ -660,3 +660,16 @@ body.dark .shelf-hint { color: #fff; }
 .us-sheet .rf .mono { font-size: 10.5px; letter-spacing: 0.08em; color: #fff; }
 .us-sheet .reunion-fields input { min-height: 58px; height: 58px; }
 .us-sheet .card.night .btn { margin-top: 18px; min-height: 58px; }
+
+/* Shared object icons outside the shelf: emoji found things, glyph tiles, Jar */
+.temoji { display: inline-block; line-height: 1; filter: drop-shadow(0 6px 8px rgba(28,28,30,0.18)); }
+.trinket .temoji { margin: 4px 0 2px; }
+.trinket.on .temoji { filter: drop-shadow(0 4px 6px rgba(0,0,0,0.35)); }
+.trinket-big { padding: 8px 0 4px; }
+.trinket-print { text-align: center; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin: -2px 0 6px; color: var(--ink); }
+.shell-art { padding: 6px 0 4px; }
+.jar-item img { width: 56px; height: 56px; object-fit: cover; border-radius: 12px; box-shadow: 0 5px 12px rgba(28,28,30,0.16); }
+.jar-art { width: 64px; height: 60px; display: grid; place-items: center; }
+.jar-art svg { display: block; }
+.jar-doodle { width: 50px; height: 50px; border-radius: 11px; background: #fff; display: grid; place-items: center; box-shadow: 0 5px 12px rgba(28,28,30,0.16); }
+.jar-doodle canvas { width: 44px; height: 44px; }

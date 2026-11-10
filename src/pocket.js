@@ -2,6 +2,7 @@
 // crumbs, weather from the other side, and live fingertips.
 import { Worm, heart, star, segsFor } from './worm.js';
 import { makeSky, drawHole, drawItem, drawFood, itemRadius, SKY } from './draw.js';
+import { preloadIcons } from './icons.js';
 import { dab, drawEmoji } from './brush.js';
 import { KISS_EMOJI } from './draw.js';
 import { clamp, rand, pick, seeded } from './util.js';
@@ -12,6 +13,7 @@ export class Pocket {
     this.cv = canvas;
     this.ctx = canvas.getContext('2d');
     this.hooks = hooks;
+    preloadIcons();
     this.items = [];
     this.food = [];
     this.parts = [];

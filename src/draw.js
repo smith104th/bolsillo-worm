@@ -1,6 +1,7 @@
 // Everything that lives in a pocket, drawn by hand on canvas.
 import { seeded, hash } from './util.js';
-import { wobblyCircle, dab } from './brush.js';
+import { wobblyCircle, drawEmoji } from './brush.js';
+import { envelopeImage, iconShadow, noShadow, roundRect, drawGlyphTile, trinketEmoji } from './icons.js';
 
 
 // ── light-wash denim, flat color + woven texture ─────────────
@@ -253,88 +254,20 @@ export const TRINKETS = {
   matchbook: 'a matchbook', flower: 'a little flower', bottlecap: 'a bottle cap', feather: 'a feather',
   candy: 'a candy', key: 'a tiny key',
 };
-export function drawTrinket(x, kind, s = 16, text = '') {
-  x.save();
-  switch (kind) {
-    case 'pebble': {
-      const g = x.createRadialGradient(-s * 0.3, -s * 0.3, 1, 0, 0, s);
-      g.addColorStop(0, '#C9C4BC'); g.addColorStop(1, '#7E7A74');
-      x.fillStyle = g; x.beginPath(); x.ellipse(0, 0, s, s * 0.72, 0.2, 0, 7); x.fill();
-      x.strokeStyle = 'rgba(255,255,255,0.35)'; x.lineWidth = 0.8; x.beginPath(); x.ellipse(0, 0, s * 0.6, s * 0.35, 0.4, 0.3, 2.4); x.stroke();
-      break;
-    }
-    case 'leaf': leafShape(x, s * 1.2, '#D98B3A', '#9C5A1F'); break;
-    case 'coin': {
-      const g = x.createRadialGradient(-s * 0.3, -s * 0.3, 1, 0, 0, s);
-      g.addColorStop(0, '#F7E3A1'); g.addColorStop(1, '#B98D2E');
-      x.fillStyle = g; x.beginPath(); x.arc(0, 0, s * 0.85, 0, 7); x.fill();
-      x.strokeStyle = 'rgba(110,80,20,0.6)'; x.lineWidth = 1; x.beginPath(); x.arc(0, 0, s * 0.68, 0, 7); x.stroke();
-      x.fillStyle = 'rgba(110,80,20,0.65)'; x.font = `600 ${s * 0.7}px Geist, system-ui, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('1', 0, 1);
-      break;
-    }
-    case 'ticket':
-      x.fillStyle = '#F2D8B4'; x.fillRect(-s * 1.3, -s * 0.6, s * 2.6, s * 1.2);
-      x.strokeStyle = '#B5523E'; x.setLineDash([2, 2]); x.beginPath(); x.moveTo(s * 0.6, -s * 0.6); x.lineTo(s * 0.6, s * 0.6); x.stroke(); x.setLineDash([]);
-      x.fillStyle = '#B5523E'; x.font = `600 ${s * 0.42}px "Geist Mono", ui-monospace, monospace`; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.fillText((text || 'ADMIT').slice(0, 7).toUpperCase(), -s * 0.35, 0);
-      break;
-    case 'button':
-      x.fillStyle = '#E8C36A'; x.beginPath(); x.arc(0, 0, s * 0.8, 0, 7); x.fill();
-      x.strokeStyle = '#B48C33'; x.lineWidth = 1.2; x.beginPath(); x.arc(0, 0, s * 0.6, 0, 7); x.stroke();
-      x.fillStyle = '#7A5A1A'; for (const [a, b] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { x.beginPath(); x.arc(a * s * 0.2, b * s * 0.2, s * 0.1, 0, 7); x.fill(); }
-      break;
-    case 'matchbook':
-      x.fillStyle = '#C23B32'; x.fillRect(-s * 0.8, -s * 1.1, s * 1.6, s * 2.2);
-      x.fillStyle = '#F4EBDD'; x.fillRect(-s * 0.8, s * 0.55, s * 1.6, s * 0.18);
-      x.fillStyle = '#F4EBDD'; x.font = `600 ${s * 0.36}px Geist, system-ui, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.save(); x.rotate(-Math.PI / 2); x.fillText((text || 'Bar').slice(0, 9), 0, 0); x.restore();
-      break;
-    case 'flower':
-      x.fillStyle = '#F2A7C0'; for (let k = 0; k < 5; k++) { const a = (k / 5) * 7; x.beginPath(); x.arc(Math.cos(a) * s * 0.42, Math.sin(a) * s * 0.42, s * 0.36, 0, 7); x.fill(); }
-      x.fillStyle = '#F6C64A'; x.beginPath(); x.arc(0, 0, s * 0.28, 0, 7); x.fill();
-      break;
-    case 'bottlecap':
-      x.fillStyle = '#C7CCD3'; x.beginPath(); for (let k = 0; k < 21; k++) { const a = (k / 21) * 7, r = k % 2 ? s * 0.78 : s * 0.9; x.lineTo(Math.cos(a) * r, Math.sin(a) * r); } x.fill();
-      x.fillStyle = '#2F6CB5'; x.beginPath(); x.arc(0, 0, s * 0.62, 0, 7); x.fill();
-      x.fillStyle = '#F4EBDD'; x.beginPath(); x.arc(0, 0, s * 0.3, 0, 7); x.fill();
-      break;
-    case 'feather':
-      x.rotate(-0.6);
-      x.fillStyle = '#EDE6DA'; x.beginPath(); x.moveTo(0, -s * 1.4); x.quadraticCurveTo(s * 0.7, 0, 0, s * 1.2); x.quadraticCurveTo(-s * 0.7, 0, 0, -s * 1.4); x.fill();
-      x.strokeStyle = '#9A8E7C'; x.lineWidth = 1; x.beginPath(); x.moveTo(0, -s * 1.4); x.lineTo(0, s * 1.5); x.stroke();
-      for (let k = -4; k <= 4; k++) { x.beginPath(); x.moveTo(0, k * s * 0.25); x.lineTo(k % 2 ? s * 0.4 : -s * 0.4, k * s * 0.25 - s * 0.2); x.stroke(); }
-      break;
-    case 'candy':
-      x.fillStyle = '#E2546A'; x.beginPath(); x.moveTo(-s * 0.55, 0); x.lineTo(-s * 1.2, -s * 0.45); x.lineTo(-s * 1.2, s * 0.45); x.fill();
-      x.beginPath(); x.moveTo(s * 0.55, 0); x.lineTo(s * 1.2, -s * 0.45); x.lineTo(s * 1.2, s * 0.45); x.fill();
-      x.fillStyle = '#F5A3B0'; x.beginPath(); x.ellipse(0, 0, s * 0.65, s * 0.5, 0, 0, 7); x.fill();
-      x.strokeStyle = '#E2546A'; x.lineWidth = s * 0.12; x.beginPath(); x.moveTo(-s * 0.4, -s * 0.3); x.lineTo(s * 0.2, s * 0.4); x.stroke();
-      break;
-    case 'key':
-      x.strokeStyle = '#C79A3E'; x.lineWidth = s * 0.22; x.beginPath(); x.arc(-s * 0.6, 0, s * 0.42, 0, 7); x.stroke();
-      x.beginPath(); x.moveTo(-s * 0.18, 0); x.lineTo(s * 1.1, 0); x.lineTo(s * 1.1, s * 0.35); x.moveTo(s * 0.75, 0); x.lineTo(s * 0.75, s * 0.3); x.stroke();
-      break;
-  }
-  x.restore();
-}
-
 // ── things that arrive through the hole ──────────────────────
 export const ITEM_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'];
 export const PAPERS = { white: '#FFFFFF', rosa: '#FCD3DC', celeste: '#CFE6FA', limon: '#F6F1A6' };
 
 export function itemRadius(kind) {
-  return { note: 24, doodle: 24, photo: 28, whisper: 18, wiggle: 13, trinket: 16 }[kind] || 16;
+  return { note: 25, doodle: 24, photo: 27, whisper: 18, wiggle: 15, trinket: 17 }[kind] || 16;
 }
 
-const INK = '#26324D';
-const SHADE = 'rgba(30,55,100,0.22)';
-function card(x, X, Y, W, H, r, fill) {
-  x.fillStyle = SHADE; rr(x, X + 2, Y + 3, W, H, r); x.fill();
-  x.fillStyle = fill; rr(x, X, Y, W, H, r); x.fill();
-  x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
-}
+// Things in the pocket wear the same icons as the shelf (src/icons.js): an
+// envelope in the note's paper (sealed until opened), photos and doodles on
+// rounded tiles, whispers and wiggles as live glyph tiles, found things as emoji.
 export function drawItem(x, it, t, images) {
   const p = it.payload || {};
+  const m = x.getTransform(), k = Math.hypot(m.a, m.b) || 1; // device scale, for shadows
   x.save();
   x.translate(it.x, it.y);
   x.rotate(it.rot || 0);
@@ -348,50 +281,41 @@ export function drawItem(x, it, t, images) {
   }
   switch (it.kind) {
     case 'note': {
-      card(x, -24, -17, 48, 34, 5, PAPERS[p.paper] || '#FFFFFF');
-      x.strokeStyle = INK; x.lineWidth = 1.2;
-      x.beginPath(); x.moveTo(-23, -15); x.quadraticCurveTo(-8, -4, 0, 1); x.quadraticCurveTo(8, -4, 23, -15); x.stroke();
-      if (fresh) { x.fillStyle = '#E2344F'; x.beginPath(); x.arc(0, 2, 5, 0, 7); x.fill(); }
+      const S = 66, img = envelopeImage(p.paper, !!it.opened);
+      if (img) { iconShadow(x, k, S); x.drawImage(img, -S / 2, -S / 2 - 1, S, S); }
       break;
     }
     case 'doodle': {
-      card(x, -23, -23, 46, 46, 6, '#FFFFFF');
+      const S = 46;
+      iconShadow(x, k, S * 1.4); x.fillStyle = '#FFFFFF'; roundRect(x, -S / 2, -S / 2, S, S, S * 0.2); x.fill(); noShadow(x);
       const thumb = doodleThumb(it);
-      if (thumb) x.drawImage(thumb, -19, -19, 38, 38);
-      x.fillStyle = 'rgba(227,162,63,0.85)'; x.fillRect(-7, -27, 14, 7);
+      if (thumb) x.drawImage(thumb, -S / 2 + 4, -S / 2 + 4, S - 8, S - 8);
       break;
     }
     case 'photo': {
-      card(x, -25, -29, 50, 58, 4, '#FFFFFF');
+      const S = 50, r = S * 0.19;
+      iconShadow(x, k, S * 1.4); x.fillStyle = '#E5E5EA'; roundRect(x, -S / 2, -S / 2, S, S, r); x.fill(); noShadow(x);
       const img = images && p.thumb ? images(p.thumb) : null;
       if (img && img.complete && img.naturalWidth) {
         const sw = img.naturalWidth, sh = img.naturalHeight, side = Math.min(sw, sh);
-        x.drawImage(img, (sw - side) / 2, (sh - side) / 2, side, side, -21, -25, 42, 42);
-      } else { x.fillStyle = '#DDE3EC'; x.fillRect(-21, -25, 42, 42); }
-      x.strokeStyle = INK; x.lineWidth = 1; x.strokeRect(-21, -25, 42, 42);
+        x.save(); roundRect(x, -S / 2, -S / 2, S, S, r); x.clip();
+        x.drawImage(img, (sw - side) / 2, (sh - side) / 2, side, side, -S / 2, -S / 2, S, S);
+        x.restore();
+      }
       break;
     }
-    case 'whisper': {
-      x.fillStyle = SHADE; x.beginPath(); x.arc(2, 3, 18, 0, 7); x.fill();
-      x.fillStyle = '#FFFFFF'; x.beginPath(); x.arc(0, 0, 18, 0, 7); x.fill();
-      x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
-      x.fillStyle = INK;
-      [5, 10, 14, 8, 12, 6].forEach((hgt, i) => { const live = 1 + Math.sin(t * 6 + i) * (fresh ? 0.25 : 0.08); rr(x, -9.5 + i * 3.4, -hgt * live / 2, 2, hgt * live, 1); x.fill(); });
+    case 'whisper':
+      drawGlyphTile(x, 'wave', 34, t, { k, live: fresh ? 1 : 0 });
       break;
-    }
     case 'wiggle': {
       const hop = it.hop || 0;
       x.translate(0, -hop * 7); x.rotate(Math.sin(t * 20) * hop * 0.5);
-      x.fillStyle = SHADE; rr(x, -12, -5, 28, 16, 8); x.fill();
-      x.fillStyle = '#F5A04F'; rr(x, -14, -8, 28, 16, 8); x.fill();
-      x.strokeStyle = INK; x.lineWidth = 1.4; x.stroke();
-      x.strokeStyle = '#FFFFFF'; x.lineWidth = 1.8;
-      x.beginPath(); for (let i = 0; i <= 12; i++) { const px = -9 + i * 1.5, py = Math.sin(i * 1.1 + t * 8 * (fresh ? 1 : 0.2)) * 2.4; i ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke();
+      drawGlyphTile(x, 'sine', 28, t, { k, live: fresh ? 1 : 0 });
       break;
     }
     case 'trinket':
-      dab(x, '#1E3A66', 2, 4, 17, 'soft', 0.35);
-      drawTrinket(x, p.what, 15, p.text);
+      iconShadow(x, k, 44);
+      drawEmoji(x, trinketEmoji(p.what), 0, 0, 30);
       break;
   }
   x.restore();

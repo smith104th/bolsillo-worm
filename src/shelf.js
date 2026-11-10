@@ -4,9 +4,10 @@ import { h, ago, prettyDay, seeded } from './util.js';
 import { sheet, btn, toast, segmented, icon } from './ui.js';
 import { makeSky, SKY, PAPERS, TRINKETS, renderStrokes } from './draw.js';
 import { Worm } from './worm.js';
-import { openItem, trinketCanvas, reactRow, theirReactions } from './compose.js';
+import { openItem, reactRow, theirReactions } from './compose.js';
 import { photoFromFile } from './media.js';
 import { sfx, buzz } from './feel.js';
+import { envelopeIcon, boxIcon, glyphTile, GLYPH_COLORS, trinketEmoji } from './icons.js';
 
 const INK = '#26324D';
 export const WHEN_PRESETS = ['you\'re sad', 'you can\'t sleep', 'you miss me', 'you need a laugh', 'you had a bad day', 'it\'s your birthday', 'you need a hug', 'you\'re proud of yourself'];
@@ -18,82 +19,15 @@ const html = (s) => h('span.art', { html: s });
 // ── drawings ───────────────────────────────────────────────
 const tag = (text, tone = '') => h(`span.tag${tone ? '.' + tone : ''}`, text);
 
-// ── icons: clean, lit, no outlines, so they sit with the system UI ─────────
-let uid = 0;
-const TINTS = {
-  rosa: ['#FFF1F5', '#F9D3DE', '#E9B3C3'], celeste: ['#F2F8FF', '#D4E6F8', '#B5CDE6'],
-  limon: ['#FFFCE6', '#F6EDB2', '#E3D88E'], white: ['#FFFFFF', '#F2F3F6', '#D9DCE3'],
-};
-const shadowDef = (id) => `<filter id="${id}" x="-30%" y="-30%" width="160%" height="175%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#1C1C1E" flood-opacity=".17"/></filter>`;
-export function envelopeIcon(paper = 'white', { open = false, size = 124 } = {}) {
-  const [hi, base, shade] = TINTS[paper] || TINTS.white, id = `ic${++uid}`;
-  const defs = `<defs>
-    <linearGradient id="${id}p" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${hi}"/><stop offset="1" stop-color="${base}"/></linearGradient>
-    <linearGradient id="${id}f" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${base}"/><stop offset="1" stop-color="${shade}"/></linearGradient>
-    <radialGradient id="${id}s" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#FF6B63"/><stop offset="1" stop-color="#C9001B"/></radialGradient>
-    <linearGradient id="${id}l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F4F4F7"/></linearGradient>
-    ${shadowDef(`${id}d`)}</defs>`;
-  if (!open) {
-    return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${defs}<g filter="url(#${id}d)">
-      <rect x="12" y="30" width="96" height="64" rx="9" fill="url(#${id}p)"/>
-      <path d="M15 90 L52 62 M105 90 L68 62" stroke="${shade}" stroke-width="1.3" stroke-linecap="round"/>
-      <path d="M12.5 37 Q12.5 30 19.5 30 H100.5 Q107.5 30 107.5 37 L64.5 66.5 Q60 69.5 55.5 66.5 Z" fill="url(#${id}f)"/>
-      <circle cx="60" cy="64.5" r="8.6" fill="url(#${id}s)"/><ellipse cx="57.3" cy="61.6" rx="2.8" ry="1.9" fill="#fff" opacity=".55"/>
-    </g></svg>`;
-  }
-  return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${defs}<g filter="url(#${id}d)">
-    <rect x="12" y="40" width="96" height="62" rx="9" fill="${shade}"/>
-    <path d="M12.5 46 L60 16 L107.5 46 Z" fill="url(#${id}f)"/>
-    <rect x="22" y="22" width="76" height="58" rx="5" fill="url(#${id}l)"/>
-    <path d="M32 36h46M32 46h56M32 56h38" stroke="#D1D1D6" stroke-width="3.4" stroke-linecap="round"/>
-    <path d="M12 52 L60 78 L108 52 V93 Q108 102 99 102 H21 Q12 102 12 93 Z" fill="url(#${id}p)"/>
-  </g></svg>`;
-}
-export function boxIcon({ open = false, size = 120 } = {}) {
-  const id = `ic${++uid}`;
-  const g = (n, a, b) => `<linearGradient id="${id}${n}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
-  const defs = `<defs>${g('t', '#F2D7AE', '#E3BF8C')}${g('a', '#D9AC74', '#C8975D')}${g('b', '#BC8850', '#A87642')}${g('i', '#7B5532', '#5C3E22')}${shadowDef(`${id}d`)}</defs>`;
-  if (!open) {
-    return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${defs}<g filter="url(#${id}d)">
-      <path d="M60 22 L101 40 L60 58 L19 40 Z" fill="url(#${id}t)"/>
-      <path d="M19 40 L60 58 L60 101 L19 83 Z" fill="url(#${id}a)"/>
-      <path d="M60 58 L101 40 L101 83 L60 101 Z" fill="url(#${id}b)"/>
-      <path d="M36 32.6 L44 29 L84.6 47 L76.6 50.6 Z" fill="#F8EBD2" opacity=".92"/>
-      <path d="M76.6 50.6 L84.6 47 L84.6 89.6 L76.6 93.2 Z" fill="#EEDBB8" opacity=".9"/>
-      <path d="M19 40 L60 58 L101 40" fill="none" stroke="#FFF6E6" stroke-width="1" opacity=".6"/>
-    </g></svg>`;
-  }
-  return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true">${defs}<g filter="url(#${id}d)">
-    <path d="M19 44 L60 26 L56 9 L15 27 Z" fill="url(#${id}a)"/>
-    <path d="M60 26 L101 44 L105 27 L64 9 Z" fill="url(#${id}b)"/>
-    <path d="M60 26 L101 44 L60 62 L19 44 Z" fill="url(#${id}i)"/>
-    <path d="M19 44 L60 62 L60 104 L19 86 Z" fill="url(#${id}a)"/>
-    <path d="M60 62 L101 44 L101 86 L60 104 Z" fill="url(#${id}b)"/>
-    <path d="M19 44 L60 62 L51 76 L10 58 Z" fill="url(#${id}t)"/>
-    <path d="M60 62 L101 44 L110 58 L69 76 Z" fill="url(#${id}t)"/>
-  </g></svg>`;
-}
-// SF-style glyph tiles, like a small app icon
-const GLYPHS = {
-  wave: '<path d="M14 24v0M20 18v12M26 12v24M32 16v16M38 21v6" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>',
-  sine: '<path d="M10 24c3-8 6-8 9 0s6 8 9 0 6-8 9 0 3 4 4 4" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>',
-  lock: '<rect x="15" y="21" width="18" height="14" rx="3.5" fill="#fff"/><path d="M18.5 21v-4a5.5 5.5 0 0 1 11 0v4" fill="none" stroke="#fff" stroke-width="3"/>',
-};
-export function glyphTile(kind, [a, b], size = 92) {
-  const id = `ic${++uid}`;
-  return `<svg viewBox="0 0 48 48" width="${size}" height="${size}" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>${shadowDef(`${id}d`)}</defs>
-    <g filter="url(#${id}d)"><rect x="2" y="2" width="44" height="44" rx="11" fill="url(#${id})"/></g>${GLYPHS[kind]}</svg>`;
-}
-const TRINKET_EMOJI = { pebble: '🪨', leaf: '🍂', coin: '🪙', ticket: '🎟️', button: '🔘', matchbook: '🔥', flower: '🌼', bottlecap: '🍾', feather: '🪶', candy: '🍬', key: '🗝️' };
 function keptIcon(e) {
   const p = e.payload || {};
   switch (e.kind) {
     case 'photo': return h('div.k2.photo', h('img', { src: p.thumb, alt: '' }));
     case 'note': return h('div.k2.note', { style: { background: PAPERS[p.paper] || '#fff' } }, (p.text || '').slice(0, 90));
     case 'doodle': { const c = h('canvas', { width: 168, height: 168 }); const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 84, 1); return h('div.k2.doodle', c); }
-    case 'trinket': return h('div.k2.emoji', TRINKET_EMOJI[p.what] || '✨');
-    case 'whisper': return html(glyphTile('wave', ['#FF6482', '#FF2D55']));
-    case 'wiggle': return html(glyphTile('sine', ['#C779EB', '#AF52DE']));
+    case 'trinket': return h('div.k2.emoji', trinketEmoji(p.what));
+    case 'whisper': return html(glyphTile('wave', GLYPH_COLORS.whisper));
+    case 'wiggle': return html(glyphTile('sine', GLYPH_COLORS.wiggle));
   }
   return null;
 }

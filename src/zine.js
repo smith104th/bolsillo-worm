@@ -2,7 +2,9 @@
 // then bound into a PDF right here on the phone. No server, no libraries.
 import { h, fmtDistance, store } from './util.js';
 import { sheet, btn, toast, segmented } from './ui.js';
-import { makeSky, skyFor, drawHole, PAPERS, TRINKETS, drawTrinket, renderStrokes, mixHex, SKY } from './draw.js';
+import { makeSky, skyFor, drawHole, PAPERS, TRINKETS, renderStrokes, mixHex, SKY } from './draw.js';
+import { drawEmoji } from './brush.js';
+import { trinketEmoji, drawGlyphTile } from './icons.js';
 import { Worm } from './worm.js';
 import { SOIL_BG, SOIL_FG } from './soil.js';
 
@@ -151,18 +153,18 @@ function tileFor(x, app, e, img, names) {
     case 'trinket': {
       font(x, 400, 7.5); const ins = p.inscription ? wrap(x, p.inscription, TW - 6, 3) : [];
       return { h: 74 + ins.length * 9.5 + 12, draw(X, Y) {
-        x.save(); x.translate(X + TW / 2, Y + 34); softShadow(x); drawTrinket(x, p.what, 22, p.text || ''); noShadow(x); x.restore();
+        x.save(); x.translate(X + TW / 2, Y + 34); softShadow(x); drawEmoji(x, trinketEmoji(p.what), 0, 0, 30); noShadow(x); x.restore();
         font(x, 500, 7.5); x.fillStyle = INK; x.textAlign = 'center'; x.fillText((TRINKETS[p.what] || 'something').replace(/^an? /, ''), X + TW / 2, Y + 70); x.textAlign = 'left';
         font(x, 400, 7.5); x.fillStyle = INK2; x.textAlign = 'center'; ins.forEach((l, i) => x.fillText(l, X + TW / 2, Y + 80 + i * 9.5)); x.textAlign = 'left';
         x.save(); x.translate(X, Y); label(74 + ins.length * 9.5 + 9); x.restore();
       } };
     }
-    case 'whisper': case 'wiggle': return { h: 62, draw(X, Y) {
+    case 'whisper': case 'wiggle': return { h: 66, draw(X, Y) {
+      x.save(); x.translate(X + TW / 2, Y + 17); drawGlyphTile(x, e.kind === 'whisper' ? 'wave' : 'sine', 26, 0.4); x.restore();
       x.save(); x.translate(X, Y);
-      x.beginPath(); x.ellipse(TW / 2, 24, 46, 22, -0.05, 0, Math.PI * 2); x.fillStyle = '#F2F2F7'; x.fill();
       font(x, 500, 8.5); x.fillStyle = INK; x.textAlign = 'center';
-      x.fillText(e.kind === 'whisper' ? `🐚  a ${Math.round(p.dur || 0)}s whisper` : `〰️  ${p.label || 'a wiggle'}`, TW / 2, 27);
-      x.textAlign = 'left'; label(58); x.restore();
+      x.fillText(e.kind === 'whisper' ? `a ${Math.round(p.dur || 0)}s whisper` : (p.label || 'a wiggle'), TW / 2, 45);
+      x.textAlign = 'left'; label(62); x.restore();
     } };
   }
   return null;

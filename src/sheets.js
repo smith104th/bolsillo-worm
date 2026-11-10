@@ -1,9 +1,10 @@
 // The paper slips: feed, drop, today, us, peek, settings, the jar.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
 import { sheet, btn, icon, toast, field, segmented, confirmBox, closeAllSheets } from './ui.js';
-import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
+import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS, renderStrokes } from './draw.js';
 import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
-import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas, reactRow, theirReactions } from './compose.js';
+import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketArt, reactRow, theirReactions } from './compose.js';
+import { envelopeIcon, glyphTile, GLYPH_COLORS } from './icons.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { plantSheet, viewPhoto } from './soil.js';
 import { leaveSheet } from './shelf.js';
@@ -207,6 +208,23 @@ export function peekSheet(app) {
 }
 
 // ── the jar: everything that ever came through
+// Same icons as the pocket and the shelf (src/icons.js).
+function jarIcon(e) {
+  const p = e.payload || {};
+  const art = (svg) => h('span.jar-art', { html: svg });
+  switch (e.kind) {
+    case 'photo': return p.thumb ? h('img', { src: p.thumb, alt: '' }) : h('span.jar-art');
+    case 'note': return art(envelopeIcon(p.paper, { open: !!e.opened_at, size: 64 }));
+    case 'whisper': return art(glyphTile('wave', GLYPH_COLORS.whisper, 54));
+    case 'wiggle': return art(glyphTile('sine', GLYPH_COLORS.wiggle, 54));
+    case 'trinket': return h('span.jar-art', trinketArt(p.what, 40));
+    case 'doodle': {
+      const c = h('canvas', { width: 88, height: 88 }); const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 44, 1);
+      return h('span.jar-art', h('span.jar-doodle', c));
+    }
+  }
+  return h('span.jar-art');
+}
 export function jarSheet(app) {
   const all = app.S.events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'].includes(e.kind));
   let filter = 'theirs';
@@ -214,7 +232,7 @@ export function jarSheet(app) {
   const render = () => {
     const list = all.filter((e) => (filter === 'theirs' ? e.from_slot !== app.slot() : filter === 'mine' ? e.from_slot === app.slot() : e.kept));
     grid.replaceChildren(...(list.length ? list.map((e) => h('button.jar-item', { type: 'button', onclick: () => openItem(app, app.asItem(e)) },
-      e.kind === 'photo' && e.payload?.thumb ? h('img', { src: e.payload.thumb }) : e.kind === 'trinket' ? trinketCanvas(e.payload?.what, 44, e.payload?.text) : h('span.jar-ic', icon(e.kind)),
+      jarIcon(e),
       h('span.small', titleFor(e).replace(/^An? /, '').replace('Something they found', 'found')), h('span.mono.tiny', ago(e.created_at)))) : [h('p.muted', 'Empty.')]));
   };
   sheet('The jar', [segmented({ theirs: 'From them', mine: 'From you', kept: 'Kept' }, filter, (k) => { filter = k; render(); }), grid], { tall: true });

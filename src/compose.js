@@ -1,7 +1,8 @@
 // Making things to drop through the hole, and opening things that came out of it.
 import { h, ago, clamp } from './util.js';
 import { sheet, btn, icon, toast, field, segmented } from './ui.js';
-import { PAPERS, TRINKETS, drawTrinket, renderStrokes, REACTIONS } from './draw.js';
+import { PAPERS, TRINKETS, renderStrokes, REACTIONS } from './draw.js';
+import { trinketEmoji, glyphTile, GLYPH_COLORS } from './icons.js';
 import { photoFromFile, Recorder, blobToDataURL } from './media.js';
 import { sfx, buzz } from './feel.js';
 
@@ -166,12 +167,9 @@ export function composeWiggle(app) {
   ]);
 }
 
-export function trinketCanvas(kind, size = 64, text = '') {
-  const c = h('canvas', { width: size * 2, height: size * 2, style: { width: size + 'px', height: size + 'px' } });
-  const x = c.getContext('2d'); x.scale(2, 2); x.translate(size / 2, size / 2);
-  x.shadowColor = 'rgba(0,0,0,.25)'; x.shadowBlur = 4; x.shadowOffsetY = 2;
-  drawTrinket(x, kind, size * 0.3, text);
-  return c;
+// Found things are Apple emoji everywhere (pocket, picker, shelf, jar, zine).
+export function trinketArt(kind, size = 64) {
+  return h('span.temoji', { style: { fontSize: `${size}px` } }, trinketEmoji(kind));
 }
 export function composeTrinket(app) {
   let what = null;
@@ -180,7 +178,7 @@ export function composeTrinket(app) {
   const labelField = field('Printed on it', label); labelField.hidden = true;
   const grid = h('div.trinkets', Object.entries(TRINKETS).map(([k, name]) =>
     h('button.trinket', { type: 'button', onclick: (e) => { what = k; [...grid.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); labelField.hidden = !['ticket', 'matchbook'].includes(k); sfx.pop(); } },
-      trinketCanvas(k, 52), h('span', name.replace(/^an? /, '')))));
+      trinketArt(k, 38), h('span', name.replace(/^an? /, '')))));
   const s = sheet('Something you found', [
     grid, labelField, field('A line about it', note),
     btn('Slip it in', async (e) => {
@@ -253,17 +251,17 @@ export function openItem(app, it) {
         audio.play(); playBtn.replaceChildren(icon('stop'));
       };
       onClose = () => audio?.pause();
-      body = [h('div.shell-art', trinketShell()), h('div.rec', playBtn), bar, h('p.small.muted.center', `${p.dur || ''}s. Hold it up to your ear.`)];
+      body = [h('div.shell-art', { html: glyphTile('wave', GLYPH_COLORS.whisper, 132) }), h('div.rec', playBtn), bar, h('p.small.muted.center', `${p.dur || ''}s. Hold it up to your ear.`)];
       break;
     }
     case 'wiggle': {
       const feel = () => { buzz(p.pattern || [200]); app.pocket.wiggle(p.pattern || [200]); };
-      body = [h('p.big-quote', p.label ? `“${p.label}”` : 'A wiggle'), btn('Feel it again', feel, 'primary')];
+      body = [h('div.shell-art', { html: glyphTile('sine', GLYPH_COLORS.wiggle, 132) }), h('p.big-quote', p.label ? `“${p.label}”` : 'A wiggle'), btn('Feel it again', feel, 'primary')];
       setTimeout(feel, 400);
       break;
     }
     case 'trinket':
-      body = [h('div.trinket-big', trinketCanvas(p.what, 150, p.text)), h('p.big-quote', TRINKETS[p.what] || 'Something'), p.inscription ? h('p.handwriting.center', p.inscription) : null];
+      body = [h('div.trinket-big', trinketArt(p.what, 120)), h('p.big-quote', TRINKETS[p.what] || 'Something'), p.text ? h('p.trinket-print.mono', p.text) : null, p.inscription ? h('p.handwriting.center', p.inscription) : null].filter(Boolean);
       break;
   }
   const keepBtn = h('button.btn.ghost', { type: 'button' }, icon(it.kept ? 'heartFill' : 'heart'), it.kept ? ' Kept' : ' Keep it');
@@ -284,7 +282,4 @@ export function openItem(app, it) {
 
 export function titleFor(it) {
   return { note: 'A note', doodle: 'A doodle', photo: 'A polaroid', whisper: 'A whisper', wiggle: 'A wiggle', trinket: 'Something they found' }[it.kind] || 'Something';
-}
-function trinketShell() {
-  return h('div', { html: `<svg viewBox="0 0 120 100" width="150"><defs><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F9D3BE"/><stop offset="1" stop-color="#E59E86"/></linearGradient></defs><path d="M60 92 C 20 70 6 40 14 22 C 30 6 90 6 106 22 C 114 40 100 70 60 92Z" fill="url(#sh)"/>${[...Array(7)].map((_, i) => `<path d="M60 88 L ${18 + i * 14} ${18 + Math.abs(3 - i) * 3}" stroke="rgba(160,80,60,.45)" stroke-width="2" fill="none"/>`).join('')}<rect x="50" y="86" width="20" height="8" rx="2" fill="#E59E86"/></svg>` });
 }
