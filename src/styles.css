@@ -593,3 +593,27 @@ body.dark .shelf-hint { color: #fff; }
 .s-pair p.none { font-style: italic; }
 .s-foot { margin-top: 36px; display: flex; flex-direction: column; gap: 12px; }
 .s-foot .s-note { margin: 0; text-align: center; }
+
+/* Us: more air in every card */
+.us-sheet .sheet-body { gap: 12px; }
+.us-sheet .card { padding: 22px; gap: 0; border-radius: 28px; }
+.us-sheet .card .big-num { margin-top: 14px; }
+.us-sheet .card .card-note { margin-top: 8px; line-height: 1.4; }
+.us-sheet .card.tunnel .tunnel-bar { margin: 14px 0 0; }
+.us-sheet .card.tunnel .big-num { margin-top: 18px; }
+.us-sheet .card.two { gap: 12px; padding: 0; border-radius: 0; }
+.us-sheet .worm-card { display: flex; flex-direction: column; min-height: 188px; padding: 20px; border-radius: 28px; }
+.us-sheet .worm-card .big-num { margin-top: 14px; }
+.us-sheet .worm-name { margin: 6px 0 0; font: 500 15px/1.2 var(--sans); }
+.us-sheet .worm-blurb { margin: auto 0 0; padding-top: 14px; line-height: 1.35; }
+.us-sheet .card.night .big-num { font-size: 58px; letter-spacing: -0.06em; margin-top: 16px; }
+.us-sheet .card.night .big-num span { font-size: 17px; letter-spacing: -0.01em; margin-left: 2px; }
+.us-sheet .card.night .big-num.ask { font-size: 28px; line-height: 1.1; letter-spacing: -0.04em; }
+.us-sheet .reunion-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+.us-sheet .reunion-fields input { min-width: 0; width: 100%; min-height: 54px; height: 54px; padding: 0 14px; border-radius: 16px; }
+.us-sheet .card.night .btn { margin-top: 10px; min-height: 54px; }
+.us-sheet .stats { gap: 10px; }
+.us-sheet .stat { min-height: 104px; padding: 16px 14px 15px; border-radius: 22px; justify-content: space-between; gap: 10px; }
+.us-sheet .stat span { font-size: 13px; line-height: 1.25; }
+.us-sheet .btn-grid { gap: 10px; }
+.us-sheet .btn-grid .btn { min-height: 54px; font-size: 15px; }

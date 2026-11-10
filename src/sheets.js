@@ -141,23 +141,27 @@ export function usSheet(app) {
   const ev = S.events;
   const count = (k, slot) => ev.filter((e) => e.kind === k && (slot == null || e.from_slot === slot)).reduce((a, e) => a + (e.payload?.n || 1), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
-  const wormCard = (m, inches, mine) => h('div', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
-    h('span.mono.small', mine ? 'YOU' : (m?.name || '').toUpperCase()), h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')), h('p.small', m?.worm?.name || ''), h('p.small.muted', lengthBlurb(inches)));
+  const wormCard = (m, inches, mine) => h('div.worm-card', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
+    h('span.mono.small', mine ? 'YOU' : (m?.name || '').toUpperCase()),
+    h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')),
+    h('p.worm-name', m?.worm?.name || ''),
+    h('p.small.muted.worm-blurb', lengthBlurb(inches)));
+  const note = hole.reunion_note && hole.reunion_note.trim().toLowerCase() !== 'same pocket' ? hole.reunion_note : null;
 
   sheet('Us', [
-    h('div.card',
+    h('div.card.tunnel',
       h('div.row.between', h('span.mono.small.muted', (me?.place?.city || 'You').toUpperCase()), h('span.mono.small.muted', (them?.place?.city || 'Them').toUpperCase())),
       h('div.tunnel-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', `${fmtDistance(hole.tunnel_km || 0, units)}`)),
       h('p.big-num', fmtDistance(hole.dug_km || 0, units), h('span', ' dug')),
-      h('p.small.muted', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
+      h('p.small.muted.card-note', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
     h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
     h('div.card.night',
       h('span.mono.small', 'SAME POCKET'),
       days != null && days >= 0
         ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
-        : h('p.big-num', h('span', 'When are you together next?')),
-      hole.reunion_note && days >= 0 ? h('p.small.muted', hole.reunion_note) : null,
-      h('div.row', reunionIn, reunionNote),
+        : h('p.big-num.ask', 'When are you together next?'),
+      note && days >= 0 ? h('p.small.card-note', note) : null,
+      h('div.reunion-fields', reunionIn, reunionNote),
       btn('Set the countdown', async () => {
         if (!reunionIn.value) return toast('Pick a date.');
         try { await app.backend.setReunion(reunionIn.value, reunionNote.value.trim() || null); app.backend.nudge('reunion', { note: reunionNote.value.trim() }); toast('Countdown set.'); } catch { toast('Couldn\'t save. Try again.'); }
@@ -171,7 +175,7 @@ export function usSheet(app) {
       btn('🌱 Soil', () => { closeAllSheets(); app.goTo(2); }, 'ghost'),
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
-  ], { tall: true });
+  ].filter(Boolean), { tall: true, className: 'us-sheet' });
 }
 const stat = (n, label) => h('div.stat', h('b', String(n)), h('span', label));
 
