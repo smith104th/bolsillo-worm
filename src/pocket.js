@@ -58,15 +58,15 @@ export class Pocket {
   start() { if (!this.running) { this.running = true; this.last = performance.now(); requestAnimationFrame(this.loop); } }
   stop() { this.running = false; }
 
-  setTheirWorm(design, inches) {
-    const segs = segsFor(inches);
+  setTheirWorm(design, cm) {
+    const segs = segsFor(cm);
     if (!this.worm) {
       this.worm = new Worm(design, { x: this.W * 0.5, y: (this.bounds.t + this.bounds.b) / 2, R: this.R, segs, angle: -0.4 });
     } else { this.worm.setDesign(design); this.worm.setSegments(segs); }
   }
-  setMyWorm(design, inches) {
-    this.myDesign = design; this.myInches = inches;
-    if (this.mine) { this.mine.setDesign(design); this.mine.setSegments(segsFor(inches)); }
+  setMyWorm(design, cm) {
+    this.myDesign = design; this.myCm = cm;
+    if (this.mine) { this.mine.setDesign(design); this.mine.setSegments(segsFor(cm)); }
   }
 
   setLive(on) {
@@ -74,7 +74,7 @@ export class Pocket {
     this.live = on;
     if (on && this.myDesign) {
       // my worm drops in from the sky, head first
-      const segs = segsFor(this.myInches || 4), b = this.bounds;
+      const segs = segsFor(this.myCm || 4), b = this.bounds;
       const m = this.mine = new Worm(this.myDesign, { x: this.W / 2 + rand(-50, 50), y: -this.R * 2, R: this.R, segs, angle: Math.PI / 2 });
       const len = (segs - 1) * m.spacing;
       m.alpha = 0; m.rest = 1.4;

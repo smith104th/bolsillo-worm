@@ -725,7 +725,10 @@ svg .spin { animation: recordspin 6s linear infinite; }
 .us-sheet .count-edit { font: 600 14px/1 var(--sans); letter-spacing: -0.01em; color: #fff; background: rgba(255,255,255,0.16); border-radius: 999px; padding: 9px 16px; transition: transform 0.12s; }
 .us-sheet .count-edit:active { transform: scale(0.95); }
 .us-sheet .countdown .count-top + .count-head .big-num { margin-top: 10px; }
-.us-sheet .count-when { margin: 10px 0 0; font-size: 11px; letter-spacing: 0.08em; color: #fff; }
+.us-sheet .countdown .count-bar { margin: 16px 0 0; }
+.us-sheet .countdown .count-bar span { background: linear-gradient(90deg, #A3E6EC, #FFC8D7 60%, #FF6482); }
+.us-sheet .countdown .count-bar b, .us-sheet .countdown .count-bar i { color: #000; }
+.us-sheet .count-when { margin: 14px 0 0; font-size: 11px; letter-spacing: 0.08em; color: #fff; }
 
 /* Welcome: a quiet way back in next to "start" */
 .hero-card > .hero-actions { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

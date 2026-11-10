@@ -22,17 +22,22 @@ export const ACCESSORIES = {
 };
 export const DEFAULT_DESIGN = { name: '', color: 'lombriz', pattern: 'rings', acc: 'none' };
 
-export const inchesFor = (love = 0) => 3 + 0.3 * Math.pow(Math.max(0, love), 0.55);
-export const segsFor = (inches) => clamp(Math.round(11 + inches * 0.75), 11, 44);
-export function lengthBlurb(inches) {
+// Worms stay small and cute (Manu, Nov 10: "a 16-inch worm is like a snake"). Length is in
+// centimeters and grows on a log curve: quick at first, then a millimeter here and there.
+// Never shrinks (love only grows). 4 cm new, ~6.4 cm at 640 love, ~10 cm at 12,000, ~12 cm at 50,000.
+export const cmFor = (love = 0) => 4 + 1.2 * Math.log(1 + Math.max(0, love) / 100);
+// how long the worm is drawn: about what it was for the love levels the two worms had on Nov 10
+export const segsFor = (cm) => clamp(Math.round(9 + cm * 1.5), 14, 28);
+export function lengthBlurb(cm) {
   const ladder = [
-    [4, 'about a gummy worm'], [6, 'longer than a pencil stub'], [8, 'a proper garden worm'],
-    [11, 'nightcrawler territory'], [14, 'longer than a school ruler'],
-    [18, 'longer than your forearm'], [24, 'two whole feet of worm'], [36, 'a yard of devotion'],
-    [60, 'taller than a toddler'], [9999, 'legendary. a Gippsland giant'],
+    [4.5, 'about a paperclip'], [5, 'a gummy worm, the short kind'], [5.5, 'a pinky finger'],
+    [6, 'a crayon nub'], [7, 'a tube of lipstick'], [8, 'a matchbox and a half'],
+    [9, 'a brand new crayon'], [10, 'a birthday candle'], [11.5, 'a teaspoon'],
+    [13, 'a pencil stub'], [9999, 'the longest little worm around'],
   ];
-  return ladder.find(([n]) => inches < n)[1];
+  return ladder.find(([n]) => cm < n)[1];
 }
+export const fmtCm = (cm) => cm.toFixed(1);
 
 const mix = (a, b, t) => {
   const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);

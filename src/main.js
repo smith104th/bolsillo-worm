@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
-import { inchesFor } from './worm.js';
+import { cmFor } from './worm.js';
 import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, topSheet, ICON, confirmBox } from './ui.js';
 import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
@@ -153,12 +153,12 @@ function refreshPocket() {
   updateBadge(items);
   const them = app.them(), me = app.me();
   if (them) {
-    pocket.setTheirWorm(them.worm, inchesFor(them.love));
+    pocket.setTheirWorm(them.worm, cmFor(them.love));
     const fresh = S.events.filter((e) => e.kind === 'kiss' && e.from_slot === S.slot && hoursSince(e.created_at) < 24).length;
     pocket.setMarks(fresh);
     pocket.setNeeds({ hungry: clamp(hoursSince(them.fed_at) / 36, 0, 1), dry: clamp(hoursSince(them.misted_at) / 30, 0, 1) });
   }
-  if (me) pocket.setMyWorm(me.worm, inchesFor(me.love));
+  if (me) pocket.setMyWorm(me.worm, cmFor(me.love));
   if (them && !S.weather && !S.weatherLoading && Date.now() - (S.weatherAt || 0) > 120000) loadWeather();
   updateSky();
   renderHeader();

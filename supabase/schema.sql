@@ -17,6 +17,9 @@ create table if not exists public.holes (
   reunion_on    date,
   reunion_note  text
 );
+-- the day the current countdown started, so the Us card can show how far along you are
+alter table public.holes add column if not exists reunion_from date;
+
 
 create table if not exists public.members (
   hole_id    uuid not null references public.holes(id) on delete cascade,
@@ -337,7 +340,13 @@ declare m members;
 begin
   select * into m from members where user_id = auth.uid();
   if not found then raise exception 'no_hole'; end if;
-  update holes set reunion_on = p_on, reunion_note = left(p_note, 80) where id = m.hole_id;
+  -- a new countdown (none set, or the last one has passed) starts today; moving the date
+  -- or the place of a running one keeps its start, so the bar doesn't jump back
+  update holes set
+    reunion_from = case when reunion_on is null or reunion_on < wh_today(m.hole_id) or reunion_from is null
+                        then wh_today(m.hole_id) else reunion_from end,
+    reunion_on = p_on, reunion_note = left(p_note, 80)
+  where id = m.hole_id;
   insert into events (hole_id, from_slot, kind, payload)
   values (m.hole_id, m.slot, 'reunion', jsonb_build_object('on', p_on, 'note', left(p_note, 80)));
 end $$;

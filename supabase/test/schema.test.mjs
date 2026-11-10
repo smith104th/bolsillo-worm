@@ -130,6 +130,24 @@ await fails(U.B, 'select wh_daily($1, null, $2, $3, $4)', [yday, `media:${b1}`, 
 const legacy = (await db.query(`select count(*)::int n from media where data is not null and r2 is null`)).rows[0].n;
 assert.ok(legacy >= 1, 'old photos keep their bytes until they move');
 
+// the countdown remembers when it started; moving a running one keeps the start
+{
+  const [{ hd }] = (await db.query(`select wh_today(id)::text hd from holes limit 1`)).rows;
+  const plus = (n) => new Date(new Date(hd).getTime() + n * 86400000).toISOString().slice(0, 10);
+  await as(U.A, `select wh_set_reunion($1, 'Madrid')`, [plus(20)]);
+  let [h1] = await as(U.A, `select reunion_from::text f, reunion_on::text o from holes`);
+  assert.equal(h1.f, hd, 'a new countdown starts today');
+  await db.query(`update holes set reunion_from = $1`, [plus(-3)]);
+  await as(U.B, `select wh_set_reunion($1, 'Lisbon')`, [plus(25)]);
+  [h1] = await as(U.A, `select reunion_from::text f, reunion_on::text o from holes`);
+  assert.equal(h1.f, plus(-3), 'moving the date keeps the start');
+  assert.equal(h1.o, plus(25));
+  await db.query(`update holes set reunion_on = $1`, [plus(-1)]);
+  await as(U.A, `select wh_set_reunion($1, null)`, [plus(10)]);
+  [h1] = await as(U.A, `select reunion_from::text f from holes`);
+  assert.equal(h1.f, hd, 'after the last one passed, a new one starts today');
+}
+
 // updated_at follows every change to an event
 {
   const [e0] = await as(U.A, `select id, updated_at from events order by id limit 1`);

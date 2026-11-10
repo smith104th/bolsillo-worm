@@ -2,7 +2,7 @@
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
 import { sheet, btn, icon, toast, field, segmented, confirmBox, closeAllSheets } from './ui.js';
 import { FOODS, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS, renderStrokes } from './draw.js';
-import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
+import { COLORS, PATTERNS, ACCESSORIES, cmFor, segsFor, lengthBlurb, fmtCm } from './worm.js';
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeSong, openItem, titleFor, trinketArt, reactRow, theirReactions } from './compose.js';
 import { envelopeIcon, glyphTile, GLYPH_COLORS, recordIcon } from './icons.js';
 import { PROVIDERS } from './music.js';
@@ -138,17 +138,17 @@ export function usSheet(app) {
   const S = app.S, me = app.me(), them = app.them(), hole = S.hole || {};
   const units = store('settings')?.units || app.defaultUnits();
   const pct = hole.tunnel_km ? Math.min(1, hole.dug_km / hole.tunnel_km) : 0;
-  const myIn = inchesFor(me?.love), theirIn = inchesFor(them?.love);
+  const myCm = cmFor(me?.love), theirCm = cmFor(them?.love);
   // Counts start from what's loaded (the newest 500 events), then switch to the
   // pocket's whole life from wh_stats, so they never stall or drop.
   let rows = S.events.map((e) => ({ kind: e.kind, from_slot: e.from_slot, n: e.payload?.n || 1 }));
   const count = (k, slot) => rows.filter((r) => r.kind === k && (slot == null || r.from_slot === slot)).reduce((a, r) => a + Number(r.n), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
-  const wormCard = (m, inches, mine) => h('div.worm-card', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
+  const wormCard = (m, cm, mine) => h('div.worm-card', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
     h('span.mono.small', mine ? 'YOU' : (m?.name || '').toUpperCase()),
-    h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')),
+    h('p.big-num', fmtCm(cm), h('span', ' cm')),
     h('p.worm-name', m?.worm?.name || ''),
-    h('p.small.muted.worm-blurb', lengthBlurb(inches)));
+    h('p.small.muted.worm-blurb', lengthBlurb(cm)));
   // The countdown card has two states (Manu): once it's set it just reads
   // "Same pocket in N days" with a small Edit; Edit brings back the fields and
   // the button, and saving folds it back. With no date (or a past one) it opens
@@ -156,6 +156,14 @@ export function usSheet(app) {
   const daysTo = (on) => (on ? Math.ceil((Date.parse(on + 'T00:00:00') - Date.now()) / 86400000) : null);
   const longDate = (on) => new Date(on + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const placeOf = (where) => (where && where.trim() && where.trim().toLowerCase() !== 'same pocket' ? where.trim() : null);
+  // how far along the wait is: from the day the countdown started to the day you meet
+  const dayNum = (d) => Date.parse(d + 'T00:00:00Z') / 86400000;
+  const countBar = (from, on) => {
+    const start = from && from <= app.today() ? from : app.today(), total = dayNum(on) - dayNum(start);
+    const pct = total > 0 ? Math.min(1, Math.max(0, (dayNum(app.today()) - dayNum(start)) / total)) : 1;
+    const gone = Math.max(0, Math.min(total, dayNum(app.today()) - dayNum(start)));
+    return h('div.tunnel-bar.count-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', total > 0 ? `DAY ${gone} OF ${total}` : 'TODAY'));
+  };
   const bigCount = (days) => (days === 0 ? h('p.big-num', 'Today') : h('p.big-num', `${days}`, h('span', ` day${days > 1 ? 's' : ''}`)));
   const countCard = h('div.card.night.countdown');
   let editing = !(daysTo(hole.reunion_on) >= 0);
@@ -166,6 +174,7 @@ export function usSheet(app) {
         h('div.count-top', h('span.mono.small', days === 0 ? 'SAME POCKET' : 'SAME POCKET IN'),
           h('button.count-edit', { type: 'button', onclick: () => { editing = true; renderCount(); } }, 'Edit')),
         h(`div.count-head${pop ? '.pop' : ''}`, bigCount(days)),
+        countBar(S.hole?.reunion_from, on),
         h('p.count-when.mono', [longDate(on), placeOf(where)].filter(Boolean).join('  ·  ').toUpperCase()));
       return;
     }
@@ -188,7 +197,8 @@ export function usSheet(app) {
       save.disabled = true; save.classList.add('busy');
       try {
         await app.backend.setReunion(nextOn, nextWhere);
-        app.S.hole = { ...app.S.hole, reunion_on: nextOn, reunion_note: nextWhere };
+        const prev = app.S.hole || {}, fresh = !prev.reunion_on || prev.reunion_on < app.today() || !prev.reunion_from;
+        app.S.hole = { ...prev, reunion_on: nextOn, reunion_note: nextWhere, reunion_from: fresh ? app.today() : prev.reunion_from };
         editing = false; renderCount(true);
         toast('Countdown set.');
         app.backend.nudge('reunion', { note: nextWhere || '' });
@@ -223,7 +233,7 @@ export function usSheet(app) {
       h('div.tunnel-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', `${fmtDistance(hole.tunnel_km || 0, units)}`)),
       h('p.big-num', fmtDistance(hole.dug_km || 0, units), h('span', ' dug')),
       h('p.small.muted.card-note', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
-    h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
+    h('div.card.two', wormCard(me, myCm, true), wormCard(them, theirCm, false)),
     countCard,
     stats,
     h('div.btn-grid.four',
@@ -258,7 +268,7 @@ export function peekSheet(app) {
     h('h3', 'Lately'),
     h('ul.log', evs.map(line).filter(Boolean).length ? evs.map(line) : h('li.muted', 'Nothing yet.')),
   ], { onClose: () => pv?.stop() });
-  let pv; requestAnimationFrame(() => { pv = wormPreview(cv, me?.worm || {}, { segs: Math.min(30, 11 + Math.round(inchesFor(me?.love) * 0.75)) }); pv.worm.marks = []; });
+  let pv; requestAnimationFrame(() => { pv = wormPreview(cv, me?.worm || {}, { segs: segsFor(cmFor(me?.love)) }); pv.worm.marks = []; });
   return s;
 }
 
@@ -326,7 +336,7 @@ export function editWorm(app) {
   };
   const swatches = h('div.swatches', Object.entries(COLORS).map(([k, c]) => h(`button.swatch${d.color === k ? '.on' : ''}`, { type: 'button', style: { background: c.body }, onclick: (e) => { d.color = k; [...swatches.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(d); } })));
   const s = sheet('Your worm', [cv, field('Name', nameIn), h('div.field', h('span.field-label', 'Color'), swatches), h('div.field', h('span.field-label', 'Pattern'), chips(PATTERNS, 'pattern')), h('div.field', h('span.field-label', 'Wearing'), chips(ACCESSORIES, 'acc')),
-    btn('Save', async () => { d.name = nameIn.value.trim() || d.name; try { await app.backend.updateMe({ worm: d }); app.me().worm = d; app.pocket.setMyWorm(d, inchesFor(app.me().love)); toast('Saved. They\'ll see the new look.'); s.close(); } catch { toast('Couldn\'t save.'); } }, 'primary')],
+    btn('Save', async () => { d.name = nameIn.value.trim() || d.name; try { await app.backend.updateMe({ worm: d }); app.me().worm = d; app.pocket.setMyWorm(d, cmFor(app.me().love)); toast('Saved. They\'ll see the new look.'); s.close(); } catch { toast('Couldn\'t save.'); } }, 'primary')],
   { onClose: () => pv?.stop() });
   requestAnimationFrame(() => { pv = wormPreview(cv, d); });
 }

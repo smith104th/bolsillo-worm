@@ -5,7 +5,7 @@ export function mockBackend() {
   const now = () => new Date().toISOString();
   let id = 100;
   const me = 'me-user', them = 'them-user';
-  const hole = { id: 'demo-hole', code: 'DEMO2026', created_at: new Date(Date.now() - 86400000 * 23).toISOString(), tunnel_km: 9800, dug_km: 3120, tunnels_done: 0, touches: 3, reunion_on: new Date(Date.now() + 86400000 * 17).toISOString().slice(0, 10), reunion_note: 'Same pocket' };
+  const hole = { id: 'demo-hole', code: 'DEMO2026', created_at: new Date(Date.now() - 86400000 * 23).toISOString(), tunnel_km: 9800, dug_km: 3120, tunnels_done: 0, touches: 3, reunion_on: new Date(Date.now() + 86400000 * 17).toISOString().slice(0, 10), reunion_from: new Date(Date.now() - 86400000 * 6).toISOString().slice(0, 10), reunion_note: 'Same pocket' };
   const members = [];
   const events = [];
   const dailies = {};
@@ -149,7 +149,7 @@ export function mockBackend() {
     },
     async open(eid, keep) { const e = events.find((x) => x.id === eid); if (e) { if (e.from_slot !== 0) e.opened_at = e.opened_at || now(); if (keep != null) e.kept = keep; on.event?.({ ...e }, 'UPDATE'); } },
     async updateMe(patch) { const m = mine(); if (m) Object.assign(m, patch.name ? { name: patch.name } : {}, patch.worm ? { worm: patch.worm } : {}, patch.place ? { place: patch.place } : {}); },
-    async setReunion(on2, note) { hole.reunion_on = on2; hole.reunion_note = note; on.hole?.({ ...hole }); },
+    async setReunion(on2, note) { const t = new Date().toISOString().slice(0, 10); if (!hole.reunion_on || hole.reunion_on < t || !hole.reunion_from) hole.reunion_from = t; hole.reunion_on = on2; hole.reunion_note = note; on.hole?.({ ...hole }); },
     async daily(day, d) {
       const k = day; dailies[k] = dailies[k] || { 0: {}, 1: {} };
       if (d.answer) dailies[k][0].answer = d.answer;
