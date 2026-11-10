@@ -23,7 +23,8 @@
     "web-push": "^4.0.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.119.0"
+    "@supabase/supabase-js": "^2.119.0",
+    "three": "^0.187.0"
   },
   "private": true,
   "type": "module"

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#cfe2f0">
+<meta name="robots" content="noindex">
+<title>Garden &amp; House</title>
+<style>
+  @font-face { font-family: Geist; src: url(../fonts/geist.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
+  @font-face { font-family: GeistMono; src: url(../fonts/geist-mono.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe2f0; font-family: Geist, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: #111; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .veil { position: fixed; inset: 0; display: grid; place-items: center; background: #cfe2f0; font: 600 13px/1 GeistMono, monospace; letter-spacing: .14em; text-transform: uppercase; transition: opacity .6s; z-index: 5; }
+  body.ready .veil { opacity: 0; pointer-events: none; }
+  header { position: fixed; top: calc(env(safe-area-inset-top) + 16px); left: 18px; right: 18px; pointer-events: none; z-index: 2; }
+  header h1 { margin: 0; font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 1; }
+  header p { margin: 6px 0 0; font: 600 11px/1.3 GeistMono, monospace; letter-spacing: .1em; text-transform: uppercase; }
+  .glass { background: rgba(255,255,255,.62); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border-radius: 999px; box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+  .dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 14px); display: flex; flex-direction: column; gap: 10px; align-items: center; z-index: 2; width: min(440px, calc(100% - 24px)); }
+  .row { display: flex; gap: 4px; padding: 5px; align-items: center; width: 100%; box-sizing: border-box; justify-content: space-between; }
+  button { font: inherit; border: 0; background: transparent; color: #111; padding: 9px 0; border-radius: 999px; font-weight: 700; font-size: 13px; flex: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  button.on { background: #111; color: #fff; }
+  .sunrow { gap: 12px; padding: 6px 8px 6px 18px; }
+  .sunrow .t { font: 700 15px/1 GeistMono, monospace; min-width: 52px; }
+  .sunrow .l { font: 600 10px/1 GeistMono, monospace; letter-spacing: .08em; text-transform: uppercase; display: block; margin-top: 3px; }
+  input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; background: transparent; height: 30px; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #1b2547, #f0a37c 25%, #7fb7f0 40%, #7fb7f0 60%, #f0a37c 75%, #1b2547); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.3); margin-top: -10px; }
+  #nowbtn { flex: 0 0 auto; padding: 9px 14px; background: #111; color: #fff; }
+  .views button { font-size: 12px; }
+  .buildrow { display: none; flex-direction: column; gap: 6px; padding: 12px 16px; border-radius: 22px; }
+  body.building .buildrow { display: flex; }
+  .buildrow .top { display: flex; justify-content: space-between; width: 100%; font: 600 11px/1.2 GeistMono, monospace; letter-spacing: .06em; text-transform: uppercase; }
+  .buildrow input[type=range]::-webkit-slider-runnable-track { background: #111; }
+  .buildrow .acts { display: flex; gap: 8px; width: 100%; }
+  .buildrow .acts button { background: #111; color: #fff; }
+  #buildtoggle { position: fixed; top: calc(env(safe-area-inset-top) + 14px); right: 14px; z-index: 3; flex: none; padding: 9px 14px; font-size: 12px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="veil">Pouring concrete…</div>
+<header>
+  <h1>Garden &amp; House</h1>
+  <p>Ryue Nishizawa · Tokyo · 2011</p>
+</header>
+<button id="buildtoggle" class="glass">Build</button>
+<div class="dock">
+  <div class="buildrow glass">
+    <div class="top"><span id="bname">…</span><span id="bcount"></span></div>
+    <input id="build" type="range" min="0" step="1" value="0">
+    <div class="acts"><button id="addone">+ One piece</button></div>
+  </div>
+  <div class="row glass views">
+    <button data-view="street">Street</button><button data-view="corner">Corner</button><button data-view="side">Side</button><button data-view="aerial">Above</button><button data-view="roof">Roof</button>
+  </div>
+  <div class="row glass">
+    <button data-cut="4">All</button><button data-cut="3">4F</button><button data-cut="2">3F</button><button data-cut="1">2F</button><button data-cut="0">1F</button>
+  </div>
+  <div class="row glass sunrow">
+    <div><span class="t" id="time">--:--</span><span class="l" id="tlabel">Tokyo</span></div>
+    <input id="sun" type="range" min="0" max="23.99" step="0.05" value="12">
+    <button id="nowbtn">Now</button>
+  </div>
+</div>
+<script type="module" src="./house.js?v=9b0046f4"></script>
+</body>
+</html>
