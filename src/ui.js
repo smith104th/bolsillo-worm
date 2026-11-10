@@ -44,12 +44,33 @@ export const icon = (name, cls = '') => { const el = svg(ICON[name]); if (cls) e
 
 // ── toasts: little stitched tags under the label
 let toastBox;
+// One toast at a time (Manu, Nov 10: they used to pile up over the header on open).
+// The rest wait in line; tap or flick a toast up to dismiss it and bring the next one.
+// A text already waiting isn't queued twice.
+const queue = []; let showing = null;
 export function toast(text, { tone = 'plain', ms = 3200, icon: ic } = {}) {
   if (!toastBox) { toastBox = h('div.toasts'); document.body.append(toastBox); }
-  const el = h(`div.toast.${tone}${ic ? '' : '.plain-pad'}`, ic ? h('span.ti', icon(ic)) : null, h('span', text));
+  if (showing?.text === text || queue.some((t) => t.text === text)) return;
+  queue.push({ text, tone, ms, ic });
+  if (!showing) nextToast();
+}
+function nextToast() {
+  const t = queue.shift(); if (!t) { showing = null; return; }
+  showing = t;
+  const el = h(`div.toast.${t.tone}${t.ic ? '' : '.plain-pad'}`, t.ic ? h('span.ti', icon(t.ic)) : null, h('span', t.text));
+  let done = false, y0 = null;
+  const dismiss = () => {
+    if (done) return; done = true; clearTimeout(timer);
+    el.classList.remove('in');
+    setTimeout(() => { el.remove(); setTimeout(nextToast, queue.length ? 140 : 0); }, 360);
+  };
+  el.addEventListener('click', dismiss);
+  el.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchmove', (e) => { if (y0 != null && y0 - e.touches[0].clientY > 24) { y0 = null; dismiss(); } }, { passive: true });
   toastBox.append(el);
   requestAnimationFrame(() => el.classList.add('in'));
-  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 400); }, ms);
+  // a toast with others waiting behind it doesn't overstay
+  const timer = setTimeout(dismiss, queue.length ? Math.min(t.ms, 2400) : t.ms);
 }
 
 // ── sheets: white cards that slide up, swipe down to close
