@@ -8,16 +8,21 @@ export const wind = { value: 0 };
 let atlas, leafMat, leafDepth, geos, mats;
 
 function leafGeo(cell) {
-  const g = new THREE.PlaneGeometry(1, 1, 2, 5);
-  g.translate(0, 0.5, 0);
+  const g = new THREE.PlaneGeometry(1, 1, 4, 5);
   const p = g.attributes.position, uv = g.attributes.uv;
-  for (let i = 0; i < p.count; i++) {
-    const y = p.getY(i), x = p.getX(i);
-    p.setZ(i, 0.22 * y * y - 0.12 * Math.abs(x) * y); // arch + slight fold along the midrib
+  if (cell === 5) {
+    // schefflera umbrella: centred on its stalk, a shallow dome
+    for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i); p.setZ(i, -0.18 * (x * x + y * y)); }
+  } else {
+    g.translate(0, 0.5, 0);
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i), x = p.getX(i);
+      p.setZ(i, (cell === 7 ? 0.08 : 0.22) * y * y - 0.12 * Math.abs(x) * y); // arch + slight fold along the midrib
+    }
   }
-  const col = cell % 2, row = Math.floor(cell / 2);
-  const u0 = col * 0.5, v0 = 1 - (row + 1) * 0.5;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * 0.5, v0 + uv.getY(i) * 0.5);
+  const col = cell % 4, row = Math.floor(cell / 4);
+  const u0 = col * 0.25, v0 = 1 - (row + 1) * 0.5;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, u0 + uv.getX(i) * 0.25, v0 + uv.getY(i) * 0.5);
   g.computeVertexNormals();
   return g;
 }
@@ -38,7 +43,7 @@ function init() {
       #endif`);
   };
   leafDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlas, alphaTest: 0.45, side: THREE.DoubleSide });
-  geos = [0, 1, 2, 3].map(leafGeo);
+  geos = [0, 1, 2, 3, 4, 5, 6, 7].map(leafGeo);
   const soilT = soil(); soilT.repeat.set(0.6, 0.6);
   mats = {
     bark: new THREE.MeshStandardMaterial({ color: '#6b5a4a', roughness: 0.95 }),
@@ -59,6 +64,10 @@ const GREENS = {
   yellow: ['#8fa64a', '#9fb257', '#a7b964', '#7f9a3e'],
   banana: ['#4f7e34', '#5c8a3b', '#6a9845', '#4a7330'],
   snake: ['#3e5e33', '#4d6b3b', '#6a7f46', '#2f4a2a'],
+  schef: ['#3d6a34', '#4c7a3c', '#5d8a45', '#3a5f31', '#6f9a50'],
+  monstera: ['#2f5b2c', '#3b6a33', '#46753a', '#2a4f28'],
+  ivy: ['#5f8a3e', '#7da14f', '#9cb862', '#4f7a36', '#b4c779'],
+  lavender: ['#8c9a78', '#97a585', '#7f8f6c', '#a3ae8e'],
 };
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _c = new THREE.Color();
@@ -67,13 +76,14 @@ class Leaves {
   constructor() { this.list = []; }
   add(kind, pos, yaw, pitch, roll, size, color) { this.list.push({ kind, pos: pos.clone(), yaw, pitch, roll, size, color }); }
   build(group) {
-    for (let kind = 0; kind < 4; kind++) {
+    const WIDTH = [0.75, 0.45, 0.75, 0.9, 0.85, 1, 1, 0.32];
+    for (let kind = 0; kind < 8; kind++) {
       const L = this.list.filter((l) => l.kind === kind);
       if (!L.length) continue;
       const im = new THREE.InstancedMesh(geos[kind], leafMat, L.length);
       L.forEach((l, i) => {
         _e.set(l.pitch, l.yaw, l.roll, 'YXZ'); _q.setFromEuler(_e);
-        _s.set(l.size * (kind === 1 ? 0.45 : kind === 3 ? 0.9 : 0.75), l.size, l.size);
+        _s.set(l.size * WIDTH[kind], l.size, l.size);
         _m.compose(l.pos, _q, _s); im.setMatrixAt(i, _m);
         im.setColorAt(i, _c.set(l.color));
       });
@@ -243,7 +253,74 @@ function palm(group, L, y0, s) {
   }
 }
 
-const RECIPES = { tree, shrub, banana, grass, snake, palm };
+// schefflera: a few stems, branches ending in flat umbrellas of leaflets (the big one in the photos)
+function schefflera(group, L, y0, s, opts = {}) {
+  const H = (opts.h || rr(1.6, 2.6)) * s;
+  const stems = Math.round(rr(2, 4));
+  for (let k = 0; k < stems; k++) {
+    const a = rnd() * 6.28, lean = rr(0.05, 0.25);
+    const top = new THREE.Vector3(Math.cos(a) * lean * H, y0 + H * rr(0.75, 1), Math.sin(a) * lean * H);
+    const [st, curve] = tube([new THREE.Vector3(0, y0, 0), new THREE.Vector3(top.x * 0.3, y0 + H * 0.45, top.z * 0.3), top], 0.022 * s + 0.008, 0.008, mats.barkLight, 10);
+    group.add(st);
+    const n = Math.round(rr(14, 24) * (opts.dense || 1));
+    for (let i = 0; i < n; i++) {
+      const t = rr(0.35, 1), o = curve.getPointAt(t);
+      const b = rnd() * 6.28, len = rr(0.15, 0.55) * s;
+      const tip = o.clone().add(new THREE.Vector3(Math.cos(b) * len, rr(0.05, 0.25) * s, Math.sin(b) * len));
+      const [br] = tube([o, o.clone().lerp(tip, 0.5).add(new THREE.Vector3(0, 0.05, 0)), tip], 0.006, 0.003, mats.stem, 4);
+      group.add(br);
+      L.add(5, tip, rnd() * 6.28, Math.PI / 2 + rr(-0.35, 0.35), rr(-0.3, 0.3), rr(0.3, 0.46) * s, pick(GREENS.schef));
+    }
+  }
+}
+
+// philodendron / monstera: big split leaves arching out of the pot
+function monstera(group, L, y0, s) {
+  const n = Math.round(rr(6, 11));
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.28 + rr(-0.35, 0.35), len = rr(0.35, 0.8) * s, out = rr(0.25, 0.6);
+    const base = new THREE.Vector3(0, y0, 0), tip = new THREE.Vector3(Math.cos(a) * len * out, y0 + len, Math.sin(a) * len * out);
+    const [st] = tube([base, base.clone().lerp(tip, 0.5).add(new THREE.Vector3(0, 0.08, 0)), tip], 0.011, 0.007, mats.stem, 5);
+    group.add(st);
+    L.add(4, tip, -a + Math.PI / 2, rr(0.9, 1.45), rr(-0.3, 0.3), rr(0.42, 0.7) * s, pick(GREENS.monstera));
+  }
+}
+
+// fan palm (rhapis / livistona): tall thin stems with round fans
+function fanpalm(group, L, y0, s) {
+  const n = Math.round(rr(5, 9));
+  for (let i = 0; i < n; i++) {
+    const a = rnd() * 6.28, H = rr(0.6, 1.5) * s, out = rr(0.1, 0.45);
+    const tip = new THREE.Vector3(Math.cos(a) * H * out, y0 + H, Math.sin(a) * H * out);
+    const [st] = tube([new THREE.Vector3(0, y0, 0), new THREE.Vector3(tip.x * 0.4, y0 + H * 0.55, tip.z * 0.4), tip], 0.008, 0.005, mats.stem, 5);
+    group.add(st);
+    L.add(6, tip, -a + Math.PI / 2, rr(0.2, 0.9), rr(-0.3, 0.3), rr(0.45, 0.75) * s, pick(GREENS.deep));
+  }
+}
+
+// vines that spill over a slab edge: a little mound on top, strands hanging down the face
+function trailing(group, L, y0, s, opts = {}) {
+  const greens = GREENS.ivy;
+  for (let i = 0; i < 40; i++) {
+    const a = rnd() * 6.28, r = Math.sqrt(rnd()) * 0.28 * s;
+    L.add(3, new THREE.Vector3(Math.cos(a) * r, y0 + rr(0, 0.18), Math.sin(a) * r), a, rr(0.6, 1.4), rr(-0.3, 0.3), rr(0.14, 0.2) * s, pick(greens));
+  }
+  const strands = Math.round(rr(5, 10) * (opts.dense || 1));
+  const out = opts.out ?? 0; // which way is "over the edge" (yaw)
+  for (let k = 0; k < strands; k++) {
+    let x = rr(-0.3, 0.3) * s, z = rr(-0.1, 0.15) * s;
+    // step out past the edge, then hang
+    x += Math.sin(out) * 0.3; z += Math.cos(out) * 0.3;
+    let y = y0 + 0.02;
+    const len = rr(0.6, opts.len || 2.0) * s, seg = 0.42;
+    for (let d = 0; d < len; d += seg * 0.92) {
+      L.add(7, new THREE.Vector3(x, y, z), rnd() * 6.28, Math.PI + rr(-0.12, 0.12), rr(-0.15, 0.15), seg, pick(greens));
+      y -= seg * 0.92; x += rr(-0.04, 0.04); z += rr(-0.03, 0.03);
+    }
+  }
+}
+
+const RECIPES = { tree, shrub, banana, grass, snake, palm, schefflera, monstera, fanpalm, trailing };
 
 // Make one plant. type: tree | shrub | banana | grass | snake | palm. pot: terracotta | concrete | white | black | null (in soil)
 export function makePlant(type, { pot: potKind = 'terracotta', potR, potH, scale = 1, seed: sd, ...opts } = {}) {

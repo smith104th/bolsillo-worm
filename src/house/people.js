@@ -27,7 +27,7 @@ const FLOORS = [
     ],
   },
   { // 2F
-    nodes: { down: stairTop(0), up: stairBottom(1), b1: [1.85, 4.25], b2: [1.9, 2.45], bedA: [1.3, 2.4], rail: [0.95, 2.72], dIn: [2.15, 3.05], dOut: [2.62, 3.05], gW: [2.95, 3.75], mIn: [1.85, 4.88], m2: [3.1, 5.05], win: [2.6, 5.98] },
+    nodes: { down: stairTop(0), up: stairBottom(1), b1: [1.85, 4.25], b2: [1.9, 2.45], bedA: [1.3, 2.4], rail: [0.95, 2.72], dIn: [2.15, 3.05], dOut: [2.62, 3.05], gW: [2.95, 3.75], mIn: [1.85, 4.88], m2: [2.95, 5.05], win: [2.6, 5.98] },
     edges: [['down', 'up'], ['up', 'b1'], ['down', 'b1'], ['b1', 'b2'], ['b2', 'bedA'], ['b2', 'rail'], ['b2', 'dIn'], ['dIn', 'dOut'], ['dOut', 'gW'], ['b1', 'mIn'], ['mIn', 'm2'], ['m2', 'win']],
     spots: [
       { id: 'bed2', at: [1.3, 2.05], yaw: 0, pose: 'sit', seat: 0.42, near: 'bedA', needs: 'room' },
@@ -37,13 +37,14 @@ const FLOORS = [
       { id: 'garden2', at: [2.95, 3.75], yaw: Math.PI / 2, pose: 'look', near: 'gW' },
     ],
   },
-  { // 3F
-    nodes: { down: stairTop(1), up: stairBottom(2), n1: [1.95, 4.6], n2: [2.05, 3.15], n3: [1.55, 1.8], bathIn: [1.5, 1.2], basin: [0.8, 0.5], deskA: [1.45, 2.6], bedA: [2.35, 5.2] },
-    edges: [['down', 'up'], ['up', 'n1'], ['down', 'n1'], ['n1', 'n2'], ['n2', 'n3'], ['n3', 'bathIn'], ['bathIn', 'basin'], ['n3', 'deskA'], ['n2', 'deskA'], ['n1', 'bedA']],
+  { // 3F: glass room (stair, desk) and bath; everything else is the jungle
+    nodes: { down: stairTop(1), up: stairBottom(2), rIn: [1.75, 4.35], dOut: [2.3, 4.35], n2: [2.35, 3.2], front: [1.4, 5.95], n3: [1.55, 1.8], bathIn: [1.5, 1.2], basin: [0.8, 0.5], deskA: [1.45, 2.6] },
+    edges: [['down', 'up'], ['up', 'rIn'], ['down', 'rIn'], ['rIn', 'dOut'], ['dOut', 'n2'], ['dOut', 'front'], ['rIn', 'deskA'], ['deskA', 'n3'], ['n3', 'bathIn'], ['bathIn', 'basin']],
     spots: [
       { id: 'desk', at: [0.98, 2.2], yaw: -Math.PI / 2, pose: 'sit', near: 'deskA', needs: 'room' },
       { id: 'bath', at: [0.8, 0.5], yaw: -Math.PI / 2, pose: 'browse', near: 'basin', needs: 'room' },
-      { id: 'bed3', at: [2.8, 5.2], yaw: -Math.PI / 2, pose: 'sit', seat: 0.42, near: 'bedA', needs: 'room' },
+      { id: 'jungle', at: [2.35, 3.2], yaw: 0.67, pose: 'look', near: 'n2' },
+      { id: 'front3', at: [1.4, 5.95], yaw: 0, pose: 'look', near: 'front' },
     ],
   },
   { // 4F

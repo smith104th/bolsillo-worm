@@ -43,7 +43,13 @@ function mottle(g, w, h, base, { blot = 260, grain = 9000, dark = 0.05, light = 
 // Fair-faced concrete for columns and slab edges: smooth, with form-tie holes on a 600 x 450 grid.
 export function concrete() {
   const [c, g] = canvas(512);
-  mottle(g, 512, 512, '#bdbab4', { blot: 320, dark: 0.07 });
+  mottle(g, 512, 512, '#b3b1ac', { blot: 340, dark: 0.09 });
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * 512, w = rr(1, 6), h = rr(40, 300), y = rr(-40, 200);
+    const gr = g.createLinearGradient(0, y, 0, y + h);
+    gr.addColorStop(0, `rgba(70,68,62,${rr(0.04, 0.12)})`); gr.addColorStop(1, 'rgba(70,68,62,0)');
+    g.fillStyle = gr; g.fillRect(x, y, w, h);
+  }
   g.strokeStyle = 'rgba(80,78,72,0.10)'; g.lineWidth = 1;
   for (let i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(0, i * 256); g.lineTo(512, i * 256); g.stroke(); }
   g.beginPath(); g.moveTo(256, 0); g.lineTo(256, 512); g.stroke();
@@ -108,49 +114,100 @@ export function terracotta() {
   return tex(c);
 }
 
-// Leaf sprites (alpha): broad, narrow, palm-ish, small round. Drawn white-ish so instance color tints them.
+// Leaf sprites (alpha), 4 x 2 cells of 256 px. Drawn pale so instance colours tint them.
+// 0 broad · 1 narrow blade · 2 huge (strelitzia/banana) · 3 small leaflets · 4 split philodendron
+// 5 schefflera umbrella · 6 fan palm · 7 ivy strand
 export function leafAtlas() {
-  const [c, g] = canvas(512, 512);
-  g.clearRect(0, 0, 512, 512);
+  const [c, g] = canvas(1024, 512);
+  g.clearRect(0, 0, 1024, 512);
   const cell = 256;
-  const drawLeaf = (ox, oy, w, tip, veins) => {
+  const at = (i) => [(i % 4) * cell, Math.floor(i / 4) * cell];
+  const grad = (w) => { const gr = g.createLinearGradient(-w, 0, w, 0); gr.addColorStop(0, '#c8d6be'); gr.addColorStop(0.5, '#f4f8ee'); gr.addColorStop(1, '#b9c9ae'); return gr; };
+  const blade = (w, L, tip) => { g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(w, -L * 0.2, w * 0.9, -L * tip, 0, -L); g.bezierCurveTo(-w * 0.9, -L * tip, -w, -L * 0.2, 0, 0); };
+  const drawLeaf = (i, w, tip, veins) => {
+    const [ox, oy] = at(i);
     g.save(); g.translate(ox + cell / 2, oy + cell - 8);
     const L = cell - 20;
-    const grd = g.createLinearGradient(-w, 0, w, 0);
-    grd.addColorStop(0, '#c8d6be'); grd.addColorStop(0.5, '#f4f8ee'); grd.addColorStop(1, '#b9c9ae');
-    g.fillStyle = grd;
-    g.beginPath(); g.moveTo(0, 0);
-    g.bezierCurveTo(w, -L * 0.2, w * 0.9, -L * tip, 0, -L);
-    g.bezierCurveTo(-w * 0.9, -L * tip, -w, -L * 0.2, 0, 0); g.fill();
+    g.fillStyle = grad(w); blade(w, L, tip); g.fill();
     g.strokeStyle = 'rgba(120,140,100,0.55)'; g.lineWidth = 3;
     g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -L * 0.97); g.stroke();
     g.lineWidth = 1.5; g.strokeStyle = 'rgba(130,150,110,0.35)';
-    for (let i = 1; i < veins; i++) {
-      const y = -L * (i / veins) * 0.95;
-      g.beginPath(); g.moveTo(0, y); g.quadraticCurveTo(w * 0.35, y - 8, w * 0.7 * Math.sin(Math.PI * i / veins), y - 22); g.stroke();
-      g.beginPath(); g.moveTo(0, y); g.quadraticCurveTo(-w * 0.35, y - 8, -w * 0.7 * Math.sin(Math.PI * i / veins), y - 22); g.stroke();
+    for (let k = 1; k < veins; k++) {
+      const y = -L * (k / veins) * 0.95;
+      for (const sd of [1, -1]) { g.beginPath(); g.moveTo(0, y); g.quadraticCurveTo(sd * w * 0.35, y - 8, sd * w * 0.7 * Math.sin(Math.PI * k / veins), y - 22); g.stroke(); }
     }
     g.restore();
   };
-  drawLeaf(0, 0, 70, 0.75, 7);          // 0 broad (ficus, schefflera)
-  drawLeaf(cell, 0, 26, 0.85, 3);       // 1 narrow (grass, sansevieria)
-  drawLeaf(0, cell, 110, 0.6, 12);      // 2 huge (banana, monstera-ish)
-  // 3 tiny leaflets cluster (olive, small trees)
-  g.save(); g.translate(cell, cell);
-  for (let i = 0; i < 9; i++) {
-    const a = -Math.PI / 2 + (i - 4) * 0.28, r = 40 + (i % 3) * 30;
-    g.save(); g.translate(cell / 2 + Math.cos(a) * r * 0.6, cell - 30 + Math.sin(a) * r * 1.3);
-    g.rotate(a + Math.PI / 2);
-    g.fillStyle = i % 2 ? '#eef4e6' : '#d9e5cd';
-    g.beginPath(); g.ellipse(0, 0, 13, 30, 0, 0, 7); g.fill();
+  drawLeaf(0, 70, 0.75, 7);
+  drawLeaf(1, 26, 0.85, 3);
+  drawLeaf(2, 110, 0.6, 12);
+  { // 3 leaflets on a stem
+    const [ox, oy] = at(3);
+    g.save(); g.translate(ox, oy);
+    for (let k = 0; k < 9; k++) {
+      const a = -Math.PI / 2 + (k - 4) * 0.28, r = 40 + (k % 3) * 30;
+      g.save(); g.translate(cell / 2 + Math.cos(a) * r * 0.6, cell - 30 + Math.sin(a) * r * 1.3); g.rotate(a + Math.PI / 2);
+      g.fillStyle = k % 2 ? '#eef4e6' : '#d9e5cd'; g.beginPath(); g.ellipse(0, 0, 13, 30, 0, 0, 7); g.fill(); g.restore();
+    }
+    g.strokeStyle = 'rgba(140,130,110,0.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(cell / 2, cell - 10); g.lineTo(cell / 2, 60); g.stroke();
     g.restore();
   }
-  g.strokeStyle = 'rgba(140,130,110,0.7)'; g.lineWidth = 3;
-  g.beginPath(); g.moveTo(cell / 2, cell - 10); g.lineTo(cell / 2, 60); g.stroke();
-  g.restore();
+  { // 4 split philodendron / monstera: a broad leaf with deep cuts from the edge
+    const [ox, oy] = at(4);
+    g.save(); g.translate(ox + cell / 2, oy + cell - 8);
+    const L = cell - 16, w = 118;
+    g.fillStyle = grad(w); blade(w, L, 0.62); g.fill();
+    g.globalCompositeOperation = 'destination-out';
+    for (let k = 0; k < 7; k++) {
+      const y = -L * (0.16 + k * 0.11);
+      for (const sd of [1, -1]) {
+        g.beginPath(); g.moveTo(sd * 8, y - 4); g.quadraticCurveTo(sd * 60, y - 22, sd * 130, y - 40); g.lineTo(sd * 130, y - 52); g.quadraticCurveTo(sd * 60, y - 30, sd * 10, y - 8); g.closePath(); g.fill();
+      }
+    }
+    g.globalCompositeOperation = 'source-over';
+    g.strokeStyle = 'rgba(120,140,100,0.6)'; g.lineWidth = 4; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -L * 0.95); g.stroke();
+    g.restore();
+  }
+  { // 5 schefflera: 8 leaflets fanned around one point (the cell centre)
+    const [ox, oy] = at(5);
+    g.save(); g.translate(ox + cell / 2, oy + cell / 2);
+    for (let k = 0; k < 8; k++) {
+      g.save(); g.rotate((k / 8) * Math.PI * 2 + 0.2);
+      g.fillStyle = k % 2 ? '#eef4e6' : '#dbe6cf';
+      g.beginPath(); g.moveTo(0, -6); g.bezierCurveTo(26, -40, 22, -100, 0, -120); g.bezierCurveTo(-22, -100, -26, -40, 0, -6); g.fill();
+      g.strokeStyle = 'rgba(120,140,100,0.45)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -6); g.lineTo(0, -115); g.stroke();
+      g.restore();
+    }
+    g.restore();
+  }
+  { // 6 fan palm: narrow segments spread from the bottom centre
+    const [ox, oy] = at(6);
+    g.save(); g.translate(ox + cell / 2, oy + cell - 10);
+    for (let k = 0; k < 19; k++) {
+      const a = -Math.PI / 2 + (k - 9) * 0.16;
+      g.save(); g.rotate(a + Math.PI / 2);
+      g.fillStyle = k % 2 ? '#eef4e6' : '#d6e2ca';
+      g.beginPath(); g.moveTo(-3, -10); g.lineTo(0, -232); g.lineTo(3, -10); g.closePath(); g.fill();
+      g.beginPath(); g.ellipse(0, -130, 9, 100, 0, 0, 7); g.fill();
+      g.restore();
+    }
+    g.restore();
+  }
+  { // 7 ivy strand: small leaves alternating down a thin stem
+    const [ox, oy] = at(7);
+    g.save(); g.translate(ox + cell / 2, oy);
+    g.strokeStyle = 'rgba(120,110,90,0.8)'; g.lineWidth = 2.5; g.beginPath(); g.moveTo(0, 4); g.bezierCurveTo(10, 80, -10, 170, 4, 252); g.stroke();
+    for (let k = 0; k < 13; k++) {
+      const y = 10 + k * 19, sd = k % 2 ? 1 : -1;
+      g.save(); g.translate(sd * 4, y); g.rotate(sd * 0.9);
+      g.fillStyle = k % 3 ? '#eef4e6' : '#d6e2ca';
+      g.beginPath(); g.ellipse(sd * 12, 0, 15, 10, 0, 0, 7); g.fill();
+      g.restore();
+    }
+    g.restore();
+  }
   const t = tex(c, { srgb: true });
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
-  t.generateMipmaps = true;
   return t;
 }
 

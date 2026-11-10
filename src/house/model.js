@@ -26,16 +26,16 @@ function mats() {
   const so = T.soil(); so.repeat.set(0.7, 0.7);
   M = {
     floor: new THREE.MeshStandardMaterial({ map: fl, color: '#ffffff', roughness: 0.62 }),
-    ceiling: new THREE.MeshStandardMaterial({ map: ce, color: '#f4f2ee', roughness: 0.9 }),
-    edge: new THREE.MeshStandardMaterial({ map: co, color: '#eceae5', roughness: 0.85 }),
-    column: new THREE.MeshStandardMaterial({ map: co, color: '#e2dfd9', roughness: 0.78 }),
+    ceiling: new THREE.MeshStandardMaterial({ map: ce, color: '#e6e4df', roughness: 0.9 }),
+    edge: new THREE.MeshStandardMaterial({ map: co, color: '#dddbd6', roughness: 0.85 }),
+    column: new THREE.MeshStandardMaterial({ map: co, color: '#d6d3cd', roughness: 0.8 }),
     roof: new THREE.MeshStandardMaterial({ map: ro, roughness: 0.75 }),
     soil: new THREE.MeshStandardMaterial({ map: so, roughness: 1 }),
     steel: new THREE.MeshStandardMaterial({ color: '#f3f3f0', roughness: 0.35, metalness: 0.15 }),
     steelDark: new THREE.MeshStandardMaterial({ color: '#cfd1d0', roughness: 0.4, metalness: 0.5 }),
     glass: new THREE.MeshPhysicalMaterial({ color: '#dcebea', roughness: 0.02, metalness: 0, transparent: true, opacity: 0.09, envMapIntensity: 0.9, side: THREE.DoubleSide, depthWrite: false, reflectivity: 0.35 }),
     rail: new THREE.MeshPhysicalMaterial({ color: '#d6ecea', roughness: 0.02, transparent: true, opacity: 0.045, envMapIntensity: 0.6, side: THREE.DoubleSide, depthWrite: false }),
-    curtain: new THREE.MeshStandardMaterial({ color: '#fbfaf7', roughness: 0.95, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false, emissive: '#ffd9a6', emissiveIntensity: 0 }),
+    curtain: new THREE.MeshStandardMaterial({ color: '#f6f5f1', roughness: 0.95, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false, emissive: '#ffd9a6', emissiveIntensity: 0 }),
     wood: new THREE.MeshStandardMaterial({ color: '#a8603f', roughness: 0.55 }),
     woodLight: new THREE.MeshStandardMaterial({ color: '#c99b6d', roughness: 0.6 }),
     white: new THREE.MeshStandardMaterial({ color: '#f4f3ef', roughness: 0.45 }),
@@ -51,6 +51,8 @@ function mats() {
     unit: new THREE.MeshStandardMaterial({ color: '#d9dad6', roughness: 0.6 }),
     doorDark: new THREE.MeshStandardMaterial({ color: '#2c3133', roughness: 0.2, metalness: 0.2 }),
     tinted: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }),
+    curtainHeavy: new THREE.MeshStandardMaterial({ color: '#eef0f0', roughness: 0.6, metalness: 0.15, transparent: true, opacity: 0.86, side: THREE.DoubleSide, depthWrite: false, emissive: '#ffd9a6', emissiveIntensity: 0 }),
+    planter: new THREE.MeshStandardMaterial({ map: co, color: '#d9d7d2', roughness: 0.85 }),
   };
   return M;
 }
@@ -145,7 +147,7 @@ function slab(level, holes = [], { roof = false, ground = false } = {}) {
 
 // the three wall-columns + the thin steel post, between level i and i+1
 const COLUMNS = [[1.04, 0.0, 2.04, 0.85], [2.9, 2.28, 3.8, 3.14], [0.88, 4.94, 1.39, 5.6]];
-const POST = [0.17, 4.92];
+const POST = [3.25, 5.0];
 function columns(level) {
   const m = mats();
   const g = new THREE.Group();
@@ -187,7 +189,7 @@ function glazing(pts, level, { closed = false, h = FH - ST, mull = 1.1, curved =
 }
 
 // sheer curtain hung from a track: folds, partly gathered
-function curtain(pts, level, { from = 0, to = 1, gathered = 0.25, h = FH - ST - 0.04 } = {}) {
+function curtain(pts, level, { from = 0, to = 1, gathered = 0.25, h = FH - ST - 0.04, heavy = false } = {}) {
   const m = mats();
   const fine = resample(pts, 0.02);
   const L = polyLen(fine), y0 = FL(level) + 0.01;
@@ -216,7 +218,7 @@ function curtain(pts, level, { from = 0, to = 1, gathered = 0.25, h = FH - ST - 
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx); g.computeVertexNormals();
-  const c = new THREE.Mesh(g, m.curtain); c.renderOrder = 3; c.castShadow = true;
+  const c = new THREE.Mesh(g, heavy ? m.curtainHeavy : m.curtain); c.renderOrder = 3; c.castShadow = true;
   // ceiling track
   const tr = [];
   for (let i = 0; i < fine.length - 1; i += 4) tr.push(segGeo(fine[i], fine[Math.min(i + 4, fine.length - 1)], FL(level) + FH - ST - 0.03, 0.025, 0.03));
@@ -224,21 +226,6 @@ function curtain(pts, level, { from = 0, to = 1, gathered = 0.25, h = FH - ST - 
   grp.add(c, mesh(merge(tr), m.steel, false));
   grp.userData.curtain = c;
   return grp;
-}
-
-// glass balustrade along open slab edges
-function balustrade(pts, level, h = 1.1) {
-  const m = mats();
-  const y0 = FL(level), gl = [], fr = [];
-  // frameless: glass clamped into a slot in the slab edge, only a slim shoe shows
-  for (let i = 0; i < pts.length - 1; i++) {
-    gl.push(segGeo(pts[i], pts[i + 1], y0, h, 0.012));
-    fr.push(segGeo(pts[i], pts[i + 1], y0, 0.04, 0.03));
-  }
-  const g = new THREE.Group();
-  const gm = new THREE.Mesh(merge(gl), m.rail); gm.renderOrder = 2;
-  g.add(gm, mesh(merge(fr), m.steelDark, false));
-  return g;
 }
 
 // white steel spiral: 14 risers of 200 over 2.8 m, helical outer stringer and handrail
@@ -308,6 +295,50 @@ function straightStair() {
   }
   g.add(mesh(merge(parts), m.steel));
   return g;
+}
+
+// arc on the plan: centre (cx, cz), radii, from angle a0 to a1 (0 = +x, π/2 = toward the street)
+function arc(cx, cz, rx, rz, a0, a1, n = 24) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push(P(cx + Math.cos(a) * rx, cz + Math.sin(a) * rz)); }
+  return pts;
+}
+// extrude a closed plan polygon (world xz points) between two heights
+function slabOf(pts, y0, y1, mat, cast = true) {
+  const g = new THREE.ExtrudeGeometry(toShape(pts), { depth: y1 - y0, bevelEnabled: false, curveSegments: 24 });
+  g.rotateX(-Math.PI / 2); g.translate(0, y0, 0);
+  return mesh(g, mat, cast);
+}
+// soil spread straight on the slab, the way they garden here
+function soilBed(xp0, zp0, xp1, zp1, level, t = 0.05) { return pbox(xp0, zp0, xp1, zp1, FL(level), FL(level) + t, mats().soil, false); }
+
+// waist-high curved glass on a concrete curb, no frame (4F)
+function glassRail(pts, level, h = 1.05) {
+  const m = mats(), y0 = FL(level), gl = [], curb = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    gl.push(segGeo(pts[i], pts[i + 1], y0 + 0.07, h, 0.012));
+    curb.push(segGeo(pts[i], pts[i + 1], y0, 0.08, 0.14));
+  }
+  const g = new THREE.Group();
+  const gm = new THREE.Mesh(merge(gl), m.rail); gm.renderOrder = 2;
+  g.add(gm, mesh(merge(curb), m.planter));
+  return g;
+}
+
+// thin white steel railing, a loose grid of posts and rails (3F)
+function trellis(pts, level, h = 1.15) {
+  const m = mats(), y0 = FL(level), parts = [];
+  const fine = resample(pts, 0.05);
+  for (let i = 0; i < fine.length - 1; i += 3) {
+    const b = fine[Math.min(i + 3, fine.length - 1)];
+    for (const y of [0.38, 0.78, h]) parts.push(segGeo(fine[i], b, y0 + y - 0.012, 0.024, 0.024));
+  }
+  let acc = 0;
+  fine.forEach((p, i) => {
+    if (i) acc += Math.hypot(p[0] - fine[i - 1][0], p[1] - fine[i - 1][1]);
+    if (i === 0 || acc > 0.48 || i === fine.length - 1) { acc = 0; const c = new THREE.CylinderGeometry(0.011, 0.011, h, 6); c.translate(p[0], y0 + h / 2, p[1]); parts.push(c); }
+  });
+  return mesh(merge(parts), m.steel);
 }
 
 // --- furniture ---------------------------------------------------------------------------------
@@ -391,18 +422,40 @@ export function buildHouse() {
     add(slab(L + 1, L < 3 ? [dHole] : [roofStair, skylight, roofHole], { roof: L === 3 }), L + 1, 'slab', L < 3 ? `${L + 2}F slab` : 'Roof slab');
   }
 
-  // ---- envelope
-  // 1F: glass all round, set in from the slab edge; the front strip is a covered step to the yard
+  // ---- envelope (from the photos: glass only closes the rooms, set back from the edges;
+  // the slab edges are open, with planters, a steel grid, waist-high curved glass and curtains)
+  // 1F: a glass box under the 2F slab; the front strip is a covered step to the yard
   add(glazing(rrect(0.05, 0.02, 3.74, 5.8), 0, { closed: true }), 0, 'glass', 'Glass 1F');
-  // 2F: bedroom box around the stair, meeting room in curved glass at the front
+  // 2F: the bedroom is glass around the stair. The meeting room in front is open air:
+  // a curved concrete planter along the front, curtains on a curved ceiling track
   add(glazing(rrect(0.26, 0.88, 2.36, 4.62), 1, { closed: true }), 1, 'glass', 'Glass 2F bedroom');
-  add(glazing(resample(rrect(0.68, 4.66, 3.68, 6.36, [0.62, 0.62, 0.62, 0.62]), 0.12, true), 1, { closed: true, curved: true }), 1, 'glass', 'Glass 2F meeting room');
-  // 3F: bath at the back, then a big room with a curved front-left corner and a garden inside it
+  {
+    const L = 1, y = FL(L), H = 0.74;
+    const inner = [P(0.68, 5.25), ...arc(1.3, 5.74, 0.62, 0.62, Math.PI, Math.PI / 2, 12), ...arc(3.06, 5.74, 0.62, 0.62, Math.PI / 2, 0, 12), P(3.68, 5.25)];
+    const outer = [P(0.28, 5.25), ...arc(1.06, 5.8, 0.78, 0.78, Math.PI, Math.PI / 2, 14), ...arc(3.0, 5.8, 0.78, 0.78, Math.PI / 2, 0, 14), P(3.78, 5.25)];
+    const ring = [...outer, ...inner.slice().reverse()];
+    const g = new THREE.Group();
+    g.add(slabOf(ring, y, y + H, m.planter));
+    // soil sits a little below the rim
+    const innerS = [P(0.74, 5.27), ...arc(1.3, 5.74, 0.56, 0.56, Math.PI, Math.PI / 2, 12), ...arc(3.06, 5.74, 0.56, 0.56, Math.PI / 2, 0, 12), P(3.62, 5.27)];
+    const outerS = [P(0.34, 5.27), ...arc(1.06, 5.8, 0.72, 0.72, Math.PI, Math.PI / 2, 14), ...arc(3.0, 5.8, 0.72, 0.72, Math.PI / 2, 0, 14), P(3.72, 5.27)];
+    g.add(slabOf([...outerS, ...innerS.slice().reverse()], y + H - 0.07, y + H - 0.06, m.soil, false));
+    add(g, L, 'planter', 'Curved planter 2F');
+  }
+  // 3F: glass around the bath at the back and around the stair and desk; the rest is garden
   add(glazing(rrect(0.05, 0.02, 3.74, 1.5), 2, { closed: true }), 2, 'glass', 'Glass 3F bath');
-  add(glazing(resample(rrect(0.08, 1.5, 3.72, 6.32, [0, 0, 0.0, 1.5]), 0.12, true), 2, { closed: true, curved: true }), 2, 'glass', 'Glass 3F room');
-  // 4F: one room in the middle, gardens front and back
+  add(glazing(rrect(0.05, 1.5, 2.0, 4.84), 2, { closed: true }), 2, 'glass', 'Glass 3F room');
+  add(trellis([P(0.12, 4.55), P(0.12, 5.1), ...arc(1.42, 5.1, 1.3, 1.3, Math.PI, Math.PI / 2, 16), P(2.7, 6.42)], 2), 2, 'rail', 'Steel railing 3F');
+  // 4F: one glass room in the middle; waist-high curved glass in the front and back gardens, a deep planter
   add(glazing(rrect(0.23, 1.52, 3.71, 4.66), 3, { closed: true }), 3, 'glass', 'Glass 4F');
-  for (let L = 1; L <= 3; L++) add(balustrade(rrect(0.015, 0.015, SW - 0.015, SD - 0.015).concat([[X(0.015), Z(0.015)]]), L), L, 'rail', `Rail ${L + 1}F`);
+  add(glassRail(arc(2.05, 4.75, 1.72, 1.72, 0, Math.PI / 2, 28), 3), 3, 'rail', 'Curved glass 4F front');
+  add(glassRail(arc(3.07, 1.45, 0.65, 1.38, -Math.PI / 2, 0, 20), 3), 3, 'rail', 'Curved glass 4F back');
+  {
+    const L = 3, y = FL(L), g = new THREE.Group();
+    g.add(pbox(0.06, 5.98, 2.0, 6.58, y, y + 0.66, m.planter));
+    g.add(pbox(0.14, 6.06, 1.92, 6.5, y + 0.6, y + 0.61, m.soil, false));
+    add(g, L, 'planter', 'Planter 4F');
+  }
 
   // roof: curved steel tube rail, skylight, stair hatch, the round opening's lip, a little AC unit
   {
@@ -472,9 +525,8 @@ export function buildHouse() {
     g.add(clothesRail(0.39, 2.4, 1.6, 2.4, L));
     g.add(table(2.1, 5.43, 1.38, 0.62, L, m.wood));
     g.add(chair(1.75, 5.95, L, Math.PI, m.black), chair(2.45, 5.95, L, Math.PI, m.black), chair(2.1, 4.95, L, 0, m.black));
-    g.add(pbox(1.55, 6.05, 3.05, 6.3, y, y + 0.42, m.column));
-    g.add(pbox(1.58, 6.08, 3.02, 6.27, y + 0.42, y + 0.43, m.soil, false));
-    g.add(pbox(2.93, 0.86, 3.76, 2.27, y, y + 0.45, m.column), pbox(2.96, 0.9, 3.73, 2.24, y + 0.45, y + 0.46, m.soil, false));
+    g.add(pbox(2.93, 0.86, 3.76, 2.27, y, y + 0.45, m.planter), pbox(2.96, 0.9, 3.73, 2.24, y + 0.45, y + 0.46, m.soil, false));
+    g.add(soilBed(2.38, 0.0, 3.8, 0.86, L), soilBed(2.38, 2.27, 3.8, 4.66, L));
     g.add(lamp(1.3, 2.6, L), lamp(2.2, 5.5, L));
     lamps.push(...g.children.slice(-2));
     add(g, L, 'room', 'Bedroom and meeting room 2F');
@@ -487,12 +539,13 @@ export function buildHouse() {
     g.add(pbox(0.13, 0.12, 0.6, 0.79, y, y + 0.8, m.white), cyl(0.17, 0.12, 0.12, X(0.37), y + 0.8, Z(0.45), m.porcelain));
     g.add(table(0.39, 2.15, 0.62, 0.97, L, m.wood, {}));
     g.add(chair(0.95, 2.2, L, -Math.PI / 2, m.redChair));
-    g.add(bed(2.85, 4.43, 3.67, 5.96, L, false));
-    g.add(cyl(0.16, 0.16, 0.45, X(1.25), y, Z(6.0), m.white), cyl(0.16, 0.16, 0.45, X(1.42), y, Z(6.25), m.white));
-    g.add(pbox(1.2, 1.6, 2.6, 2.6, y, y + 0.05, m.soil, false), pbox(2.4, 2.6, 3.7, 4.2, y, y + 0.05, m.soil, false), pbox(0.25, 4.95, 2.6, 6.25, y, y + 0.05, m.soil, false));
+    // the white planter box on the right, and soil over the whole garden
+    g.add(pbox(3.3, 4.2, 3.78, 5.9, y, y + 0.6, m.white), pbox(3.34, 4.24, 3.74, 5.86, y + 0.55, y + 0.56, m.soil, false));
+    g.add(soilBed(2.0, 1.5, 3.8, 6.6, L, 0.06), soilBed(0.0, 4.84, 2.0, 6.6, L, 0.06));
+    g.add(cyl(0.16, 0.16, 0.45, X(1.0), y, Z(5.6), m.white));
     g.add(lamp(1.1, 2.0, L), lamp(2.7, 4.0, L), lamp(0.9, 1.0, L));
     lamps.push(...g.children.slice(-3));
-    add(g, L, 'room', 'Bath, study, bedroom 3F');
+    add(g, L, 'room', 'Bath, study, garden 3F');
   }
   // 4F: extra room (bed, shelf, cabinet, clothes rail), desk out in the front garden, planter strip
   {
@@ -502,8 +555,7 @@ export function buildHouse() {
     g.add(pbox(1.9, 3.2, 2.4, 4.07, y, y + 0.75, m.white));
     g.add(clothesRail(3.4, 3.2, 3.4, 4.5, L));
     g.add(table(1.71, 5.38, 0.58, 0.72, L, m.wood), chair(2.22, 5.38, L, -Math.PI / 2, m.black));
-    g.add(pbox(0.1, 6.15, 2.0, 6.5, y, y + 0.4, m.column), pbox(0.13, 6.18, 1.97, 6.47, y + 0.4, y + 0.41, m.soil, false));
-    g.add(pbox(0.2, 0.15, 1.85, 1.35, y, y + 0.05, m.soil, false), pbox(2.4, 4.85, 3.7, 6.4, y, y + 0.06, m.soil, false));
+    g.add(soilBed(0.0, 0.0, 3.8, 1.5, L), soilBed(2.05, 4.68, 3.8, 6.6, L, 0.06));
     g.add(lamp(2.6, 2.5, L), lamp(1.0, 3.8, L));
     lamps.push(...g.children.slice(-2));
     add(g, L, 'room', 'Extra room 4F');
@@ -515,93 +567,115 @@ export function buildHouse() {
     add(g, 4, 'room', 'Roof table');
   }
 
-  // ---- curtains (sheer, on ceiling tracks)
-  add(curtain(rrect(0.12, 0.08, 3.68, 5.74).slice(2).concat([P(0.12, 0.08)]), 0, { from: 0.0, to: 0.16, gathered: 0.6 }), 0, 'curtain', 'Curtain 1F');
-  add(curtain(resample(rrect(0.78, 4.76, 3.58, 6.26, [0.55, 0.55, 0.55, 0.55]), 0.1, true), 1, { from: 0.1, to: 0.42, gathered: 0.35 }), 1, 'curtain', 'Curtain 2F');
-  add(curtain(resample(rrect(0.18, 1.6, 3.62, 6.22, [0, 0, 0, 1.4]).slice(3), 0.1), 2, { from: 0.3, to: 1, gathered: 0.35 }), 2, 'curtain', 'Curtain 3F');
-  add(curtain(resample([P(3.0, 0.05), P(3.55, 0.35), P(3.72, 0.9), P(3.7, 1.45)], 0.08), 3, { from: 0, to: 1, gathered: 0.5 }), 3, 'curtain', 'Curtain 4F back');
-  add(curtain(resample([P(3.72, 4.75), P(3.68, 5.8), P(3.3, 6.35), P(2.4, 6.5)], 0.08), 3, { from: 0, to: 1, gathered: 0.3 }), 3, 'curtain', 'Curtain 4F front');
+  // ---- curtains: sheer ones inside every room, silvery heavy ones outside on 2F
+  add(curtain([P(0.14, 0.4), P(0.14, 5.7), P(1.9, 5.7)], 0, { from: 0.45, to: 1, gathered: 0.35 }), 0, 'curtain', 'Curtain 1F');
+  add(curtain([P(3.66, 5.7), P(3.66, 2.6)], 0, { from: 0, to: 0.6, gathered: 0.5 }), 0, 'curtain', 'Curtain 1F side');
+  add(curtain([P(0.34, 4.55), P(2.3, 4.55), P(2.3, 1.0)], 1, { from: 0, to: 0.55, gathered: 0.3 }), 1, 'curtain', 'Curtain 2F bedroom');
+  add(curtain(resample([P(0.72, 4.75), ...arc(1.3, 5.74, 0.58, 0.58, Math.PI, Math.PI / 2, 10), ...arc(3.06, 5.74, 0.58, 0.58, Math.PI / 2, 0, 10), P(3.62, 4.75)], 0.08), 1, { from: 0, to: 0.62, gathered: 0.25 }), 1, 'curtain', 'Curtain 2F meeting room');
+  add(curtain([P(0.06, 6.57), P(1.55, 6.57)], 1, { from: 0, to: 1, gathered: 0.6, heavy: true }), 1, 'curtain', 'Curtain 2F front');
+  add(curtain([P(0.12, 1.58), P(0.12, 4.78), P(1.94, 4.78), P(1.94, 3.4)], 2, { from: 0.35, to: 0.9, gathered: 0.4 }), 2, 'curtain', 'Curtain 3F');
+  add(curtain([P(0.3, 4.6), P(3.64, 4.6)], 3, { from: 0, to: 0.45, gathered: 0.35 }), 3, 'curtain', 'Curtain 4F front');
+  add(curtain([P(3.64, 4.6), P(3.64, 1.6), P(2.3, 1.6)], 3, { from: 0.2, to: 0.75, gathered: 0.3 }), 3, 'curtain', 'Curtain 4F back');
 
-  // ---- gardens
+  // ---- gardens: dense, potted, spilling over the edges
   T.reseed(4242);
   const plant = (L, xp, zp, type, opts = {}) => {
     const p = makePlant(type, opts);
     p.position.set(X(xp), FL(L) + (opts.lift || 0), Z(zp));
-    p.rotation.y = T.rnd() * Math.PI * 2;
+    p.rotation.y = type === 'trailing' ? 0 : T.rnd() * Math.PI * 2;
     return add(p, L, 'plant', `${type} ${L + 1}F`);
   };
-  // the yard in front of 1F, planted straight in the ground
+  const OUT = { front: 0, left: -Math.PI / 2, right: Math.PI / 2 };
+  // the yard in front of 1F, planted in the ground and full of pots
   {
     const yard = mesh(new THREE.BoxGeometry(4.2, 0.2, 1.6), m.soil);
     yard.position.set(0, -0.08, Z(7.42)); add(yard, 0, 'room', 'Front yard');
   }
-  plant(0, 0.56, 7.22, 'tree', { pot: null, h: 3.4, scale: 1.25, green: 'fresh' });
-  plant(0, 1.64, 7.4, 'tree', { pot: null, h: 2.4, scale: 1.0, leaf: 3, green: 'olive' });
-  plant(0, 3.18, 7.5, 'tree', { pot: null, h: 2.9, scale: 1.1 });
-  plant(0, 0.15, 6.9, 'shrub', { pot: null, scale: 1.2 });
-  plant(0, 1.33, 6.9, 'shrub', { pot: 'terracotta' });
-  plant(0, 0.1, 7.85, 'banana', { pot: null, scale: 1.0 });
-  plant(0, 1.28, 7.85, 'grass', { pot: null });
-  plant(0, 3.85, 6.95, 'banana', { pot: 'concrete', scale: 1.1 });
-  plant(0, 2.35, 6.3, 'shrub', { pot: 'terracotta', lift: 0.04 });
-  plant(0, 3.4, 6.25, 'snake', { pot: 'white', lift: 0.04 });
-  plant(0, 0.5, 6.2, 'grass', { pot: 'black', lift: 0.04 });
+  plant(0, 0.6, 7.3, 'tree', { pot: null, h: 3.6, scale: 1.3, leaf: 3, green: 'olive', dense: 1.3 });
+  plant(0, 3.3, 7.45, 'tree', { pot: null, h: 2.7, scale: 1.1, green: 'fresh' });
+  plant(0, 1.4, 7.0, 'shrub', { pot: 'terracotta' });
+  plant(0, 1.95, 7.6, 'grass', { pot: 'black' });
+  plant(0, 2.35, 7.0, 'monstera', { pot: 'terracotta', scale: 0.7 });
+  plant(0, 0.15, 7.9, 'snake', { pot: 'terracotta' });
+  plant(0, 1.2, 7.9, 'shrub', { pot: 'white', scale: 0.8 });
+  plant(0, 2.8, 7.9, 'shrub', { pot: 'terracotta', scale: 0.9 });
+  plant(0, 3.9, 6.9, 'fanpalm', { pot: 'concrete', scale: 1.0 });
+  plant(0, 3.7, 7.95, 'grass', { pot: 'terracotta' });
+  plant(0, 0.4, 6.25, 'grass', { pot: 'black', lift: 0.04 });
+  plant(0, 2.4, 6.25, 'shrub', { pot: 'terracotta', lift: 0.04, scale: 0.8 });
+  plant(0, 3.3, 6.3, 'snake', { pot: 'white', lift: 0.04 });
   plant(0, 3.45, 0.45, 'snake', { pot: 'white' });
-  // 2F
-  plant(1, 2.39, 0.38, 'tree', { pot: 'concrete', h: 1.9, scale: 0.9 });
-  plant(1, 3.05, 0.2, 'shrub', { pot: 'terracotta' });
-  plant(1, 3.5, 0.24, 'banana', { pot: 'terracotta', scale: 0.9 });
-  plant(1, 2.85, 0.6, 'grass', { pot: 'black' });
-  plant(1, 3.3, 1.25, 'grass', { pot: null, lift: 0.45 });
-  plant(1, 3.35, 1.9, 'shrub', { pot: null, lift: 0.45, scale: 1.1 });
-  plant(1, 3.5, 3.6, 'shrub', { pot: 'terracotta' });
-  plant(1, 3.45, 4.1, 'tree', { pot: 'terracotta', h: 1.7, scale: 0.85, leaf: 3 });
-  plant(1, 3.0, 3.9, 'snake', { pot: 'white' });
-  plant(1, 0.34, 5.3, 'tree', { pot: 'concrete', h: 2.1, scale: 1.0 });
-  plant(1, 0.32, 6.15, 'banana', { pot: 'terracotta', scale: 1.0 });
-  plant(1, 0.95, 6.2, 'shrub', { pot: 'terracotta' });
+  plant(0, 0.65, 5.35, 'monstera', { pot: 'terracotta', scale: 0.6 });
+  // 2F: the garden behind and beside the bedroom, the planter full of grasses, vines down the front
+  plant(1, 2.45, 0.35, 'schefflera', { pot: 'concrete', h: 1.8, scale: 0.9 });
+  plant(1, 3.1, 0.25, 'fanpalm', { pot: 'terracotta', scale: 0.8 });
+  plant(1, 3.55, 0.32, 'banana', { pot: 'terracotta', scale: 0.9 });
+  plant(1, 2.9, 0.68, 'grass', { pot: 'black' });
+  plant(1, 3.3, 1.2, 'grass', { pot: null, lift: 0.45 });
+  plant(1, 3.35, 1.85, 'shrub', { pot: null, lift: 0.45, scale: 1.1 });
+  plant(1, 3.5, 3.6, 'monstera', { pot: 'terracotta', scale: 0.8 });
+  plant(1, 3.45, 4.2, 'tree', { pot: 'terracotta', h: 1.7, scale: 0.85, leaf: 3 });
+  plant(1, 2.85, 3.95, 'snake', { pot: 'white' });
   plant(1, 0.5, 0.35, 'palm', { pot: 'terracotta', scale: 0.7 });
-  plant(1, 1.85, 6.18, 'grass', { pot: null, lift: 0.42 });
-  plant(1, 2.35, 6.18, 'grass', { pot: null, lift: 0.42 });
-  plant(1, 2.8, 6.18, 'grass', { pot: null, lift: 0.42 });
-  plant(1, 3.38, 5.15, 'shrub', { pot: 'black', scale: 0.7 });
-  plant(1, 3.38, 5.55, 'snake', { pot: 'white' });
-  // 3F: the garden inside the glass, plus the front corner outside it
-  plant(2, 1.47, 1.95, 'shrub', { pot: null, scale: 1.1 });
-  plant(2, 1.9, 2.25, 'grass', { pot: null });
-  plant(2, 2.9, 1.86, 'palm', { pot: 'terracotta', scale: 0.85 });
-  plant(2, 3.5, 1.92, 'shrub', { pot: 'terracotta' });
-  plant(2, 2.6, 2.95, 'shrub', { pot: null });
-  plant(2, 2.95, 3.6, 'tree', { pot: null, h: 2.2, scale: 1.05, green: 'fresh' });
-  plant(2, 3.5, 3.0, 'shrub', { pot: 'terracotta' });
-  plant(2, 3.42, 4.07, 'grass', { pot: 'black' });
-  plant(2, 0.5, 5.15, 'shrub', { pot: null });
-  plant(2, 0.55, 5.85, 'banana', { pot: null, scale: 1.05 });
-  plant(2, 1.7, 5.15, 'shrub', { pot: null, scale: 0.9 });
-  plant(2, 1.85, 6.0, 'snake', { pot: null });
-  plant(2, 2.4, 5.9, 'grass', { pot: 'terracotta' });
-  plant(2, 0.15, 6.5, 'shrub', { pot: 'terracotta', scale: 0.8 });
-  plant(2, 3.35, 6.4, 'tree', { pot: 'concrete', h: 1.9, scale: 0.9, leaf: 3 });
-  // 4F: back garden around the roof stair, front garden with the tree that grows through the roof
+  for (const [x, z, k] of [[0.5, 5.5, 'olive'], [0.52, 6.1, 'lavender'], [1.1, 6.42, 'yellow'], [1.75, 6.46, 'lavender'], [2.35, 6.46, 'olive'], [2.95, 6.44, 'yellow'], [3.55, 6.05, 'lavender'], [3.62, 5.45, 'olive']]) {
+    plant(1, x, z, 'grass', { pot: null, lift: 0.67, green: k, scale: 1.1 });
+  }
+  plant(1, 3.6, 5.75, 'shrub', { pot: null, lift: 0.67, scale: 0.8 });
+  plant(1, 1.4, 6.5, 'trailing', { pot: null, lift: 0.67, out: OUT.front, len: 1.4 });
+  plant(1, 2.7, 6.5, 'trailing', { pot: null, lift: 0.67, out: OUT.front, len: 1.2 });
+  plant(1, 0.14, 4.7, 'trailing', { pot: null, out: OUT.left, len: 1.8 });
+  plant(1, 3.4, 5.45, 'snake', { pot: 'white' });
+  // 3F: the jungle. A big schefflera, philodendrons, palms, strelitzia, everything in pots on soil
+  plant(2, 2.75, 3.7, 'schefflera', { pot: 'concrete', potR: 0.32, potH: 0.52, h: 1.75, scale: 1.45, dense: 1.6 });
+  plant(2, 2.55, 5.3, 'schefflera', { pot: 'terracotta', potR: 0.28, potH: 0.45, h: 1.6, scale: 1.3, dense: 1.3 });
+  plant(2, 2.2, 5.6, 'monstera', { pot: 'terracotta', scale: 1.3 });
+  plant(2, 3.0, 6.2, 'monstera', { pot: 'terracotta', scale: 1.2 });
+  plant(2, 3.4, 2.0, 'banana', { pot: 'terracotta', scale: 1.5 });
+  plant(2, 2.4, 4.4, 'banana', { pot: 'terracotta', scale: 1.35 });
+  plant(2, 0.45, 5.55, 'fanpalm', { pot: 'terracotta', scale: 1.5 });
+  plant(2, 0.85, 6.2, 'fanpalm', { pot: 'white', scale: 1.1 });
+  plant(2, 0.35, 4.95, 'palm', { pot: 'terracotta', scale: 1.2 });
+  plant(2, 1.6, 5.5, 'schefflera', { pot: 'concrete', h: 1.5, scale: 1.05 });
+  plant(2, 1.05, 5.2, 'monstera', { pot: 'terracotta', scale: 1.0 });
+  plant(2, 3.3, 2.9, 'schefflera', { pot: 'terracotta', h: 1.3, scale: 1.0 });
+  plant(2, 1.3, 6.35, 'shrub', { pot: 'terracotta', scale: 0.85 });
+  plant(2, 2.0, 6.35, 'monstera', { pot: 'terracotta', scale: 0.7 });
+  plant(2, 2.6, 6.42, 'shrub', { pot: 'white', scale: 0.8 });
+  plant(2, 3.55, 6.42, 'shrub', { pot: 'terracotta' });
+  plant(2, 2.4, 2.0, 'shrub', { pot: 'terracotta' });
+  plant(2, 3.5, 3.0, 'palm', { pot: 'terracotta', scale: 0.85 });
+  plant(2, 2.35, 2.9, 'grass', { pot: 'black' });
+  plant(2, 3.55, 4.55, 'monstera', { pot: null, lift: 0.56, scale: 0.75 });
+  plant(2, 3.55, 5.45, 'shrub', { pot: null, lift: 0.56 });
+  plant(2, 0.4, 4.45, 'snake', { pot: 'white' });
+  plant(2, 0.6, 6.5, 'trailing', { pot: null, out: OUT.front, len: 2.2, dense: 1.4 });
+  plant(2, 1.8, 6.5, 'trailing', { pot: null, out: OUT.front, len: 1.8, dense: 1.2 });
+  plant(2, 3.0, 6.52, 'trailing', { pot: null, out: OUT.front, len: 1.5 });
+  plant(2, 0.08, 5.4, 'trailing', { pot: null, out: OUT.left, len: 2.0 });
+  plant(2, 3.75, 3.4, 'trailing', { pot: null, out: OUT.right, len: 1.4 });
+  // 4F: back garden around the roof stair; the front garden behind curved glass; the planter
   plant(3, 0.36, 0.45, 'shrub', { pot: null });
-  plant(3, 0.55, 1.0, 'grass', { pot: null });
-  plant(3, 1.02, 0.8, 'shrub', { pot: null, scale: 0.9 });
+  plant(3, 0.55, 1.1, 'grass', { pot: null });
+  plant(3, 1.0, 0.75, 'schefflera', { pot: 'terracotta', h: 1.4, scale: 0.8 });
   plant(3, 1.55, 0.4, 'banana', { pot: null, scale: 0.9 });
-  plant(3, 2.3, 0.3, 'tree', { pot: 'terracotta', h: 1.5, scale: 0.8 });
-  plant(3, 3.5, 0.3, 'shrub', { pot: 'terracotta' });
-  plant(3, 0.5, 5.0, 'shrub', { pot: 'terracotta' });
-  plant(3, 0.5, 5.65, 'palm', { pot: 'terracotta', scale: 0.75 });
-  plant(3, 3.4, 5.05, 'shrub', { pot: null });
-  plant(3, 2.3, 6.15, 'shrub', { pot: null });
-  plant(3, 3.1, 6.2, 'banana', { pot: null, scale: 0.95 });
-  for (const x of [0.35, 0.8, 1.25, 1.7]) plant(3, x, 6.32, 'grass', { pot: null, lift: 0.4 });
-  // roof: big tapered concrete pots by the opening
-  plant(4, 1.6, 5.15, 'tree', { pot: 'concrete', potR: 0.3, potH: 0.55, h: 1.4, scale: 0.75, leaf: 3 });
+  plant(3, 3.45, 0.35, 'shrub', { pot: 'terracotta' });
+  plant(3, 3.5, 5.4, 'shrub', { pot: 'concrete', scale: 0.85 });
+  plant(3, 2.55, 6.2, 'shrub', { pot: 'concrete', scale: 0.8, green: 'yellow' });
+  plant(3, 3.15, 6.05, 'grass', { pot: 'concrete' });
+  plant(3, 2.25, 6.15, 'snake', { pot: 'concrete' });
+  for (const [x, k] of [[0.4, 'shrub'], [0.9, 'grass'], [1.4, 'shrub'], [1.85, 'grass']]) plant(3, x, 6.27, k, { pot: null, lift: 0.61, scale: 0.9, green: 'fresh' });
+  plant(3, 0.6, 6.56, 'trailing', { pot: null, lift: 0.61, out: OUT.front, len: 1.6 });
+  plant(3, 1.6, 6.56, 'trailing', { pot: null, lift: 0.61, out: OUT.front, len: 1.2 });
+  plant(3, 0.05, 2.0, 'trailing', { pot: null, out: OUT.left, len: 1.6 });
+  // roof: square terracotta planters and round concrete pots with small trees, vines over the edge
+  plant(4, 1.6, 5.15, 'tree', { pot: 'concrete', potR: 0.3, potH: 0.55, h: 1.5, scale: 0.8, leaf: 3 });
   plant(4, 2.05, 4.75, 'shrub', { pot: 'concrete', potR: 0.26, potH: 0.5 });
-  plant(4, 2.62, 4.55, 'shrub', { pot: 'concrete', potR: 0.24, potH: 0.48 });
-  plant(4, 3.2, 4.72, 'tree', { pot: 'concrete', potR: 0.28, potH: 0.52, h: 1.2, scale: 0.7 });
+  plant(4, 2.62, 4.55, 'tree', { pot: 'terracotta', potR: 0.28, potH: 0.5, h: 1.4, scale: 0.75, green: 'fresh' });
+  plant(4, 3.25, 4.6, 'tree', { pot: 'terracotta', potR: 0.3, potH: 0.55, h: 1.6, scale: 0.8, green: 'fresh' });
   plant(4, 1.55, 5.85, 'grass', { pot: 'concrete', potR: 0.22, potH: 0.45 });
   plant(4, 3.45, 1.9, 'snake', { pot: 'concrete', potR: 0.18, potH: 0.4 });
+  plant(4, 0.1, 3.4, 'trailing', { pot: null, out: OUT.left, len: 2.4, dense: 1.2 });
+  plant(4, 0.9, 6.5, 'trailing', { pot: null, out: OUT.front, len: 1.8 });
   // last: the tree in the 4F garden that rises through the round opening in the roof
   plant(3, 2.68, 5.66, 'tree', { pot: null, h: 4.8, scale: 1.35, green: 'fresh', dense: 1.3 });
 

@@ -37,7 +37,7 @@ function lightFor(alt) {
 
 export const VIEWS = {
   corner: { pos: [10.5, 8.5, 17.5], target: [0, 4.6, 0.6] },
-  street: { pos: [-0.8, 1.2, 13.5], target: [0, 5.0, 0] },
+  street: { pos: [-0.4, 4.2, 13.5], target: [0, 6.0, 0] },
   side: { pos: [14, 7, 2.5], target: [0, 5.6, 0.4] },
   above: { pos: [6, 24, 12], target: [0, 6.5, 0] },
   roof: { pos: [5.5, 15.5, 7.5], target: [0.4, 11, 1] },
