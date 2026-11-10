@@ -70,7 +70,7 @@ export function installGate(code) {
 }
 
 function logo() {
-  return h('div.logo-mark', h('img', { src: 'icons/icon-192.png', alt: '', width: 72, height: 72 }));
+  return h('div.logo-mark', h('img', { src: 'icons/logo-192.png', alt: '', width: 72, height: 72 }));
 }
 
 // the welcome scene: light denim, a stitched hole, a worm poking out

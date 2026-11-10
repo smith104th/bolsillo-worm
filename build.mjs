@@ -35,13 +35,39 @@ const fonts = {
 };
 for (const [to, from] of Object.entries(fonts)) copyFileSync(`node_modules/${from}`, `${OUT}/fonts/${to}`);
 
-const icon = readFileSync('src/icon.svg');
-await sharp(icon).resize(512, 512).png().toFile(`${OUT}/icons/icon-512.png`);
-await sharp(icon).resize(192, 192).png().toFile(`${OUT}/icons/icon-192.png`);
-await sharp(icon).resize(180, 180).png().toFile(`${OUT}/icons/apple-touch-icon.png`);
-// maskable: worm a bit smaller inside the safe zone
-await sharp({ create: { width: 512, height: 512, channels: 4, background: '#B7E0FF' } })
-  .composite([{ input: await sharp(icon).resize(420, 420).png().toBuffer(), top: 46, left: 46 }]).png().toFile(`${OUT}/icons/icon-maskable-512.png`);
+// The app icon and share image are the pocket's sky: Manu's gradient, the two soft glows and the fine grain,
+// edge to edge. Same recipe as makeSky() in src/draw.js. The worm drawing stays as the in-app logo.
+const SKY = { top: [0x6F, 0xBE, 0xFF], mid: [0xB7, 0xE0, 0xFF], bottom: [0xEE, 0xF6, 0xFF] };
+const hex = (c) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+async function skyPNG(W, H, file) {
+  const R = Math.max(W, H);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${hex(SKY.top)}"/><stop offset="0.55" stop-color="${hex(SKY.mid)}"/><stop offset="1" stop-color="${hex(SKY.bottom)}"/></linearGradient>
+      <radialGradient id="b1" gradientUnits="userSpaceOnUse" cx="${W * 0.22}" cy="${H * 0.78}" r="${R * 0.95}"><stop offset="0" stop-color="${hex(SKY.bottom)}" stop-opacity="0.5"/><stop offset="1" stop-color="${hex(SKY.bottom)}" stop-opacity="0"/></radialGradient>
+      <radialGradient id="b2" gradientUnits="userSpaceOnUse" cx="${W * 0.85}" cy="${H * 0.18}" r="${R * 0.8}"><stop offset="0" stop-color="${hex(SKY.top)}" stop-opacity="0.35"/><stop offset="1" stop-color="${hex(SKY.top)}" stop-opacity="0"/></radialGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#g)"/><rect width="${W}" height="${H}" fill="url(#b1)"/><rect width="${W}" height="${H}" fill="url(#b2)"/>
+  </svg>`;
+  const { data, info } = await sharp(Buffer.from(svg)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  // fine grain, seeded so builds are stable; a touch finer on small icons
+  let seed = 1234567;
+  const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const amp = W < 300 ? 9 : 14;
+  for (let i = 0; i < data.length; i += 3) {
+    const n = (rnd() - 0.5) * amp;
+    for (let k = 0; k < 3; k++) data[i + k] = Math.max(0, Math.min(255, data[i + k] + n));
+  }
+  await sharp(data, { raw: { width: info.width, height: info.height, channels: 3 } }).png().toFile(file);
+}
+await skyPNG(512, 512, `${OUT}/icons/icon-512.png`);
+await skyPNG(192, 192, `${OUT}/icons/icon-192.png`);
+await skyPNG(180, 180, `${OUT}/icons/apple-touch-icon.png`);
+await skyPNG(512, 512, `${OUT}/icons/icon-maskable-512.png`);
+await skyPNG(1200, 630, `${OUT}/og.png`);
+await skyPNG(64, 64, `${OUT}/icons/favicon-64.png`);
+// the worm-and-hole drawing lives on as the in-app logo
+await sharp(readFileSync('src/icon.svg')).resize(192, 192).png().toFile(`${OUT}/icons/logo-192.png`);
 // monochrome badge for Android's status bar
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><path d="M30 70c0-14-6-20-10-26-6-8 0-18 10-17 8 1 12 7 20 3" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/><ellipse cx="34" cy="74" rx="20" ry="8" fill="#fff"/></svg>`;
 await sharp(Buffer.from(badge)).resize(96, 96).png().toFile(`${OUT}/icons/badge-96.png`);
