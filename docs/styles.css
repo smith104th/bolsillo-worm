@@ -617,3 +617,8 @@ body.dark .shelf-hint { color: #fff; }
 .us-sheet .stat span { font-size: 13px; line-height: 1.25; }
 .us-sheet .btn-grid { gap: 10px; }
 .us-sheet .btn-grid .btn { min-height: 54px; font-size: 15px; }
+
+/* the shelf's worm, loose in the sky above the bands */
+.roam-wrap { height: 176px; margin-top: 2px; }
+.roamer { display: block; width: 100%; height: 100%; }
+#screen-shelf .bands { margin-top: 0; }
