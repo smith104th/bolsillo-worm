@@ -9,6 +9,18 @@ const OUT = 'docs';
 rmSync(OUT, { recursive: true, force: true });
 for (const d of [OUT, `${OUT}/fonts`, `${OUT}/icons`]) mkdirSync(d, { recursive: true });
 
+// Garden & House: its own bundles so the app only loads three.js when the House tab opens.
+// house/view.js = what the app imports; house/ = the dev page around the same view.
+mkdirSync(`${OUT}/house`, { recursive: true });
+const houseOpts = { bundle: true, format: 'esm', minify: true, write: false, target: ['es2020', 'safari15'], logLevel: 'error' };
+const hView = (await build({ ...houseOpts, entryPoints: ['src/house/entry.js'] })).outputFiles[0].text;
+const hDev = (await build({ ...houseOpts, entryPoints: ['src/house/dev.js'] })).outputFiles[0].text;
+const HOUSE_V = createHash('sha1').update(hView).digest('hex').slice(0, 8);
+writeFileSync(`${OUT}/house/view.js`, hView);
+writeFileSync(`${OUT}/house/dev.js`, hDev);
+writeFileSync(`${OUT}/house/index.html`, readFileSync('src/house/index.html', 'utf8').replaceAll('__HVERSION__', createHash('sha1').update(hDev).digest('hex').slice(0, 8)));
+console.log(`built ${OUT}/house/ · v${HOUSE_V} · view.js ${(hView.length / 1024).toFixed(0)}KB`);
+
 const res = await build({
   entryPoints: ['src/main.js'], bundle: true, format: 'esm', minify: true, sourcemap: false, write: false,
   target: ['es2020', 'safari15'],
@@ -17,6 +29,7 @@ const res = await build({
     __SUPABASE_KEY__: JSON.stringify(cfg.supabaseKey || ''),
     __VAPID_PUBLIC__: JSON.stringify(cfg.vapidPublicKey || ''),
     __VERSION__: '"dev"',
+    __HOUSE__: JSON.stringify(`./house/view.js?v=${HOUSE_V}`),
   },
 });
 const js = res.outputFiles[0].text;
@@ -74,14 +87,5 @@ const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><path
 await sharp(Buffer.from(badge)).resize(96, 96).png().toFile(`${OUT}/icons/badge-96.png`);
 
 // Garden & House: standalone 3D page at /house/ (dev). Its own bundle so the app doesn't carry three.js.
-{
-  mkdirSync(`${OUT}/house`, { recursive: true });
-  const h = await build({ entryPoints: ['src/house/main.js'], bundle: true, format: 'esm', minify: true, write: false, target: ['es2020', 'safari15'] });
-  const hjs = h.outputFiles[0].text;
-  const hv = createHash('sha1').update(hjs).digest('hex').slice(0, 8);
-  writeFileSync(`${OUT}/house/house.js`, hjs);
-  writeFileSync(`${OUT}/house/index.html`, readFileSync('src/house/index.html', 'utf8').replaceAll('__HVERSION__', hv));
-  console.log(`built ${OUT}/house/ · v${hv} · house.js ${(hjs.length / 1024).toFixed(0)}KB`);
-}
 
 console.log(`built ${OUT}/ · v${version} · app.js ${(js.length / 1024).toFixed(0)}KB · ${cfg.supabaseUrl ? 'live' : 'demo-only (no config.json)'}`);

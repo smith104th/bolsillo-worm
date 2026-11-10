@@ -9,9 +9,9 @@
 <style>
   @font-face { font-family: Geist; src: url(../fonts/geist.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
   @font-face { font-family: GeistMono; src: url(../fonts/geist-mono.woff2) format('woff2'); font-weight: 100 900; font-display: swap; }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe2f0; font-family: Geist, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: #111; }
-  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  .veil { position: fixed; inset: 0; display: grid; place-items: center; background: #cfe2f0; font: 600 13px/1 GeistMono, monospace; letter-spacing: .14em; text-transform: uppercase; transition: opacity .6s; z-index: 5; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #B7E0FF; font-family: Geist, system-ui, sans-serif; -webkit-font-smoothing: antialiased; color: #111; }
+  #stage { position: fixed; inset: 0; }
+  .veil { position: fixed; inset: 0; display: grid; place-items: center; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); font: 600 13px/1 GeistMono, monospace; letter-spacing: .14em; text-transform: uppercase; transition: opacity .6s; z-index: 5; }
   body.ready .veil { opacity: 0; pointer-events: none; }
   header { position: fixed; top: calc(env(safe-area-inset-top) + 16px); left: 18px; right: 18px; pointer-events: none; z-index: 2; }
   header h1 { margin: 0; font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 1; }
@@ -39,7 +39,7 @@
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+<div id="stage"></div>
 <div class="veil">Pouring concrete…</div>
 <header>
   <h1>Garden &amp; House</h1>
@@ -50,13 +50,16 @@
   <div class="buildrow glass">
     <div class="top"><span id="bname">…</span><span id="bcount"></span></div>
     <input id="build" type="range" min="0" step="1" value="0">
-    <div class="acts"><button id="addone">+ One piece</button></div>
+    <div class="acts"><button id="restart">Start over</button><button id="addone">+ 1</button><button id="addfive">+ 5</button></div>
   </div>
   <div class="row glass views">
-    <button data-view="street">Street</button><button data-view="corner">Corner</button><button data-view="side">Side</button><button data-view="aerial">Above</button><button data-view="roof">Roof</button>
+    <button data-view="street">Street</button><button data-view="corner">Corner</button><button data-view="side">Side</button><button data-view="above">Above</button><button data-view="roof">Roof</button>
   </div>
   <div class="row glass">
-    <button data-cut="4">All</button><button data-cut="3">4F</button><button data-cut="2">3F</button><button data-cut="1">2F</button><button data-cut="0">1F</button>
+    <button id="finished">See it finished</button>
+  </div>
+  <div class="row glass">
+    <button data-cut="4" class="on">All</button><button data-cut="3">4F</button><button data-cut="2">3F</button><button data-cut="1">2F</button><button data-cut="0">1F</button>
   </div>
   <div class="row glass sunrow">
     <div><span class="t" id="time">--:--</span><span class="l" id="tlabel">Tokyo</span></div>
@@ -64,6 +67,6 @@
     <button id="nowbtn">Now</button>
   </div>
 </div>
-<script type="module" src="./house.js?v=9b0046f4"></script>
+<script type="module" src="./dev.js?v=65a46ab7"></script>
 </body>
 </html>

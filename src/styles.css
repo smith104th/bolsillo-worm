@@ -748,3 +748,21 @@ svg .spin { animation: recordspin 6s linear infinite; }
 /* Onboarding sits above the app; its sheets (the new-pocket guard) and every toast must sit above it */
 #onboard:not([hidden]) ~ .sheet { z-index: 55; }
 .toasts { z-index: 60; }
+
+/* ── the house (last page) ───────────────────── */
+#screen-house { transform: translate3d(300%,0,0); overflow: hidden; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); color: var(--ink); }
+.hp-stage { position: absolute; inset: 0; }
+.hp-head { position: absolute; z-index: 2; top: calc(var(--safe-t) + 16px); left: 22px; right: 22px; pointer-events: none; }
+.hp-title { font: 600 40px/0.98 var(--sans); letter-spacing: -0.05em; margin: 0; color: var(--ink); }
+.hp-count { margin: 8px 0 0; font: 600 12px/1.2 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+body.dark .hp-title, body.dark .hp-count { color: #fff; }
+.hp-bottom { position: absolute; z-index: 2; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 112px); display: flex; flex-direction: column; align-items: center; gap: 10px; width: min(400px, calc(100% - 32px)); }
+.hp-toggle { position: absolute; z-index: 2; top: calc(var(--safe-t) + 104px); left: 18px; display: inline-flex; padding: 4px; border-radius: 999px; gap: 2px; }
+.hp-seg, .hp-floor { border: 0; background: transparent; color: inherit; font: 600 14px/1 var(--sans); padding: 9px 16px; border-radius: 999px; }
+.hp-seg.on, .hp-floor.on { background: var(--ink); color: #fff; }
+body.dark .hp-seg.on, body.dark .hp-floor.on { background: #fff; color: var(--ink); }
+.hp-floors { display: flex; width: 100%; justify-content: space-between; padding: 4px; border-radius: 999px; }
+.hp-floor { flex: 1; padding: 10px 0; }
+.hp-add { border: 0; border-radius: 999px; padding: 10px 18px; font: 600 14px/1 var(--sans); color: inherit; }
+.hp-veil { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); pointer-events: none; transition: opacity 0.6s; }
+.hp-veil.gone { opacity: 0; }

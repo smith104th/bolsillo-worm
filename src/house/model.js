@@ -13,6 +13,7 @@ export const SW = 3.8, SD = 6.6, FH = 2.8, ST = 0.25, LEVELS = 5;
 const X = (xp) => xp - SW / 2, Z = (zp) => zp - SD / 2;
 const P = (xp, zp) => [X(xp), Z(zp)];
 const FL = (i) => i * FH;
+export const spiralA0 = (L) => Math.PI * (-0.5 + L * 0.07);
 
 // ---------------------------------------------------------------------------------------------
 let M;
@@ -385,7 +386,7 @@ export function buildHouse() {
   add(slab(0, [], { ground: true }), 0, 'slab', 'Ground slab');
   for (let L = 0; L < 4; L++) {
     add(columns(L), L, 'columns', `Columns ${L + 1}F`);
-    if (L < 3) add(spiral(SPIRAL[0], SPIRAL[1], L, Math.PI * (0.5 + L * 0.07)), L, 'stair', `Spiral stair ${L + 1}F`);
+    if (L < 3) add(spiral(SPIRAL[0], SPIRAL[1], L, spiralA0(L)), L, 'stair', `Spiral stair ${L + 1}F`);
     else add(straightStair(), 3, 'stair', 'Stair to the roof');
     add(slab(L + 1, L < 3 ? [dHole] : [roofStair, skylight, roofHole], { roof: L === 3 }), L + 1, 'slab', L < 3 ? `${L + 2}F slab` : 'Roof slab');
   }

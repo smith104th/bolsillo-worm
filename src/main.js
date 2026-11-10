@@ -18,12 +18,13 @@ import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } f
 import { Pager } from './pager.js';
 import { Shelf, SHELF_BOTTOM } from './shelf.js';
 import { SoilPage, SOIL_BG } from './soil.js';
+import { HousePage } from './housepage.js';
 import { cache, offlineError } from './cache.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
 const COMPOST_H = 72; // opened things settle into the soil after three days
-let backend, pocket, shelf, soil, pager;
+let backend, pocket, shelf, soil, house, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
@@ -173,12 +174,15 @@ function enterPocket(data, { fromCache = false } = {}) {
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
   soil = SoilPage(app, $('#screen-soil'));
-  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil')], {
-    labels: ['Pocket', 'Shelf', 'Soil'],
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), demo: DEMO });
+  house.setSky(S.sky);
+  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-house')], {
+    labels: ['Pocket', 'Shelf', 'Soil', 'House'],
     onMove: tuckDock,
     onChange: (i) => {
       if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
       if (i === 2) soil.show(); else soil.hide();
+      if (i === 3) house.show(); else house.hide();
       if (i === 0) pocket?.start(); else pocket?.stop();
       paintEdges();
     },
@@ -364,6 +368,7 @@ function updateSky() {
   S.sky = sky;
   pocket?.setSky(sky);
   shelf?.setSky(sky);
+  house?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
   paintEdges();
 }
