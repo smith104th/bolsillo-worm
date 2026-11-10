@@ -56,11 +56,11 @@ jobs:
           umask 077
           printf "R2_ACCOUNT_ID='%s'\nR2_ACCESS_KEY_ID='%s'\nR2_SECRET_ACCESS_KEY='%s'\nR2_BUCKET='bolsillo-worm'\nDB_URL='%s'\n" \
             "$R2_ACCOUNT_ID" "$R2_ACCESS_KEY_ID" "$R2_SECRET_ACCESS_KEY" "$DB_URL" > "$RUNNER_TEMP/r2.env"
-          supabase secrets set --project-ref "$PROJECT_REF" --env-file "$RUNNER_TEMP/r2.env"
+          supabase secrets set --project-ref "$PROJECT_REF" --env-file "$RUNNER_TEMP/r2.env" --yes
           rm -f "$RUNNER_TEMP/r2.env"
       - name: Deploy functions
         run: |
           for d in supabase/functions/*/; do
             name=$(basename "$d"); echo "→ $name"
-            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api
+            supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt --use-api --yes
           done
