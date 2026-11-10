@@ -38,12 +38,13 @@ function ac() {
   try {
     if (!ctx) {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
-      // a soft bus: gentle lowpass + a small echo so every ding rings out
-      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; lp.Q.value = 0.3;
-      const master = ctx.createGain(); master.gain.value = 0.9;
+      // a soft bus: a warm lowpass + a small echo so every ding rings out.
+      // Softened Nov 9 (Manu: "a little more subtle and softer"): quieter, rounder, less echo.
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.Q.value = 0.2;
+      const master = ctx.createGain(); master.gain.value = 0.55;
       const delay = ctx.createDelay(1); delay.delayTime.value = 0.21;
-      const fb = ctx.createGain(); fb.gain.value = 0.26;
-      const wet = ctx.createGain(); wet.gain.value = 0.2;
+      const fb = ctx.createGain(); fb.gain.value = 0.2;
+      const wet = ctx.createGain(); wet.gain.value = 0.14;
       master.connect(lp); lp.connect(ctx.destination);
       lp.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(ctx.destination);
       out = master;
@@ -54,25 +55,26 @@ function ac() {
 }
 export function unlockAudio() { unlocked = true; ac(); }
 
-// a little bell: a sine with two faint overtones and a long soft tail
+// a little bell: a sine with two faint overtones, a gentle start and a long soft tail
 function ding(freq, { at = 0, vol = 0.07, dur = 0.9 } = {}) {
   const a = ac(); if (!a) return;
   const t = a.currentTime + at;
   const g = a.createGain();
   g.gain.setValueAtTime(0.0001, t);
-  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   g.connect(out);
-  for (const [mult, v] of [[1, 1], [2, 0.18], [3.01, 0.05]]) {
+  for (const [mult, v] of [[1, 1], [2, 0.1], [3.01, 0.02]]) {
     const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq * mult, t);
     const og = a.createGain(); og.gain.value = v;
     o.connect(og).connect(g);
     o.start(t); o.stop(t + dur + 0.05);
   }
 }
-// notes from C6 on a major pentatonic, so anything played together sounds sweet
+// notes from A5 on a major pentatonic, so anything played together sounds sweet
+// (a little lower than the old C6, which read as pingy)
 const PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
-const note = (step, base = 1046.5) => base * Math.pow(2, (PENTA[((step % PENTA.length) + PENTA.length) % PENTA.length] + 12 * Math.floor(step / PENTA.length)) / 12);
+const note = (step, base = 880) => base * Math.pow(2, (PENTA[((step % PENTA.length) + PENTA.length) % PENTA.length] + 12 * Math.floor(step / PENTA.length)) / 12);
 let petStep = 0;
 
 export const sfx = {
