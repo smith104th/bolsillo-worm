@@ -619,7 +619,6 @@ export function buildHouse() {
     p.rotation.y = type === 'trailing' ? 0 : T.rnd() * Math.PI * 2;
     return add(p, L, 'plant', `${type} ${L + 1}F`);
   };
-  const OUT = { front: 0, left: -Math.PI / 2, right: Math.PI / 2 };
   // the yard in front of 1F, planted in the ground and full of pots
   {
     const yard = mesh(new THREE.BoxGeometry(4.2, 0.2, 1.6), m.soil);
@@ -655,9 +654,6 @@ export function buildHouse() {
     plant(1, x, z, 'grass', { pot: null, lift: 0.67, green: k, scale: 1.1 });
   }
   plant(1, 3.6, 5.75, 'shrub', { pot: null, lift: 0.67, scale: 0.8 });
-  plant(1, 1.4, 6.5, 'trailing', { pot: null, lift: 0.67, out: OUT.front, len: 1.4 });
-  plant(1, 2.7, 6.5, 'trailing', { pot: null, lift: 0.67, out: OUT.front, len: 1.2 });
-  plant(1, 0.14, 4.7, 'trailing', { pot: null, out: OUT.left, len: 1.8 });
   plant(1, 3.4, 5.45, 'snake', { pot: 'white' });
   // 3F: the jungle. A big schefflera, philodendrons, palms, strelitzia, everything in pots on soil
   plant(2, 2.75, 3.7, 'schefflera', { pot: 'concrete', potR: 0.32, potH: 0.52, h: 1.75, scale: 1.45, dense: 1.6 });
@@ -682,11 +678,6 @@ export function buildHouse() {
   plant(2, 3.55, 4.55, 'monstera', { pot: null, lift: 0.56, scale: 0.75 });
   plant(2, 3.55, 5.45, 'shrub', { pot: null, lift: 0.56 });
   plant(2, 0.4, 4.45, 'snake', { pot: 'white' });
-  plant(2, 0.6, 6.5, 'trailing', { pot: null, out: OUT.front, len: 2.2, dense: 1.4 });
-  plant(2, 1.8, 6.5, 'trailing', { pot: null, out: OUT.front, len: 1.8, dense: 1.2 });
-  plant(2, 3.0, 6.52, 'trailing', { pot: null, out: OUT.front, len: 1.5 });
-  plant(2, 0.08, 5.4, 'trailing', { pot: null, out: OUT.left, len: 2.0 });
-  plant(2, 3.75, 3.4, 'trailing', { pot: null, out: OUT.right, len: 1.4 });
   // 4F: back garden around the roof stair; the front garden behind curved glass; the planter
   plant(3, 0.36, 0.45, 'shrub', { pot: null });
   plant(3, 0.55, 1.1, 'grass', { pot: null });
@@ -698,9 +689,6 @@ export function buildHouse() {
   plant(3, 3.15, 6.05, 'grass', { pot: 'concrete' });
   plant(3, 2.25, 6.15, 'snake', { pot: 'concrete' });
   for (const [x, k] of [[0.4, 'shrub'], [0.9, 'grass'], [1.4, 'shrub'], [1.85, 'grass']]) plant(3, x, 6.27, k, { pot: null, lift: 0.61, scale: 0.9, green: 'fresh' });
-  plant(3, 0.6, 6.56, 'trailing', { pot: null, lift: 0.61, out: OUT.front, len: 1.6 });
-  plant(3, 1.6, 6.56, 'trailing', { pot: null, lift: 0.61, out: OUT.front, len: 1.2 });
-  plant(3, 0.05, 2.0, 'trailing', { pot: null, out: OUT.left, len: 1.6 });
   // roof: square terracotta planters and round concrete pots with small trees, vines over the edge
   plant(4, 1.6, 5.15, 'tree', { pot: 'concrete', potR: 0.3, potH: 0.55, h: 1.5, scale: 0.8, leaf: 3 });
   plant(4, 2.05, 4.75, 'shrub', { pot: 'concrete', potR: 0.26, potH: 0.5 });
@@ -708,8 +696,6 @@ export function buildHouse() {
   plant(4, 3.25, 4.6, 'tree', { pot: 'terracotta', potR: 0.3, potH: 0.55, h: 1.6, scale: 0.8, green: 'fresh' });
   plant(4, 1.55, 5.85, 'grass', { pot: 'concrete', potR: 0.22, potH: 0.45 });
   plant(4, 3.45, 1.9, 'snake', { pot: 'concrete', potR: 0.18, potH: 0.4 });
-  plant(4, 0.1, 3.4, 'trailing', { pot: null, out: OUT.left, len: 2.4, dense: 1.2 });
-  plant(4, 0.9, 6.5, 'trailing', { pot: null, out: OUT.front, len: 1.8 });
   // last: the tree in the 4F garden that rises through the round opening in the roof
   plant(3, 2.68, 5.66, 'tree', { pot: null, h: 4.8, scale: 1.35, green: 'fresh', dense: 1.3 });
 
