@@ -111,9 +111,16 @@ function pocketItems() {
   return [...pinned, ...rest].slice(0, 22).map(app.asItem);
 }
 
+// What arrived while you were away falls in from the sky when you come back.
+// seenAt = the last moment the pocket was on screen (saved every 30 s and when the app hides).
+let fallSince = 0;
+const markSeen = () => store('seenAt', Date.now());
+const comingBack = () => { fallSince = store('seenAt') || 0; markSeen(); };
+
 function refreshPocket() {
   if (!pocket) return;
-  pocket.syncItems(pocketItems());
+  pocket.syncItems(pocketItems(), { fallSince });
+  fallSince = 0;
   const them = app.them(), me = app.me();
   if (them) {
     pocket.setTheirWorm(them.worm, inchesFor(them.love));
@@ -161,6 +168,7 @@ function enterPocket(data) {
     onFinger: throttle((n, down) => { if (S.online) backend.send(n && down ? { t: 'f', x: +n.x.toFixed(3), y: +n.y.toFixed(3), d: 1 } : { t: 'f', d: 0 }); }, 45, true),
     onKnot: () => { if (S.slot === 0) act('touch', {}); toast('Fingertips touched.', { tone: 'love', icon: 'heart' }); },
   });
+  comingBack();
   refreshPocket();
   pocket.start();
   updateAsleep();
@@ -169,7 +177,8 @@ function enterPocket(data) {
   if (store('motion') || !(window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission)) enableMotion(false);
 
   setInterval(() => { if (!document.hidden) backend.updateMe({}).catch(() => {}); }, 120000);
-  setInterval(() => { updateSky(); renderHeader(); updateAsleep(); refreshNeeds(); }, 30000);
+  setInterval(() => { updateSky(); renderHeader(); updateAsleep(); refreshNeeds(); if (!document.hidden) markSeen(); }, 30000);
+  window.addEventListener('pagehide', markSeen);
   loadWeather(); setInterval(loadWeather, 20 * 60000);
   document.addEventListener('visibilitychange', onVisible);
   backend.updateMe({}).catch(() => {});
@@ -180,12 +189,13 @@ function enterPocket(data) {
 }
 
 async function onVisible() {
-  if (document.hidden) { backend.track(false); return; }
+  if (document.hidden) { backend.track(false); markSeen(); return; }
   navigator.serviceWorker?.getRegistration?.().then((r) => r?.update()).catch(() => {});
   backend.track(true);
   try {
     const data = await backend.load();
     const hadThem = !!app.them();
+    comingBack();
     applyData(data); refreshPocket(); loadPlanted(); loadShelf();
     if (!hadThem && app.them()) toast(`${app.them().name} crawled in.`, { tone: 'love' });
     if (backend.channelState && backend.channelState() !== 'joined') backend.connect(S.hole.id, S.slot, realtime);

@@ -105,14 +105,22 @@ export class Pocket {
   }
 
   // ── items
-  syncItems(list) {
+  // fallSince: things from them that arrived after this time (ms) and aren't here yet
+  // fall in from the sky one by one, oldest first, instead of already sitting here
+  syncItems(list, { fallSince = 0 } = {}) {
     const keep = new Set(list.map((i) => i.id));
     this.items = this.items.filter((i) => keep.has(i.id) || i.rise);
+    const fresh = [];
     for (const it of list) {
       const have = this.items.find((x) => x.id === it.id);
       if (have) { Object.assign(have, { payload: it.payload, opened: it.opened, kept: it.kept }); continue; }
-      this.addItem(it, false);
+      if (fallSince && !it.opened && !it.mine && Date.parse(it.created_at) > fallSince) fresh.push(it);
+      else this.addItem(it, false);
     }
+    fresh.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+    for (const it of fresh.splice(0, Math.max(0, fresh.length - 8))) this.addItem(it, false); // past 8, the older ones are just here
+    fresh.forEach((it, k) => { this.addItem(it, true).fall.wait = 0.7 + k * 0.45; });
+    return fresh.length;
   }
   addItem(it, fromSky = true) {
     const r = itemRadius(it.kind);
@@ -523,7 +531,9 @@ export class Pocket {
       }
       if (it.fall) {
         // drifting down from the sky: gravity with drag, a little sway, then it settles
-        const f = it.fall; f.t += dt;
+        const f = it.fall;
+        if (f.wait > 0) { f.wait -= dt; continue; } // waiting its turn above the screen
+        f.t += dt;
         f.vy = Math.min(f.vy + 620 * dt, 430);
         it.y += f.vy * dt;
         it.x = f.x0 + Math.sin(f.t * 3.1 + f.ph) * f.sway * clamp((f.land - it.y) / 90, 0, 1); // sway fades as it lands
@@ -532,6 +542,7 @@ export class Pocket {
           it.fall = null;
           it.px = it.x; it.py = it.y - Math.min(6, f.vy * dt * 0.7); // keeps easing down a touch as it lands
           this.burst('spark', it.x, it.y + it.r * 0.6, 8); sfx.plop();
+          if (this.worm && this.worm.mode !== 'sleep' && !this.worm.grab) this.worm.gaze = { x: it.x, y: it.y };
         } else { it.px = it.x; it.py = it.y; }
         continue;
       }
