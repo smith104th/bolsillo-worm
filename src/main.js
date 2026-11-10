@@ -5,6 +5,8 @@ import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
 import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, topSheet, ICON, confirmBox } from './ui.js';
+import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
+import { backupDue } from './backup.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
@@ -54,7 +56,7 @@ const app = {
   asItem: (e) => ({ ...e, opened: !!e.opened_at, mine: e.from_slot === S.slot }),
   stash(id) { S.stashed.add(id); store('stashed', [...S.stashed].slice(-500)); app.refreshPocket(); },
   refreshPocket,
-  send, feed, mist, knock, ring, react: sendReact, enablePush, enableMotion,
+  send, feed, mist, knock, ring, react: sendReact, enablePush, enableMotion, backupChanged: () => {},
   onDaily: (fn) => dailyFns.add(fn),
   dailyChanged: () => { for (const f of dailyFns) if (f() === false) dailyFns.delete(f); },
   onReact: null,
@@ -173,7 +175,7 @@ function enterPocket(data) {
   loadPlanted();
   loadShelf();
   syncPush();
-  setTimeout(welcome, 900);
+  setTimeout(() => { if (!welcome()) setTimeout(afterArrival, 1200); }, 900);
 }
 
 async function onVisible() {
@@ -645,7 +647,7 @@ async function syncPush() {
 }
 
 function welcome() {
-  if (store('welcomed')) return;
+  if (store('welcomed')) return false;
   store('welcomed', true);
   const canPush = !DEMO && 'Notification' in window && Notification.permission === 'default';
   const needsTilt = window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function';
@@ -661,7 +663,37 @@ function welcome() {
     canPush ? btn('Turn on notifications', async () => { await enablePush(); }, 'primary') : null,
     needsTilt ? btn('Let the pocket feel tilt', () => enableMotion(true), 'ghost') : null,
     btn('Got it', () => s.close(), canPush ? 'ghost' : 'primary'),
-  ]);
+  ], { onClose: () => setTimeout(afterArrival, 700) });
+  return true;
+}
+
+// After the welcome (or on any open): the Face ID backup offer, once, then every
+// week until saved; and the monthly "save everything" reminder.
+const WEEK = 7 * 86400000;
+async function afterArrival() {
+  if (topSheet()) return;
+  const me = app.me(), code = S.hole?.code;
+  if (me && code && !hasBackupFor(code, S.slot) && Date.now() - (store('passkeySnooze') || 0) > WEEK && (!DEMO || params.has('passkey')) && await canPasskey()) {
+    offerFaceIdBackup();
+    return;
+  }
+  if (backupDue(app) && store('backupNagDay') !== app.today()) {
+    store('backupNagDay', app.today());
+    toast('Time for this month\'s backup. Us → Save everything.', { ms: 5200, icon: 'save' });
+  }
+}
+function offerFaceIdBackup() {
+  const me = app.me();
+  let saved = false;
+  const s = sheet('Back up your pocket', [
+    h('p.lede', 'Save a Face ID backup to your iPhone\'s passwords. If you ever delete the app or get a new phone, one Face ID tap brings back your worm and everything you two shared. Nothing to remember, no email.'),
+    btn([icon('faceid'), ' Save with Face ID'], async (e) => {
+      const b = e.currentTarget; b.disabled = true;
+      try { await savePasskey({ code: S.hole.code, slot: S.slot, name: me?.name, worm: me?.worm?.name }); saved = true; s.close(); toast('Saved. Face ID brings your pocket back.', { tone: 'love' }); }
+      catch (err) { toast(passkeyError(err), { ms: 4200 }); b.disabled = false; }
+    }, 'primary'),
+    btn('Not now', () => s.close(), 'ghost'),
+  ], { onClose: () => { if (!saved) store('passkeySnooze', Date.now()); } });
 }
 
 // ─────────────────────────────────────────────── helpers

@@ -121,7 +121,11 @@ export function mockBackend() {
     async load() { return { hole: members.length ? { ...hole } : null, members: members.map((m) => ({ ...m })), events: events.map((e) => ({ ...e })) }; },
     async create(name, worm, place) { seed(name, worm, place); botLoop(); return { hole_id: hole.id, code: hole.code, slot: 0 }; },
     async join(code, name, worm, place) { seed(name, worm, place); botLoop(); return { hole_id: hole.id, code: hole.code, slot: 0 }; },
-    async reclaim() { return { hole_id: hole.id, code: hole.code, slot: 0 }; },
+    async reclaim() {
+      if (!members.length) { seed('Manu', { name: 'Fideo', color: 'lombriz', pattern: 'rings', acc: 'beanie' }, { city: 'Buenos Aires', country: 'Argentina', lat: -34.6, lon: -58.38, tz: 'America/Argentina/Buenos_Aires' }); botLoop(); }
+      return { hole_id: hole.id, code: hole.code, slot: 0 };
+    },
+    async allEvents() { return events.map((e) => ({ ...e })).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)); },
     async leave() { members.length = 0; },
     async act(kind, payload = {}, data = null, mime = null) {
       let e;

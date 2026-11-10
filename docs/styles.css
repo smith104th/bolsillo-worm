@@ -711,3 +711,22 @@ svg .spin { animation: recordspin 6s linear infinite; }
 .us-sheet .count-edit:active { transform: scale(0.95); }
 .us-sheet .countdown .count-top + .count-head .big-num { margin-top: 10px; }
 .us-sheet .count-when { margin: 10px 0 0; font-size: 11px; letter-spacing: 0.08em; color: #fff; }
+
+/* Welcome: a quiet way back in next to "start" */
+.hero-card > .hero-actions { pointer-events: auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero-actions .start-pill { align-self: auto; }
+.back-pill { font: 500 16px/1 var(--sans); letter-spacing: -0.01em; color: var(--ink); background: rgba(255,255,255,0.62); border-radius: 999px; padding: 15px 18px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.choice.plain { background: #F2F2F7; }
+.btn svg { width: 19px; height: 19px; vertical-align: -4px; }
+
+/* Backups: Face ID + Save everything */
+.backup-status { color: var(--ink); background: #F2F2F7; border-radius: 16px; padding: 12px 14px; margin: 0; }
+.backup-card { background: #FFC93C; color: #0B0B0C; border-radius: 28px; padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.backup-card .mono { color: #0B0B0C; }
+.backup-card p { margin: 0; color: #0B0B0C; }
+.backup-card .btn { background: #0B0B0C; color: #fff; }
+.setting .ok { color: #0F7A4E; font-weight: 600; }
+
+/* Onboarding sits above the app; its sheets (the new-pocket guard) and every toast must sit above it */
+#onboard:not([hidden]) ~ .sheet { z-index: 55; }
+.toasts { z-index: 60; }

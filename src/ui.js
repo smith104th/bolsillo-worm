@@ -22,6 +22,8 @@ export const ICON = {
   ring: I('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'),
   mist: I('<path d="M12 3.5c3 4 5 6.6 5 9.5a5 5 0 0 1-10 0c0-2.9 2-5.5 5-9.5Z"/>'),
   close: I('<path d="M6 6l12 12M18 6 6 18"/>'),
+  faceid: I('<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M9 9v1.5M15 9v1.5M12 9v4h-1M9.5 16c1.4 1 3.6 1 5 0"/>'),
+  save: I('<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3"/>'),
   song: I('<path d="M9 17.5V6.5l10-2.5v11"/><circle cx="6.6" cy="17.5" r="2.4"/><circle cx="16.6" cy="15" r="2.4"/>'),
   check: I('<path d="M5 12.5 10 17.5 19 7"/>'),
   back: I('<path d="M15 5l-7 7 7 7"/>'),

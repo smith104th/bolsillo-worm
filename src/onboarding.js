@@ -2,7 +2,8 @@
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
 import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
 import { makeSky, drawHole } from './draw.js';
-import { btn, field, icon, toast } from './ui.js';
+import { btn, field, icon, toast, sheet } from './ui.js';
+import { canPasskey, restoreWithPasskey, passkeyError } from './passkey.js';
 import { sfx, unlockAudio } from './feel.js';
 
 export const fmtCode = (c) => (c || '').replace(/[^A-Z0-9]/gi, '').toUpperCase().replace(/^(.{4})(.+)$/, '$1-$2');
@@ -105,8 +106,9 @@ export async function onboard(backend, { code: presetCode } = {}) {
   const draft = store('draft') || { name: '', worm: { ...DEFAULT_DESIGN }, place: null };
   const save = () => store('draft', draft);
 
-  // 1. welcome
-  await new Promise((res) => {
+  // 1. welcome (or straight back in, for someone who's been here before)
+  const faceId = await canPasskey();
+  const first = await new Promise((res) => {
     const root = $('#onboard');
     root.hidden = false;
     root.classList.add('hero');
@@ -116,10 +118,16 @@ export async function onboard(backend, { code: presetCode } = {}) {
       h('div.hero-title', 'bolsillo', h('br'), 'worm'),
       h('p.hero-tag', 'You become a worm. Yours lives in their pocket. Theirs lives in yours.'),
       h('div.hero-list', ['pet', 'kiss', 'feed', 'dig', 'touch'].map((w) => h('span', w))),
-      h('button.start-pill', { type: 'button', onclick: () => { stop(); res(); } }, 'start', h('i', { html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>' }))));
+      h('div.hero-actions',
+        h('button.back-pill', { type: 'button', onclick: () => { stop(); res('back'); } }, 'Been here before?'),
+        h('button.start-pill', { type: 'button', onclick: () => { stop(); res('start'); } }, 'start', h('i', { html: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>' })))));
     let stop = () => {};
     requestAnimationFrame(() => { stop = heroScene(cv); });
   });
+  if (first === 'back') {
+    const r = await welcomeBack(backend, faceId);
+    if (r) { store('draft', null); return r; }
+  }
 
   // 2. you
   await new Promise((res) => {
@@ -202,7 +210,11 @@ export async function onboard(backend, { code: presetCode } = {}) {
     const busy = (b, on) => { b.disabled = on; b.classList.toggle('busy', on); };
 
     const create = async (e) => {
-      const b = e.currentTarget; busy(b, true);
+      const b = e.currentTarget;
+      // Guard: a new hole starts empty. Make sure they don't already have one.
+      const go = await confirmNewHole(backend, faceId, () => codeIn.focus(), (r) => { store('draft', null); resolve(r); });
+      if (!go) return;
+      busy(b, true);
       try {
         const r = await backend.create(draft.name, draft.worm, draft.place);
         store('draft', null);
@@ -229,9 +241,46 @@ export async function onboard(backend, { code: presetCode } = {}) {
       h('div.or', 'or'),
       h('div.choice',
         h('h3', 'Got a code?'),
+        h('p.small', 'From your person, or your own if you\'ve been here before (your worm comes back).'),
         h('div.code-row', codeIn, h('button.icon-btn', { type: 'button', onclick: paste, title: 'Paste' }, 'Paste')),
         btn('Crawl in', join, presetCode ? 'primary' : '')),
     );
+  });
+}
+
+// "Been here before?": Face ID first (if this phone has a backup), else the code.
+function welcomeBack(backend, faceId) {
+  return new Promise((resolve) => {
+    const restore = btn([icon('faceid'), ' Restore with Face ID'], async () => {
+      restore.disabled = true;
+      try { const r = await restoreWithPasskey(backend); toast('Welcome back.'); resolve(r); }
+      catch (err) { toast(passkeyError(err, { restoring: true }), { ms: 4200 }); restore.disabled = false; }
+    }, 'primary');
+    screen(h('div.ob-logo', logo()), h('h1', 'Welcome back'),
+      h('p.lede', 'Your worm and everything you two shared are still in your pocket.'),
+      faceId ? restore : h('p.small', 'Face ID backups need the app opened from your home screen on an iPhone.'),
+      h('div.choice.plain',
+        h('h3', 'Use your code'),
+        h('p.small', faceId ? 'No Face ID backup? Set up quickly, then paste your pocket\'s code at the last step and pick your worm.' : 'Set up quickly, then paste your pocket\'s code at the last step and pick your worm.'),
+        btn('Continue with my code', () => resolve(null), faceId ? 'ghost' : 'primary')));
+  });
+}
+
+// Before digging a new hole: it starts empty, so offer the ways back in first.
+function confirmNewHole(backend, faceId, focusCode, restored) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (v) => { if (settled) return; settled = true; s.close(); resolve(v); };
+    const s = sheet('Starting a new pocket?', [
+      h('p.lede', 'A new pocket starts empty. If you\'ve been here before, your worm and everything you two shared are in your old pocket. Get back in instead.'),
+      faceId ? btn([icon('faceid'), ' Restore with Face ID'], async (e) => {
+        e.currentTarget.disabled = true;
+        try { const r = await restoreWithPasskey(backend); settled = true; s.close(); toast('Welcome back.'); restored(r); resolve(false); }
+        catch (err) { toast(passkeyError(err, { restoring: true }), { ms: 4200 }); e.currentTarget.disabled = false; }
+      }, 'primary') : null,
+      btn('I have my code', () => { done(false); setTimeout(focusCode, 350); }, faceId ? 'ghost' : 'primary'),
+      btn('Yes, start a new pocket', () => done(true), 'ghost'),
+    ].filter(Boolean), { onClose: () => { if (!settled) { settled = true; resolve(false); } } });
   });
 }
 

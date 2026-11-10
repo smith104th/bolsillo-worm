@@ -10,6 +10,8 @@ import { wormPreview, fmtCode } from './onboarding.js';
 import { plantSheet, viewPhoto } from './soil.js';
 import { leaveSheet } from './shelf.js';
 import { sfx } from './feel.js';
+import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
+import { backupSheet, backupDue, lastBackup } from './backup.js';
 
 
 function foodCanvas(kind, size = 54) {
@@ -201,7 +203,9 @@ export function usSheet(app) {
   };
   renderCount();
 
+  const due = backupDue(app);
   sheet('Us', [
+    due ? h('div.backup-card', h('span.mono.small', 'MONTHLY BACKUP'), h('p', 'Save everything from this month to Files or iCloud Drive, so nothing can be lost.'), btn([icon('save'), ' Save everything'], () => backupSheet(app), 'primary')) : null,
     h('div.card.tunnel',
       h('div.row.between', h('span.mono.small.muted', (me?.place?.city || 'You').toUpperCase()), h('span.mono.small.muted', (them?.place?.city || 'Them').toUpperCase())),
       h('div.tunnel-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', `${fmtDistance(hole.tunnel_km || 0, units)}`)),
@@ -308,6 +312,17 @@ export function settingsSheet(app) {
     else pushState.textContent = Notification.permission === 'granted' && app.me()?.push ? 'On' : Notification.permission === 'denied' ? 'Blocked in settings' : 'Off';
   };
   updatePush();
+  // Face ID backup: a passkey that knows your pocket and your worm (see passkey.js)
+  const me = app.me(), code = app.S.hole?.code, slot = app.slot();
+  const faceState = h('span.small.muted', hasBackupFor(code, slot) ? 'Saved on this phone. Brings your pocket back after a reinstall or on a new iPhone.' : 'Brings your pocket back after a reinstall or on a new iPhone.');
+  const faceBtn = btn(hasBackupFor(code, slot) ? 'Save again' : 'Save', async () => {
+    faceBtn.disabled = true;
+    try { await savePasskey({ code, slot, name: me?.name, worm: me?.worm?.name }); faceState.textContent = 'Saved on this phone. Brings your pocket back after a reinstall or on a new iPhone.'; faceBtn.textContent = 'Save again'; toast('Saved. Face ID brings your pocket back.', { tone: 'love' }); }
+    catch (err) { toast(passkeyError(err), { ms: 4200 }); }
+    faceBtn.disabled = false;
+  }, 'ghost small');
+  const faceRow = h('div.setting', h('div', h('b', 'Face ID backup'), faceState), faceBtn);
+  canPasskey().then((ok) => { if (!ok) { faceState.textContent = isIOS() && !isStandalone() ? 'Open the app from your home screen to use this.' : 'Not available on this device.'; faceBtn.hidden = true; } });
   sheet('Settings', [
     h('div.setting', h('div', h('b', 'Notifications'), pushState), btn('Turn on', async () => { await app.enablePush(); updatePush(); }, 'ghost small')),
     h('div.setting', h('div', h('b', 'Tilt'), h('span.small.muted', 'Things slide around when you tilt.')), btn('Allow', () => app.enableMotion(true), 'ghost small')),
@@ -315,9 +330,15 @@ export function settingsSheet(app) {
     h('div.setting', h('b', 'Buzz'), segmented({ on: 'On', off: 'Off' }, st.haptics === false ? 'off' : 'on', (k) => set('haptics', k === 'on'))),
     h('div.setting', h('b', 'Distance'), segmented({ mi: 'Miles', km: 'Km' }, st.units || app.defaultUnits(), (k) => set('units', k))),
     h('div.setting', h('div', h('b', 'Your hole\'s code'), h('span.small.muted', 'For a new phone. Keep it between you two.')), h('span.code.small', fmtCode(app.S.hole?.code))),
+    faceRow,
+    h('div.setting', h('div', h('b', 'Save everything'), h('span.small.muted', lastBackup() ? `Last saved ${new Date(lastBackup()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. Once a month is plenty.` : 'Every note, photo and answer in one file.')), btn('Save', () => backupSheet(app), 'ghost small')),
     h('div.setting', h('div', h('b', 'Your city'), h('span.small.muted', app.me()?.place?.city || '')), btn('Change', () => changeCity(app), 'ghost small')),
     btn('Crawl out of this pocket', async () => {
-      if (!(await confirmBox('This removes your worm from the pocket on this phone. Your partner keeps their side. You can rejoin with the code.', 'Crawl out'))) return;
+      const alone = !app.them();
+      const msg = alone
+        ? 'You\'re the only worm in this pocket. Crawling out deletes the pocket and everything in it, for good. Save everything first if you want a copy.'
+        : 'This removes your worm from the pocket on this phone. Your partner keeps their side, and you can come back with the code or your Face ID backup.';
+      if (!(await confirmBox(msg, alone ? 'Delete it all' : 'Crawl out'))) return;
       await app.backend.leave(); localStorage.clear(); location.reload();
     }, 'danger wide'),
     h('p.tiny.muted.center', 'Bolsillo Worm · made for two'),
