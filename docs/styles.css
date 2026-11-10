@@ -420,7 +420,8 @@ canvas.doodle-pad { background: #fff; border-radius: 24px; box-shadow: 0 0 0 1px
 
 /* ── the shelf ───────────────────────────────── */
 .shelf-sky { position: absolute; inset: 0; width: 100%; height: 100%; }
-.shelf-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; padding: calc(var(--safe-t) + 16px) 0 calc(var(--safe-b) + 140px); }
+.shelf-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; padding: calc(var(--safe-t) + 16px) 0 0; display: flex; flex-direction: column; }
+.shelf-content { flex: 1; display: flex; flex-direction: column; }
 .shelf-head { padding: 0 80px 0 22px; color: var(--ink); }
 body.dark .shelf-head, body.dark .shelf-title, body.dark .shelf-empty p { color: #fff; }
 .shelf-tabs { display: inline-flex; margin-top: 14px; padding: 3px; border-radius: 999px; gap: 2px; }
@@ -518,3 +519,38 @@ body.dark .shelf-hint { color: #fff; }
 .paper-card textarea::placeholder, .paper-card input::placeholder, .handwriting::placeholder { color: var(--ink); opacity: 1; }
 .card.two > div .muted, .card.two > div .big-num span, .card.two > div .mono { color: var(--ink); }
 .cell.ready span { color: var(--ink); }
+
+/* shelf categories: full-width color bands */
+.decor-wrap { margin-top: 6px; }
+.shelf-row.decor { justify-content: center; padding: 0 22px; min-height: 0; margin-top: 4px; }
+.bands { flex: 1; display: flex; flex-direction: column; margin-top: 30px; background: var(--last); padding-bottom: calc(var(--safe-b) + 112px); }
+.band { flex: 1; min-height: 98px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; background: var(--bg); color: var(--fg); text-align: left; transition: filter 0.15s; }
+.band:active { filter: brightness(0.95); }
+.band-name { font: 800 38px/0.92 var(--sans); letter-spacing: -0.04em; text-transform: uppercase; }
+.band-side { display: flex; align-items: center; gap: 10px; flex: none; }
+.band-count { font: 700 30px/1 var(--sans); letter-spacing: -0.04em; }
+.band-ready { font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: 0.02em; padding: 7px 10px; border-radius: 999px; background: var(--fg); color: var(--bg); }
+
+/* inside a category: white cards on iOS grouped gray */
+.cat-sheet, .cat-sheet .grabber, .cat-sheet .sheet-head { background: #F2F2F7; }
+.c-sub { margin: -4px 0 4px; font-size: 16px; line-height: 1.35; color: var(--ink); }
+.c-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.c-card { position: relative; display: flex; flex-direction: column; min-height: 210px; padding: 14px 16px 16px; border-radius: 26px; background: #fff; text-align: left; transition: transform 0.15s; }
+.c-card:active { transform: scale(0.97); }
+.c-icon { position: relative; flex: 1; display: grid; place-items: center; min-height: 140px; line-height: 0; }
+.c-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.c-foot b { font: 600 16px/1.2 var(--sans); letter-spacing: -0.02em; color: var(--ink); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.c-foot span { flex: none; font: 400 14px/1.2 var(--sans); color: var(--ink-2); }
+.c-foot span.red { color: #FF3B30; font-weight: 500; }
+.c-lock { position: absolute; right: 10%; bottom: 8%; width: 30px; height: 30px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 3px 10px rgba(28,28,30,0.18); }
+.c-empty { grid-column: 1 / -1; margin: 4px 2px 8px; font-size: 16px; line-height: 1.4; color: var(--ink); }
+.c-plus { width: 58px; height: 58px; border-radius: 50%; background: #F2F2F7; display: grid; place-items: center; font: 300 36px/1 var(--sans); color: var(--ink); }
+.k2 { box-shadow: 0 8px 18px rgba(28,28,30,0.16); }
+.k2.photo { border-radius: 18px; overflow: hidden; line-height: 0; }
+.k2.photo img { width: 108px; height: 108px; object-fit: cover; }
+.k2.note { width: 108px; height: 108px; padding: 11px 10px; border-radius: 16px; font: 400 11px/1.32 var(--sans); color: var(--ink); text-align: left; overflow: hidden; }
+.k2.doodle { width: 108px; height: 108px; border-radius: 18px; background: #fff; display: grid; place-items: center; }
+.k2.doodle canvas { width: 92px; height: 92px; }
+.k2.emoji { font-size: 86px; line-height: 1; box-shadow: none; filter: drop-shadow(0 8px 10px rgba(28,28,30,0.18)); }
+.later-art.small { display: flex; flex-direction: column; align-items: center; gap: 2px; width: auto; padding: 0 0 6px; }
+.preview-label { font: 600 15px/1.2 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
