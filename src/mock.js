@@ -11,6 +11,7 @@ export function mockBackend() {
   const dailies = {};
   const planted = {};
   const sealed = new Map();
+  const hq = [];
   const media = new Map();
   let on = {};
   let present = true;
@@ -22,6 +23,18 @@ export function mockBackend() {
     setTimeout(() => on.event?.(e, 'INSERT'), 30);
     return e;
   };
+  // the house in the demo: a dozen right answers already, and three of Luz's questions waiting
+  function seedHouse(today) {
+    const past = (d) => new Date(Date.now() - d * 86400000).toISOString();
+    const done = (from, question, options, answer, picked, d) => hq.push({ id: `q${++id}`, from_slot: from, kind: options.length === 2 && options[0] === 'Yes' ? 'yesno' : 'choice', question, options, answer, created_at: past(d + 2), answered_at: past(d), answered_day: dayIn(mine()?.place?.tz || 'UTC', new Date(Date.now() - d * 86400000)), picked, correct: picked === answer });
+    for (let i = 0; i < 12; i++) done(i % 2, `Old question ${i + 1}`, ['Yes', 'No'], 0, 0, 14 - i);
+    done(1, 'What do I order every time at the café?', ['Cortado', 'Matcha', 'Submarino', 'Nothing, just water'], 2, 1, 1);
+    const open = (question, options, answer, d) => hq.push({ id: `q${++id}`, from_slot: 1, kind: options.length === 2 && options[0] === 'Yes' ? 'yesno' : 'choice', question, options, answer, created_at: past(d), answered_at: null, answered_day: null, picked: null, correct: null });
+    open('What did I want to be when I was little?', ['Astronaut', 'Vet', 'Architect', 'Pop star'], 2, 3);
+    open('Have I ever slept in an airport?', ['Yes', 'No'], 0, 2);
+    open('Which city would I move to tomorrow?', ['Lisbon', 'Mexico City', 'Tokyo'], 2, 1);
+    void today;
+  }
   const partner = () => members.find((m) => m.slot === 1);
   const mine = () => members.find((m) => m.slot === 0);
 
@@ -208,6 +221,43 @@ export function mockBackend() {
       return events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'].includes(e.kind) && (!before || e.created_at < before) && (!after || e.created_at >= after))
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit).map((e) => ({ ...e }));
     },
+    async hqState() {
+      const today = dayIn(mine()?.place?.tz || 'UTC');
+      if (!hq.length) seedHouse(today);
+      const theirs = hq.filter((q) => q.from_slot === 1);
+      const todayQ = theirs.find((q) => q.answered_day === today);
+      const open = theirs.filter((q) => !q.answered_at).sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+      const strip = ({ answer, picked, correct, answered_at, answered_day, from_slot, ...rest }) => rest;
+      return {
+        today, pieces: hq.filter((q) => q.correct).length, answered_today: !!todayQ,
+        today_answer: todayQ ? { ...todayQ } : null,
+        next: todayQ ? null : (open[0] ? strip(open[0]) : null),
+        waiting: open.length,
+        mine: hq.filter((q) => q.from_slot === 0).sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).map((q) => ({ ...q })),
+        theirs: theirs.filter((q) => q.answered_at).sort((a, b) => (a.answered_at < b.answered_at ? 1 : -1)).map((q) => ({ ...q })),
+      };
+    },
+    async hqAdd(kind, question, options, answer) {
+      const opts = kind === 'yesno' ? ['Yes', 'No'] : options.map((o) => String(o).trim());
+      if (opts.length < 2 || opts.some((o) => !o)) throw new Error('bad_options');
+      if (answer < 0 || answer >= opts.length) throw new Error('bad_answer');
+      const q = { id: `q${++id}`, from_slot: 0, kind, question: question.trim(), options: opts, answer, created_at: now(), answered_at: null, answered_day: null, picked: null, correct: null };
+      hq.push(q);
+      // in the demo, Luz answers your new question a little later
+      setTimeout(() => { if (q.answered_at) return; q.answered_at = now(); q.answered_day = dayIn(mine()?.place?.tz || 'UTC'); q.picked = Math.random() < 0.7 ? q.answer : (q.answer + 1) % opts.length; q.correct = q.picked === q.answer; }, 8000);
+      return q.id;
+    },
+    async hqAnswer(qid, pickI) {
+      const today = dayIn(mine()?.place?.tz || 'UTC');
+      const q = hq.find((x) => x.id === qid);
+      if (!q) throw new Error('not_found');
+      if (q.from_slot === 0) throw new Error('own_question');
+      if (q.answered_at) throw new Error('already_answered');
+      if (hq.some((x) => x.from_slot === 1 && x.answered_day === today)) throw new Error('one_a_day');
+      Object.assign(q, { answered_at: now(), answered_day: today, picked: pickI, correct: pickI === q.answer });
+      return { correct: q.correct, answer: q.answer, picked: pickI, pieces: hq.filter((x) => x.correct).length };
+    },
+    async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },
     async nudge() {},
     connect(holeId, slot, handlers) { on = handlers; setTimeout(() => { on.status?.('SUBSCRIBED'); on.presence?.({ 0: [{ slot: 0 }], 1: [{ slot: 1 }] }); }, 300); },
     async track() {},

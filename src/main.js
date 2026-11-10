@@ -174,7 +174,7 @@ function enterPocket(data, { fromCache = false } = {}) {
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
   soil = SoilPage(app, $('#screen-soil'));
-  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), demo: DEMO });
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(0) });
   house.setSky(S.sky);
   pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-house')], {
     labels: ['Pocket', 'Shelf', 'Soil', 'House'],
@@ -242,6 +242,7 @@ function openTarget(to) {
   closeAllSheets();
   if (to === 'shelf' || to === 'shelf-from') { pager.go(1); shelf?.setView(to === 'shelf-from' ? 'from' : 'for'); return; }
   if (to === 'soil') { pager.go(2); return; }
+  if (to === 'house') { pager.go(3); house?.openQuestions(); return; }
   pager.go(0);
   if (to === 'today') { setTab('today'); todaySheet(app); }
   else if (to === 'us') { setTab('us'); usSheet(app); }
@@ -405,8 +406,10 @@ function tuckDock(pos, animate, dots) {
   dots.style.transition = animate ? `${PAGE_EASE}, opacity 0.46s cubic-bezier(.2,.9,.25,1)` : 'none';
   dock.style.transform = k ? `translate3d(0, calc(${k.toFixed(3)} * (100% + 24px)), 0)` : '';
   dots.style.transform = `translate3d(-50%, ${(k * 64).toFixed(1)}px, 0)`;
-  dots.style.opacity = k.toFixed(3);
-  dots.style.pointerEvents = k > 0.5 ? '' : 'none';
+  // the House page has its own dock (Back, Ours / Finished, Questions): the dots step aside there
+  const shown = k * (1 - clamp(pos - 2, 0, 1));
+  dots.style.opacity = shown.toFixed(3);
+  dots.style.pointerEvents = shown > 0.5 ? '' : 'none';
   dock.inert = k > 0.5;
 }
 

@@ -65,6 +65,10 @@ function compose(kind: string, me: any, extra: any = {}) {
     case "unsealed": return extra.mode === "date"
       ? { title: `${n} unwrapped your time capsule 🎁`, body: "It was worth the wait." }
       : { title: `${n} opened your envelope 💌`, body: extra.label ? `“Open when ${extra.label}”` : "The one you left on their shelf." };
+    case "house":   return extra.correct
+      ? { title: `${n} got your question right 🏗️`, body: extra.q ? `“${extra.q}” A piece of the house went up.` : "A piece of the house went up." }
+      : { title: `${n} answered your question`, body: extra.q ? `“${extra.q}” Not this time.` : "Not this time." };
+    case "hq":      return { title: `${n} wrote you a question`, body: "Answer it to build the house." };
     case "plant":   return { title: `${n} planted a question 🌱`, body: `It comes up ${extra.when ?? "soon"} as your question of the day.` };
     default:        return { title: "Something moved in your pocket", body: `From ${n}.` };
   }

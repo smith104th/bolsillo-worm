@@ -130,6 +130,11 @@ export function supabaseBackend(cfg) {
     stats: (from, to) => rpc('wh_stats', { p_from: from, p_to: to }),
     seal: (payload, body, photo = null, mime = null) => rpc('wh_seal', { p_payload: payload, p_body: body, p_photo: photo, p_mime: mime }),
     unseal: (id) => rpc('wh_unseal', { p_id: id }),
+    // the house: questions about each other, one answer a day, right answers build it
+    hqState: () => rpc('wh_hq_state'),
+    hqAdd: (kind, question, options, answer) => rpc('wh_hq_add', { p_kind: kind, p_question: question, p_options: options, p_answer: answer }),
+    hqAnswer: (id, pick) => rpc('wh_hq_answer', { p_id: id, p_pick: pick }),
+    hqDelete: (id) => rpc('wh_hq_delete', { p_id: id }),
     // the shelf: everything left for later, plus what either of you kept
     async shelf() {
       const { data, error } = await sb.from('events').select(EVENT_COLS).or('kind.eq.later,kept.eq.true').order('created_at', { ascending: false }).limit(300);

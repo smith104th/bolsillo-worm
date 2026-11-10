@@ -253,3 +253,46 @@ assert.equal((await db.query('select count(*)::int n from holes')).rows[0].n, 0)
 await fails(U.A, 'select * from private.vapid', [], /permission denied/);
 
 console.log('all schema tests passed');
+
+// ── the house: questions build it, one answer a day each, answers hidden until answered
+{
+  const A = '00000000-0000-0000-0000-0000000000e1', B = '00000000-0000-0000-0000-0000000000e2', C = '00000000-0000-0000-0000-0000000000e3';
+  for (const id of [A, B, C]) await db.query('insert into auth.users values ($1)', [id]);
+  const [{ wh_create: hc }] = await as(A, 'select wh_create($1,$2,$3)', ['Manu', worm('Fideo'), BA]);
+  await as(B, 'select wh_join($1,$2,$3,$4)', [hc.code, 'Vio', worm('Pickle'), MAD]);
+  const U = { A, B, C };
+  const add = (u, kind, q, opts, ans) => as(u, 'select wh_hq_add($1,$2,$3,$4) id', [kind, q, JSON.stringify(opts), ans]);
+  const [{ id: q1 }] = await add(U.A, 'choice', 'What do I eat when I am sick?', ['Soup', 'Medialunas', 'Arroz'], 2);
+  const [{ id: q2 }] = await add(U.A, 'yesno', 'Have I ever been to Japan?', null, 1);
+  await add(U.A, 'choice', 'Favorite worm?', ['Fideo', 'Pickle'], 0);
+  await fails(U.A, 'select wh_hq_add($1,$2,$3,$4)', ['choice', 'One option?', JSON.stringify(['Only']), 0], /bad_options/);
+  await fails(U.A, 'select wh_hq_add($1,$2,$3,$4)', ['choice', 'Blank option', JSON.stringify(['A', ' ']), 0], /bad_options/);
+  await fails(U.A, 'select wh_hq_add($1,$2,$3,$4)', ['choice', 'Out of range', JSON.stringify(['A', 'B']), 2], /bad_answer/);
+  await fails(U.A, 'select wh_hq_add($1,$2,$3,$4)', ['essay', 'Nope', null, 0], /bad_kind/);
+  // the table itself is out of reach; the partner's open question comes without its answer
+  await fails(U.B, 'select * from house_questions', [], /permission denied/);
+  let [{ wh_hq_state: st }] = await as(U.B, 'select wh_hq_state()');
+  assert.equal(st.waiting, 3); assert.equal(st.pieces, 0); assert.equal(st.answered_today, false);
+  assert.equal(st.next.id, q1); assert.equal(st.next.answer, undefined); assert.deepEqual(st.next.options, ['Soup', 'Medialunas', 'Arroz']);
+  await fails(U.A, 'select wh_hq_answer($1,$2)', [q1, 2], /own_question/);
+  await fails(U.B, 'select wh_hq_answer($1,$2)', [q1, 7], /bad_pick/);
+  const [{ wh_hq_answer: r1 }] = await as(U.B, 'select wh_hq_answer($1,$2)', [q1, 2]);
+  assert.equal(r1.correct, true); assert.equal(r1.pieces, 1);
+  await fails(U.B, 'select wh_hq_answer($1,$2)', [q2, 1], /one_a_day/);
+  await fails(U.B, 'select wh_hq_answer($1,$2)', [q1, 2], /already_answered/);
+  [{ wh_hq_state: st }] = await as(U.B, 'select wh_hq_state()');
+  assert.equal(st.answered_today, true); assert.equal(st.next, null); assert.equal(st.today_answer.correct, true); assert.equal(st.theirs.length, 1);
+  // the other direction counts toward the same house
+  const [{ id: q3 }] = await add(U.B, 'yesno', 'Do I sleep with socks on?', null, 0);
+  const [{ wh_hq_answer: r3 }] = await as(U.A, 'select wh_hq_answer($1,$2)', [q3, 1]);
+  assert.equal(r3.correct, false); assert.equal(r3.answer, 0); assert.equal(r3.pieces, 1);
+  const [{ wh_hq_state: sa }] = await as(U.A, 'select wh_hq_state()');
+  assert.equal(sa.mine.length, 3); assert.equal(sa.mine.find((q) => q.id === q1).correct, true); assert.equal(sa.pieces, 1);
+  // take back an open one, not an answered one; outsiders get nothing
+  await as(U.A, 'select wh_hq_delete($1)', [q2]);
+  await as(U.A, 'select wh_hq_delete($1)', [q1]);
+  const [{ wh_hq_state: sa2 }] = await as(U.A, 'select wh_hq_state()');
+  assert.equal(sa2.mine.length, 2); assert.ok(sa2.mine.some((q) => q.id === q1));
+  await fails(U.C, 'select wh_hq_state()', [], /no_hole/);
+  console.log('house questions ok');
+}
