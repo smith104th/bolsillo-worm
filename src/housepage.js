@@ -16,8 +16,9 @@ const ICONS = {
 };
 const svgEl = (s) => { const t = document.createElement('template'); t.innerHTML = s; return t.content.firstChild; };
 
-export function HousePage(app, root, { onEdge, onBack } = {}) {
+export function HousePage(app, root, { onEdge, onBack, onSky } = {}) {
   let view = null, loading = null, visible = false, sky = null, finished = false;
+  let shown = null; // the sky the house is actually painting (its own when the time is scrubbed)
   let st = null; // server state: { pieces, answered_today, next, waiting, mine, theirs, ... }
   const piecesNow = () => Math.min(TOTAL, 1 + (st ? st.pieces : (store('housePieces') ?? 0)));
 
@@ -70,7 +71,7 @@ export function HousePage(app, root, { onEdge, onBack } = {}) {
     if (!loading) {
       loading = import(new URL(HOUSE, location.href).href).then((m) => {
         const seen = store('houseSeen');
-        view = m.createHouseView(stage, { place: app.them()?.place || null, sky, built: seen ? Math.min(seen, piecesNow()) : piecesNow(), onEdge });
+        view = m.createHouseView(stage, { place: app.them()?.place || null, sky, built: seen ? Math.min(seen, piecesNow()) : piecesNow(), onEdge, onSky: (s2) => { shown = s2; onSky?.(); } });
         veil.classList.add('gone');
         label();
         return view;
@@ -134,5 +135,6 @@ export function HousePage(app, root, { onEdge, onBack } = {}) {
     setSky(s) { sky = s; if (view && visible) view.setSky(s, app.them()?.place || null); },
     async openQuestions() { await reload(); openQuestions(); },
     reload,
+    sky: () => shown,
   };
 }

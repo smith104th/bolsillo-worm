@@ -174,7 +174,7 @@ function enterPocket(data, { fromCache = false } = {}) {
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
   soil = SoilPage(app, $('#screen-soil'));
-  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(2) });
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(2), onSky: () => paintEdges() });
   house.setSky(S.sky);
   pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-house')], {
     labels: ['Pocket', 'Shelf', 'Soil', 'House'],
@@ -376,8 +376,10 @@ function updateSky() {
 
 // Safari tints its bars from the page edges: match whatever screen is showing
 function paintEdges() {
-  const sky = S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
   const i = pager?.index || 0;
+  // the House paints its own sky when you scrub the time; match that one there
+  const sky = (i === 3 && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
+  document.body.classList.toggle('dark', !!sky.dark);
   // Soil is white on top and green below: the bottom edge is whichever is showing there
   const soilGreen = () => { const g = document.querySelector('#screen-soil .s-bottom'); return !!g && g.getBoundingClientRect().top < window.innerHeight - 2; };
   const [top, bottom] = i === 2 ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF'] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];

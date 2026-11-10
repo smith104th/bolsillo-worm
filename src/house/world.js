@@ -16,6 +16,8 @@ import { skyForAlt } from './skies.js';
 
 const SITE = { x0: -2.15, x1: 2.15, z0: -3.55, z1: 4.85 };
 const now = () => performance.now() / 1000;
+const luminance = (hex) => { const v = parseInt(hex.slice(1), 16); const c = [16, 8, 0].map((sh) => { const x = ((v >> sh) & 255) / 255; return x <= 0.04 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+let lastSkyTop = null;
 
 // light by sun altitude (deg)
 const KEYS = [
@@ -43,7 +45,7 @@ export const VIEWS = {
   roof: { pos: [5.5, 15.5, 7.5], target: [0.4, 11, 1] },
 };
 
-export function createHouseView(el, { place = null, sky = null, built = 1, finished = false, onEdge = null, ao = true, hour = null } = {}) {
+export function createHouseView(el, { place = null, sky = null, built = 1, finished = false, onEdge = null, ao = true, hour = null, onSky = null } = {}) {
   const canvas = document.createElement('canvas');
   canvas.className = 'house-canvas';
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;';
@@ -179,6 +181,8 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     // a scrubbed time paints its own sky; otherwise the app's sky (their sun, now)
     const sky = (!S.dateOverride && S.hourOverride == null && S.sky) || skyForAlt(deg, az < Math.PI);
     el.style.background = `linear-gradient(${sky.top}, ${sky.mid} 55%, ${sky.bottom})`;
+    // tell the page which sky is showing, so the phone's edges and the text can match it
+    if (onSky && sky.top !== lastSkyTop) { lastSkyTop = sky.top; onSky({ top: sky.top, mid: sky.mid, bottom: sky.bottom, dark: luminance(sky.top) < 0.16 }); }
     const n = Math.cos(alt) * Math.cos(az), e = Math.cos(alt) * Math.sin(az);
     sunDir.set(-n, Math.sin(alt), -e).normalize();
     const k = lightFor(deg);
