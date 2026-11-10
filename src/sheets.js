@@ -139,8 +139,10 @@ export function usSheet(app) {
   const units = store('settings')?.units || app.defaultUnits();
   const pct = hole.tunnel_km ? Math.min(1, hole.dug_km / hole.tunnel_km) : 0;
   const myIn = inchesFor(me?.love), theirIn = inchesFor(them?.love);
-  const ev = S.events;
-  const count = (k, slot) => ev.filter((e) => e.kind === k && (slot == null || e.from_slot === slot)).reduce((a, e) => a + (e.payload?.n || 1), 0);
+  // Counts start from what's loaded (the newest 500 events), then switch to the
+  // pocket's whole life from wh_stats, so they never stall or drop.
+  let rows = S.events.map((e) => ({ kind: e.kind, from_slot: e.from_slot, n: e.payload?.n || 1 }));
+  const count = (k, slot) => rows.filter((r) => r.kind === k && (slot == null || r.from_slot === slot)).reduce((a, r) => a + Number(r.n), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
   const wormCard = (m, inches, mine) => h('div.worm-card', { style: { background: COLORS[m?.worm?.color]?.light || '#F2F2F5' } },
     h('span.mono.small', mine ? 'YOU' : (m?.name || '').toUpperCase()),
@@ -203,6 +205,16 @@ export function usSheet(app) {
   };
   renderCount();
 
+  const stats = h('div.stats');
+  const drawStats = () => stats.replaceChildren(
+    stat(together, 'day together here', 'days together here'), stat(hole.touches || 0, 'fingertip touch', 'fingertip touches'),
+    stat(count('kiss', app.slot()), 'kiss sent', 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kiss received', 'kisses received'),
+    stat(count('note'), 'note', 'notes'), stat(count('pet'), 'pet', 'pets'));
+  drawStats();
+  if (hole.created_at) {
+    app.backend.stats(hole.created_at, new Date(Date.now() + 86400000).toISOString())
+      .then((all) => { if (all?.length) { rows = all; drawStats(); } }).catch(() => { /* the loaded counts stay */ });
+  }
   const due = backupDue(app);
   sheet('Us', [
     due ? h('div.backup-card', h('span.mono.small', 'MONTHLY BACKUP'), h('p', 'Save everything from this month to Files or iCloud Drive, so nothing can be lost.'), btn([icon('save'), ' Save everything'], () => backupSheet(app), 'primary')) : null,
@@ -213,10 +225,7 @@ export function usSheet(app) {
       h('p.small.muted.card-note', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
     h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
     countCard,
-    h('div.stats',
-      stat(together, 'days together here'), stat(hole.touches || 0, 'fingertip touches'),
-      stat(count('kiss', app.slot()), 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kisses received'),
-      stat(count('note'), 'notes'), stat(count('pet'), 'pets')),
+    stats,
     h('div.btn-grid.four',
       btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
       btn('🌱 Soil', () => { closeAllSheets(); app.goTo(2); }, 'ghost'),
@@ -224,7 +233,7 @@ export function usSheet(app) {
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ].filter(Boolean), { tall: true, className: 'us-sheet' });
 }
-const stat = (n, label) => h('div.stat', h('b', String(n)), h('span', label));
+const stat = (n, one, many) => h('div.stat', h('b', String(n)), h('span', n === 1 ? one : many));
 
 // ── their side: how you look in their pocket
 export function peekSheet(app) {
@@ -272,17 +281,36 @@ function jarIcon(e) {
   }
   return h('span.jar-art');
 }
+const JAR_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
 export function jarSheet(app) {
-  const all = app.S.events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'].includes(e.kind));
+  // starts with what's loaded, then pages back through everything (backend.archive)
+  const all = app.S.events.filter((e) => JAR_KINDS.includes(e.kind));
+  const seen = new Set(all.map((e) => e.id));
+  let oldest = all.length ? all[all.length - 1].created_at : null;
+  let done = !app.S.eventsCapped, loading = false;
   let filter = 'theirs';
   const grid = h('div.jar');
+  const more = btn('Show older', () => loadMore(), 'ghost small');
   const render = () => {
     const list = all.filter((e) => (filter === 'theirs' ? e.from_slot !== app.slot() : filter === 'mine' ? e.from_slot === app.slot() : e.kept));
     grid.replaceChildren(...(list.length ? list.map((e) => h('button.jar-item', { type: 'button', onclick: () => openItem(app, app.asItem(e)) },
       jarIcon(e),
-      h('span.small', titleFor(e).replace(/^An? /, '').replace('Something they found', 'found')), h('span.mono.tiny', ago(e.created_at)))) : [h('p.muted', 'Empty.')]));
+      h('span.small', titleFor(e).replace(/^An? /, '').replace('Something they found', 'found')), h('span.mono.tiny', ago(e.created_at)))) : [h('p.muted', done ? 'Empty.' : 'Nothing here yet. Older things are below.')]));
+    more.hidden = done;
   };
-  sheet('The jar', [segmented({ theirs: 'From them', mine: 'From you', kept: 'Kept' }, filter, (k) => { filter = k; render(); }), grid], { tall: true });
+  async function loadMore() {
+    if (loading || done) return;
+    loading = true; more.disabled = true; more.textContent = 'Looking…';
+    try {
+      const page = await app.backend.archive({ before: oldest, limit: 80 });
+      for (const e of page) if (!seen.has(e.id)) { seen.add(e.id); all.push(e); }
+      if (page.length) oldest = page[page.length - 1].created_at;
+      if (page.length < 80) done = true;
+      render();
+    } catch { toast('Couldn\'t reach the older things.'); }
+    loading = false; more.disabled = false; more.textContent = 'Show older';
+  }
+  sheet('The jar', [segmented({ theirs: 'From them', mine: 'From you', kept: 'Kept' }, filter, (k) => { filter = k; render(); }), grid, h('div.row.jar-more', more)], { tall: true });
   render();
 }
 

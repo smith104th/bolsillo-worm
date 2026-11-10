@@ -20,6 +20,66 @@ export function supabaseBackend(cfg) {
     return data;
   };
 
+  // ── photos and whispers in R2 (supabase/functions/media) ─────────────
+  // Uploads go through the media function, which keeps the bucket's keys; reads come
+  // straight from R2 through short-lived links. Each file is downloaded once per phone
+  // and kept in Cache Storage ('bw-media'). Until R2 is set up (ping says not ready),
+  // everything keeps working the old way, with the bytes in the database.
+  const fnUrl = `${cfg.supabaseUrl}/functions/v1/media`;
+  const callMedia = async (op, { body = null, type = null, json = null } = {}) => {
+    const { data: { session } } = await sb.auth.getSession();
+    const headers = { apikey: cfg.supabaseKey, Authorization: `Bearer ${session?.access_token || cfg.supabaseKey}` };
+    if (json) headers['content-type'] = 'application/json';
+    else if (type) headers['content-type'] = type;
+    const res = await fetch(`${fnUrl}?op=${op}`, { method: 'POST', headers, body: json ? JSON.stringify(json) : body });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(out.error || `media_${res.status}`);
+    return out;
+  };
+  // asked once per session; if the function can't be reached, ask again in 10 minutes
+  let r2 = null;
+  const r2Ready = () => (r2 ??= callMedia('ping').then((o) => !!o.ready, () => { setTimeout(() => { r2 = null; }, 600000); return false; }));
+  const MEDIA_CACHE = 'bw-media';
+  const cacheKey = (id) => new URL(`./__media/${id}`, location.href).href;
+  const toDataUrl = (blob) => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(r.error); r.readAsDataURL(blob); });
+  async function cached(id) {
+    try { const res = await (await caches.open(MEDIA_CACHE)).match(cacheKey(id)); if (res) { const blob = await res.blob(); return { mime: blob.type || res.headers.get('content-type'), data: await toDataUrl(blob) }; } } catch { /* no cache here */ }
+    return null;
+  }
+  async function keep(id, blob) {
+    try { await (await caches.open(MEDIA_CACHE)).put(cacheKey(id), new Response(blob, { headers: { 'content-type': blob.type } })); } catch { /* it'll download again next time */ }
+  }
+  // a data URL from the app → "media:<id>" once it's in R2, or the data URL itself if R2 isn't there
+  async function stash(dataUrl, mime) {
+    if (!dataUrl || !String(dataUrl).startsWith('data:') || !(await r2Ready())) return dataUrl;
+    try {
+      const blob = await (await fetch(dataUrl)).blob();
+      const type = mime || blob.type || 'application/octet-stream';
+      const { id } = await callMedia('put', { body: blob, type });
+      keep(id, blob.type === type ? blob : new Blob([blob], { type }));
+      return `media:${id}`;
+    } catch { return dataUrl; } // the old way still works; never lose a photo over this
+  }
+  // links are asked for in batches, so "Save everything" doesn't make one call per photo
+  let want = new Map(), wantTimer = null;
+  function linkFor(id) {
+    return new Promise((ok, no) => {
+      want.set(id, [...(want.get(id) || []), { ok, no }]);
+      if (wantTimer) return;
+      wantTimer = setTimeout(async () => {
+        const batch = want; want = new Map(); wantTimer = null;
+        const ids = [...batch.keys()];
+        for (let i = 0; i < ids.length; i += 200) {
+          const part = ids.slice(i, i + 200);
+          try {
+            const { urls } = await callMedia('url', { json: { ids: part } });
+            for (const k of part) for (const w of batch.get(k)) urls?.[k] ? w.ok(urls[k]) : w.no(new Error('no_link'));
+          } catch (e) { for (const k of part) for (const w of batch.get(k)) w.no(e); }
+        }
+      }, 25);
+    });
+  }
+
   return {
     kind: 'supabase',
     async init() {
@@ -46,12 +106,12 @@ export function supabaseBackend(cfg) {
     join: (code, name, worm, place) => rpc('wh_join', { p_code: code, p_name: name, p_worm: worm, p_place: place }),
     reclaim: (code, slot) => rpc('wh_reclaim', { p_code: code, p_slot: slot }),
     leave: () => rpc('wh_leave'),
-    act: (kind, payload = {}, media = null, mime = null) => rpc('wh_act', { p_kind: kind, p_payload: payload, p_media: media, p_mime: mime }),
+    act: async (kind, payload = {}, media = null, mime = null) => rpc('wh_act', { p_kind: kind, p_payload: payload, p_media: await stash(media, mime), p_mime: mime }),
     open: (id, keep = null) => rpc('wh_open', { p_id: id, p_keep: keep }),
     updateMe: (patch) => rpc('wh_update_me', { p: patch }),
     setReunion: (on, note) => rpc('wh_set_reunion', { p_on: on, p_note: note }),
-    daily: (day, { answer = null, photo = null, mime = null, thumb = null }) =>
-      rpc('wh_daily', { p_day: day, p_answer: answer, p_photo: photo, p_mime: mime, p_thumb: thumb }),
+    daily: async (day, { answer = null, photo = null, mime = null, thumb = null }) =>
+      rpc('wh_daily', { p_day: day, p_answer: answer, p_photo: await stash(photo, mime), p_mime: mime, p_thumb: thumb }),
     dailies: (limit = 120) => rpc('wh_dailies', { p_limit: limit }),
     plant: (question) => rpc('wh_plant', { p_question: question }),
     unplant: (day) => rpc('wh_unplant', { p_day: day }),
@@ -85,12 +145,35 @@ export function supabaseBackend(cfg) {
       }
       return out;
     },
-    async media(id) {
+    // { mime, data } with data as a data URL, wherever the file lives
+    media(id) {
       if (mediaCache.has(id)) return mediaCache.get(id);
-      const { data, error } = await sb.from('media').select('mime,data').eq('id', id).single();
-      if (error) throw new Error(error.message);
-      mediaCache.set(id, data);
-      return data;
+      const p = (async () => {
+        const hit = await cached(id);
+        if (hit) return hit;
+        const { data: row, error } = await sb.from('media').select('mime,data,r2').eq('id', id).single();
+        if (error) throw new Error(error.message);
+        if (row.data) return { mime: row.mime, data: row.data }; // not moved to R2 yet
+        const res = await fetch(await linkFor(id));
+        if (!res.ok) throw new Error(`media_${res.status}`);
+        const blob = await res.blob();
+        keep(id, blob);
+        return { mime: row.mime, data: await toDataUrl(blob) };
+      })();
+      mediaCache.set(id, p);
+      p.catch(() => mediaCache.delete(id));
+      return p;
+    },
+    // moves old photos out of the database into R2, a few at a time (once a day is plenty)
+    async moveOldMedia() {
+      if (!(await r2Ready())) return { moved: 0, left: null };
+      let total = 0;
+      for (let i = 0; i < 100; i++) {
+        const { moved, left } = await callMedia('migrate');
+        total += moved;
+        if (!moved || !left) return { moved: total, left };
+      }
+      return { moved: total, left: null };
     },
     async vapidKey() {
       const { data, error } = await sb.functions.invoke('nudge', { body: { kind: 'vapid' } });

@@ -48,13 +48,20 @@ create table if not exists public.events (
 );
 create index if not exists events_hole_time on public.events (hole_id, created_at desc);
 
+-- Photos and whispers. New ones live in Cloudflare R2 (`r2` = the object key, put there
+-- by the media edge function, which also hands out short-lived links to read them).
+-- Older ones still carry their bytes in `data` until the media function moves them.
 create table if not exists public.media (
   id          bigint generated always as identity primary key,
   hole_id     uuid not null references public.holes(id) on delete cascade,
   mime        text not null,
-  data        text not null,
+  data        text,
   created_at  timestamptz not null default now()
 );
+alter table public.media alter column data drop not null;
+alter table public.media add column if not exists r2 text;
+alter table public.media add column if not exists bytes int;
+alter table public.media add column if not exists slot smallint;
 create index if not exists media_hole on public.media (hole_id);
 
 -- the daily: one photo + one answer each, buried until you've both done yours
@@ -223,6 +230,21 @@ begin
   update members set push = null where hole_id = wh_hole() and slot = p_slot;
 end $$;
 
+-- A file already in R2: the media function made the row, the app passes "media:<id>".
+-- It has to be yours, in your pocket, and not attached to anything yet.
+create or replace function public.wh_media_ref(m public.members, p_ref text) returns bigint
+language plpgsql security definer set search_path = public as $$
+declare mid bigint;
+begin
+  if p_ref !~ '^media:[0-9]{1,18}$' then raise exception 'bad_media'; end if;
+  mid := substr(p_ref, 7)::bigint;
+  perform 1 from media x where x.id = mid and x.hole_id = m.hole_id and x.slot = m.slot and x.r2 is not null
+    and not exists (select 1 from events e where e.media_id = mid)
+    and not exists (select 1 from dailies d where d.photo = mid);
+  if not found then raise exception 'bad_media'; end if;
+  return mid;
+end $$;
+
 -- ── doing things to each other ──────────────────────────────
 
 create or replace function public.wh_act(p_kind text, p_payload jsonb default '{}', p_media text default null, p_mime text default null)
@@ -252,10 +274,12 @@ begin
   end if;
 
   if e.id is null then
-    if p_media is not null then
+    if p_media like 'media:%' then
+      mid := wh_media_ref(m, p_media);
+    elsif p_media is not null then
       if length(p_media) > 2500000 then raise exception 'too_big'; end if;
-      insert into media (hole_id, mime, data)
-      values (m.hole_id, coalesce(p_mime, 'application/octet-stream'), p_media) returning id into mid;
+      insert into media (hole_id, mime, data, slot)
+      values (m.hole_id, coalesce(p_mime, 'application/octet-stream'), p_media, m.slot) returning id into mid;
     end if;
     insert into events (hole_id, from_slot, kind, payload, media_id)
     values (m.hole_id, m.slot, p_kind, coalesce(p_payload, '{}'), mid) returning * into e;
@@ -335,10 +359,14 @@ begin
   end if;
 
   if p_photo is not null then
-    if length(p_photo) > 2500000 then raise exception 'too_big'; end if;
     part := 'photo';
     fresh := d.photographed_at is null;
-    insert into media (hole_id, mime, data) values (m.hole_id, coalesce(p_mime, 'image/jpeg'), p_photo) returning id into mid;
+    if p_photo like 'media:%' then
+      mid := wh_media_ref(m, p_photo);
+    else
+      if length(p_photo) > 2500000 then raise exception 'too_big'; end if;
+      insert into media (hole_id, mime, data, slot) values (m.hole_id, coalesce(p_mime, 'image/jpeg'), p_photo, m.slot) returning id into mid;
+    end if;
     update dailies set photo = mid, thumb = left(p_thumb, 60000), photographed_at = coalesce(photographed_at, now())
     where hole_id = m.hole_id and day = p_day and slot = m.slot;
     is_both := (select count(*) from dailies where hole_id = m.hole_id and day = p_day and photographed_at is not null) = 2;
@@ -574,7 +602,8 @@ revoke execute on function
   public.wh_daily(date, text, text, text, text), public.wh_dailies(int),
   public.wh_retunnel(uuid), public.wh_dig_km(uuid, smallint, double precision), public.wh_code(),
   public.wh_today(uuid), public.wh_plant(text), public.wh_unplant(date), public.wh_planted(),
-  public.wh_stats(timestamptz, timestamptz), public.wh_seal(jsonb, jsonb, text, text), public.wh_unseal(bigint)
+  public.wh_stats(timestamptz, timestamptz), public.wh_seal(jsonb, jsonb, text, text), public.wh_unseal(bigint),
+  public.wh_media_ref(public.members, text)
 from public, anon;
 
 grant execute on function

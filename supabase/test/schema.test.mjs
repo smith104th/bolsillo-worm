@@ -110,6 +110,26 @@ assert.equal(dailyEvents.length, 4);
 assert.equal(dailyEvents[3].payload.both, true);
 assert.equal((await as(U.A, 'select * from dailies')).length, 1, 'own daily rows only');
 
+// photos in R2: the media function makes the row, the app passes "media:<id>"
+const r2row = async (slot, key = crypto.randomUUID()) =>
+  (await db.query(`insert into media (hole_id, mime, r2, bytes, slot) values ($1, 'image/jpeg', $2, 1234, $3) returning id`, [hole.id, `media/${key}`, slot])).rows[0].id;
+const a1 = await r2row(0);
+const [pic] = await as(U.A, `select * from wh_act('photo', '{"caption":"from R2"}', $1)`, [`media:${a1}`]);
+assert.equal(Number(pic.media_id), Number(a1));
+await fails(U.A, `select wh_act('photo', '{}', $1)`, [`media:${a1}`], /bad_media/);           // already attached
+const a2 = await r2row(0);
+await fails(U.B, `select wh_act('photo', '{}', $1)`, [`media:${a2}`], /bad_media/);           // not theirs
+await fails(U.A, `select wh_act('photo', '{}', 'media:abc')`, [], /bad_media/);
+await fails(U.A, `select wh_act('photo', '{}', 'media:99999999')`, [], /bad_media/);
+await fails(U.A, `select wh_media_ref(m, 'media:1') from members m`, [], /permission denied/);
+const yday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+const b1 = await r2row(1);
+await as(U.B, 'select wh_daily($1, null, $2, $3, $4)', [yday, `media:${b1}`, 'image/jpeg', 'thumbR2']);
+assert.equal(Number((await as(U.B, 'select photo from dailies where day = $1', [yday]))[0].photo), Number(b1));
+await fails(U.B, 'select wh_daily($1, null, $2, $3, $4)', [yday, `media:${b1}`, 'image/jpeg', 't'], /bad_media/);
+const legacy = (await db.query(`select count(*)::int n from media where data is not null and r2 is null`)).rows[0].n;
+assert.ok(legacy >= 1, 'old photos keep their bytes until they move');
+
 // planted questions: next free day, hidden from the partner until it comes up
 const [{ wh_plant: d1 }] = await as(U.A, `select wh_plant('  What would you name our dog?  ')`);
 const [{ wh_plant: d2 }] = await as(U.B, `select wh_plant('Where should we go in March?')`);

@@ -1,5 +1,5 @@
 // Bolsillo Worm service worker: keeps the pocket working offline and delivers buzzes.
-const VERSION = 'b2fe7e31';
+const VERSION = '91057f43';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
@@ -42,7 +42,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE) await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE && k !== 'bw-media') await caches.delete(k);
     await self.clients.claim();
   })());
 });

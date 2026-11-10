@@ -105,6 +105,7 @@ function fatal(e) {
 function applyData({ hole, members, events }) {
   S.hole = hole; S.members = members;
   S.events = events.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+  S.eventsCapped = events.length >= 500; // load() stops at 500; older ones come from backend.archive()
   const mine = members.find((m) => m.user_id === backend.userId);
   if (mine) S.slot = mine.slot;
 }
@@ -194,6 +195,10 @@ function enterPocket(data) {
   syncPush();
   setTimeout(() => { if (!welcome()) setTimeout(afterArrival, 1200); }, 900);
   navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'bw-go') openTarget(e.data.to); });
+  // old photos move from the database to R2 in the background, once a day (see backend.js)
+  if (!DEMO && store('mediaMovedDay') !== app.today()) {
+    setTimeout(() => backend.moveOldMedia?.().then(({ left }) => { if (left === 0) store('mediaMovedDay', app.today()); }).catch(() => {}), 8000);
+  }
   if (pendingGo) { const to = pendingGo; pendingGo = null; setTimeout(() => openTarget(to), 350); }
 }
 

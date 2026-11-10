@@ -42,7 +42,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE) await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE && k !== 'bw-media') await caches.delete(k);
     await self.clients.claim();
   })());
 });
