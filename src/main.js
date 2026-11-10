@@ -137,7 +137,6 @@ function enterPocket(data) {
   pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil')], {
     labels: ['Pocket', 'Shelf', 'Soil'],
     onChange: (i) => {
-      sfx.tick();
       if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
       if (i === 2) soil.show(); else soil.hide();
       if (i === 0) pocket?.start(); else pocket?.stop();
@@ -242,7 +241,7 @@ function buildChrome() {
   $('#peek').replaceChildren(icon('peek'));
   $('#peek').onclick = () => (app.them() ? peekSheet(app) : waitToast());
   const bar = h('div.tabbar.glass', TABS.map(([id, label, fn]) =>
-    h(`button.tab${id === 'pocket' ? '.on' : ''}`, { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { sfx.tick(); closeAllSheets(); setTab(id); fn(); } },
+    h(`button.tab${id === 'pocket' ? '.on' : ''}`, { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { closeAllSheets(); setTab(id); fn(); } },
       icon(id === 'pocket' ? 'pocket' : id === 'drop' ? 'drop' : id), h('span.lbl', label), id === 'today' ? h('span.dot', { hidden: true }) : null)));
   $('#dock').replaceChildren(bar, kissBtn());
   onSheets((n) => { if (n === 0) setTab('pocket'); });
@@ -302,7 +301,7 @@ function kissBtn() {
     h('div.tray-hint', 'Hold 💋 for a bigger kiss'));
   document.body.append(meter, tray);
   const closeTray = () => { tray.classList.remove('in'); setTimeout(() => { if (!tray.classList.contains('in')) tray.hidden = true; }, 220); };
-  const openTray = () => { tray.hidden = false; requestAnimationFrame(() => tray.classList.add('in')); sfx.tick(); };
+  const openTray = () => { tray.hidden = false; requestAnimationFrame(() => tray.classList.add('in')); };
   document.addEventListener('pointerdown', (e) => { if (!tray.hidden && !tray.contains(e.target) && !b.contains(e.target)) closeTray(); });
 
   let t0 = 0, level = 0, raf = 0, holdT = 0, charging = false;
@@ -375,7 +374,7 @@ async function knock() {
 }
 async function ring() {
   if (await act('ring', {})) {
-    backend.nudge('ring'); sfx.chime(); buzz([15, 40, 15]);
+    backend.nudge('ring'); buzz([15, 40, 15]);
     S.calledAt = Date.now(); renderHeader();
     setTimeout(renderHeader, 120500);
     if (pocket) pocket.glow = 1.3;
@@ -385,7 +384,6 @@ async function ring() {
 async function sendReact(emoji, extra = {}) {
   if (!app.them()) return;
   if (!extra.to && !extra.day) pocket.sendReaction(emoji);
-  sfx.react();
   buzz(10);
   const ev = await act('react', { emoji, ...extra });
   if (ev) backend.nudge('react', { emoji, about: extra.about || null });

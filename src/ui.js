@@ -76,7 +76,6 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   for (const t of [grab, head]) { t.addEventListener('pointerdown', start); t.addEventListener('pointermove', move); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end); }
   document.body.append(el);
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
-  if (!quiet) sfx.paper();
   const api = { el, card, close, body: card.querySelector('.sheet-body') };
   stack.push(api);
   sheetListener?.(stack.length);

@@ -136,11 +136,11 @@ export async function onboard(backend, { code: presetCode } = {}) {
     const nameIn = h('input', { value: draft.worm.name || '', maxLength: 24, placeholder: 'Fideo, Pickle, Señor Gusano…' });
     let pv;
     const swatches = h('div.swatches', Object.entries(COLORS).map(([k, c]) =>
-      h(`button.swatch${draft.worm.color === k ? '.on' : ''}`, { type: 'button', style: { background: c.body }, title: c.label, onclick: (e) => { draft.worm.color = k; [...swatches.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); sfx.pop(); } })));
+      h(`button.swatch${draft.worm.color === k ? '.on' : ''}`, { type: 'button', style: { background: c.body }, title: c.label, onclick: (e) => { draft.worm.color = k; [...swatches.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); } })));
     const chips = (obj, key) => {
       const wrap = h('div.chips');
       for (const [k, label] of Object.entries(obj)) {
-        wrap.append(h(`button.chip${draft.worm[key] === k ? '.on' : ''}`, { type: 'button', onclick: (e) => { draft.worm[key] = k; [...wrap.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); sfx.pop(); } }, label));
+        wrap.append(h(`button.chip${draft.worm[key] === k ? '.on' : ''}`, { type: 'button', onclick: (e) => { draft.worm[key] = k; [...wrap.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(draft.worm); } }, label));
       }
       return wrap;
     };
@@ -171,7 +171,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
         const j = await r.json();
         list.replaceChildren(...(j.results || []).map((c) => h('button.result', { type: 'button', onclick: () => {
           draft.place = { city: c.name, country: c.country || '', region: c.admin1 || '', lat: +c.latitude.toFixed(3), lon: +c.longitude.toFixed(3), tz: c.timezone || myTz() };
-          save(); chosen.textContent = `${c.name}, ${c.country || ''}`; list.replaceChildren(); q.value = c.name; sfx.pop();
+          save(); chosen.textContent = `${c.name}, ${c.country || ''}`; list.replaceChildren(); q.value = c.name;
         } }, h('b', c.name), h('span', [c.admin1, c.country].filter(Boolean).join(', ')))));
         if (!j.results?.length) list.replaceChildren(h('p.small.muted', 'Nothing found. Try the nearest big city.'));
       } catch { list.replaceChildren(h('p.small.muted', 'Can\'t search right now. Type your city and tap Next.')); }
@@ -216,7 +216,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
       try {
         const r = await backend.join(code, draft.name, draft.worm, draft.place);
         if (r.full) { busy(b, false); return reclaim(code, r.worms, resolve); }
-        store('draft', null); sfx.chime(); resolve(r);
+        store('draft', null); resolve(r);
       } catch (err) { toast(nice(err)); busy(b, false); }
     };
     const paste = async () => { try { const t = await navigator.clipboard.readText(); codeIn.value = fmtCode(t); } catch { toast('Type it in instead.'); } };
@@ -241,7 +241,6 @@ function showCode(code, resolve) {
     const text = `Crawl into my pocket 🪱 Install Bolsillo Worm, then use code ${fmtCode(code)}`;
     try { if (navigator.share) await navigator.share({ title: 'Bolsillo Worm', text, url }); else { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Link copied.'); } } catch { /* cancelled */ }
   };
-  sfx.chime();
   screen(h('div.ob-logo', logo()), h('h1', 'Your hole is dug'),
     h('p.lede', 'Send this to your person. When they crawl in, their worm shows up in your pocket.'),
     h('div.code-box', h('span.mono.small', 'Code'), h('div.code', fmtCode(code))),
@@ -253,7 +252,7 @@ function reclaim(code, worms, resolve) {
   screen(h('h1', 'This hole is full'),
     h('p.lede', 'It already has two worms. New phone? Pick yours to take it back. The old phone will lose access.'),
     h('div.reclaim', worms.map((w) => h('button.result', { type: 'button', onclick: async () => {
-      try { const r = await window.__bw.backend.reclaim(code, w.slot); store('draft', null); sfx.chime(); resolve(r); } catch (err) { toast(nice(err)); }
+      try { const r = await window.__bw.backend.reclaim(code, w.slot); store('draft', null); resolve(r); } catch (err) { toast(nice(err)); }
     } }, h('b', w.worm?.name || 'Worm'), h('span', `${w.name}'s worm`)))));
 }
 

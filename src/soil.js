@@ -44,7 +44,7 @@ export function SoilPage(app, root) {
       : h('div.s-form', ans, btn('Bury my answer', async (e) => {
         const v = ans.value.trim(); if (!v) return ans.focus();
         const b = e.currentTarget; b.disabled = true;
-        try { const r = await app.backend.daily(today, { answer: v }); app.backend.nudge('daily', { part: 'answer', both: r.both }); sfx.chime(); await load(); }
+        try { const r = await app.backend.daily(today, { answer: v }); app.backend.nudge('daily', { part: 'answer', both: r.both }); await load(); }
         catch { b.disabled = false; toast('Couldn\'t bury it. Try again.'); }
       }, 's-btn'));
     const theirs = t.their_answer
@@ -68,7 +68,7 @@ export function SoilPage(app, root) {
         try {
           const day = String(await app.backend.plant(q)).slice(0, 10);
           app.backend.nudge('plant', { when: app.whenDay(day) });
-          sfx.chime(); toast(`Planted. It comes up ${app.whenDay(day)}.`, { tone: 'love' });
+          toast(`Planted. It comes up ${app.whenDay(day)}.`, { tone: 'love' });
           await app.loadPlanted(); render();
         } catch (err) { b.disabled = false; toast(/too_many/.test(err.message) ? 'Seven seeds in the ground already. Let one come up first.' : 'Couldn\'t plant it. Try again.'); }
       }, 's-btn')),
@@ -146,7 +146,6 @@ export function plantSheet(app) {
       try {
         const day = String(await app.backend.plant(q)).slice(0, 10);
         app.backend.nudge('plant', { when: app.whenDay(day) });
-        sfx.chime();
         toast(`Planted. It comes up ${app.whenDay(day)}.`, { tone: 'love' });
         ta.value = ''; count.textContent = '0 / 200';
         await app.loadPlanted(); renderSeeds();

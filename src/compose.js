@@ -69,7 +69,6 @@ export function composePhoto(app, { daily = false, onDone } = {}) {
         shot = await photoFromFile(f);
         frame.classList.remove('empty');
         frame.querySelector('.polaroid-img').replaceChildren(h('img', { src: shot.full, alt: '' }));
-        sfx.pop();
       } catch { toast('Couldn\'t read that photo.'); }
     };
     inp.click();
@@ -177,7 +176,7 @@ export function composeTrinket(app) {
   const note = h('input', { placeholder: 'Where did you find it?', maxLength: 80 });
   const labelField = field('Printed on it', label); labelField.hidden = true;
   const grid = h('div.trinkets', Object.entries(TRINKETS).map(([k, name]) =>
-    h('button.trinket', { type: 'button', onclick: (e) => { what = k; [...grid.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); labelField.hidden = !['ticket', 'matchbook'].includes(k); sfx.pop(); } },
+    h('button.trinket', { type: 'button', onclick: (e) => { what = k; [...grid.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); labelField.hidden = !['ticket', 'matchbook'].includes(k); } },
       trinketArt(k, 38), h('span', name.replace(/^an? /, '')))));
   const s = sheet('Something you found', [
     grid, labelField, field('A line about it', note),

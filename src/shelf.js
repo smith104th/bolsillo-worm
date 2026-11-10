@@ -73,7 +73,7 @@ export function Shelf(app, root) {
   root.replaceChildren(bg, scroll, add);
   root.style.setProperty('--wood', wood());
 
-  function setView(v) { view = v; [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.v === v)); sfx.tick(); render(); scroll.scrollTop = 0; }
+  function setView(v) { view = v; [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.v === v)); render(); scroll.scrollTop = 0; }
   function setSky(sky) {
     const w = window.innerWidth, hh = window.innerHeight;
     if (skyKey === sky.key && W === w && H === hh) return;
@@ -305,7 +305,7 @@ export function leaveSheet(app, { mode = 'when' } = {}) {
     if (capture) inp.setAttribute('capture', 'environment');
     inp.onchange = async () => {
       const f = inp.files?.[0]; if (!f) return;
-      try { shot = await photoFromFile(f); photoBox.replaceChildren(h('div.polaroid', h('div.polaroid-img', h('img', { src: shot.full, alt: '' }))), btn('Remove photo', () => { shot = null; photoBox.replaceChildren(); caption.hidden = true; }, 'ghost small')); caption.hidden = false; sfx.pop(); } catch { toast('Couldn\'t read that photo.'); }
+      try { shot = await photoFromFile(f); photoBox.replaceChildren(h('div.polaroid', h('div.polaroid-img', h('img', { src: shot.full, alt: '' }))), btn('Remove photo', () => { shot = null; photoBox.replaceChildren(); caption.hidden = true; }, 'ghost small')); caption.hidden = false; } catch { toast('Couldn\'t read that photo.'); }
     };
     inp.click();
   };
@@ -322,7 +322,7 @@ export function leaveSheet(app, { mode = 'when' } = {}) {
       const e = await app.backend.seal(payload, body, shot?.full || null, shot ? 'image/jpeg' : null);
       app.shelfChanged(e);
       app.backend.nudge('later', { mode: m, label: payload.label, when: m === 'date' ? app.whenDay(on) : null });
-      sfx.chime(); buzz([15, 40, 15]);
+      buzz([15, 40, 15]);
       toast(m === 'when' ? `Sealed. It's on ${them}'s shelf.` : `Wrapped. ${them} can open it ${app.whenDay(on)}.`, { tone: 'love' });
       s.close();
     } catch (err) {

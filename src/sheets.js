@@ -80,7 +80,7 @@ export async function todaySheet(app) {
         try {
           const r = await app.backend.daily(today, { photo: shot.full, mime: 'image/jpeg', thumb: shot.thumb });
           app.backend.nudge('daily', { part: 'photo', both: r.both });
-          sfx.chime(); render(); return true;
+          render(); return true;
         } catch (e) { toast('Couldn\'t bury it. Try again.'); return false; }
       } });
     });
@@ -98,7 +98,7 @@ export async function todaySheet(app) {
         try {
           const r = await app.backend.daily(today, { answer: ans.value.trim() });
           app.backend.nudge('daily', { part: 'answer', both: r.both });
-          sfx.chime(); render();
+          render();
         } catch { e.currentTarget.disabled = false; toast('Couldn\'t bury it. Try again.'); }
       }, 'primary'));
     const tA = { day: today, part: 'answer', about: 'answer' }, tP = { day: today, part: 'photo', about: 'photo of the day' };
@@ -176,7 +176,6 @@ export function usSheet(app) {
       countHead.classList.remove('pop'); void countHead.offsetWidth; countHead.classList.add('pop');
       setBtn.replaceChildren(icon('check'), ' Countdown set');
       setTimeout(() => setBtn.replaceChildren('Set the countdown'), 2400);
-      sfx.chime?.();
       toast(days === 0 ? 'Countdown set. It\'s today.' : `Countdown set. ${days} day${days > 1 ? 's' : ''} to go.`);
       app.backend.nudge('reunion', { note: where || '' });
     } catch (err) {
