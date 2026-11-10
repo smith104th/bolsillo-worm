@@ -673,3 +673,8 @@ body.dark .shelf-hint { color: #fff; }
 .jar-art svg { display: block; }
 .jar-doodle { width: 50px; height: 50px; border-radius: 11px; background: #fff; display: grid; place-items: center; box-shadow: 0 5px 12px rgba(28,28,30,0.16); }
 .jar-doodle canvas { width: 44px; height: 44px; }
+
+/* Countdown: the number redraws on save with a small pop */
+.us-sheet .count-head.pop .big-num { animation: countpop 0.5s cubic-bezier(.2,1.4,.4,1); transform-origin: left center; }
+@keyframes countpop { 0% { transform: scale(0.86); opacity: 0.4; } 100% { transform: none; opacity: 1; } }
+.us-sheet .card.night .btn svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 2px; }

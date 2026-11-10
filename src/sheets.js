@@ -138,7 +138,6 @@ export function usSheet(app) {
   const myIn = inchesFor(me?.love), theirIn = inchesFor(them?.love);
   const reunionIn = h('input', { type: 'date', value: hole.reunion_on || '' });
   const reunionNote = h('input', { placeholder: 'Where?', maxLength: 60, value: hole.reunion_note || '' });
-  const days = hole.reunion_on ? Math.ceil((Date.parse(hole.reunion_on + 'T00:00:00') - Date.now()) / 86400000) : null;
   const ev = S.events;
   const count = (k, slot) => ev.filter((e) => e.kind === k && (slot == null || e.from_slot === slot)).reduce((a, e) => a + (e.payload?.n || 1), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
@@ -147,7 +146,43 @@ export function usSheet(app) {
     h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')),
     h('p.worm-name', m?.worm?.name || ''),
     h('p.small.muted.worm-blurb', lengthBlurb(inches)));
-  const note = hole.reunion_note && hole.reunion_note.trim().toLowerCase() !== 'same pocket' ? hole.reunion_note : null;
+  // The countdown redraws itself: while you pick a date (a preview), and again once it's saved.
+  const daysTo = (on) => (on ? Math.ceil((Date.parse(on + 'T00:00:00') - Date.now()) / 86400000) : null);
+  const countHead = h('div.count-head');
+  const paintCount = (on, where) => {
+    const days = daysTo(on);
+    const note = where && where.trim() && where.trim().toLowerCase() !== 'same pocket' ? where.trim() : null;
+    countHead.replaceChildren(...[
+      days != null && days >= 0
+        ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
+        : h('p.big-num.ask', 'When are you together next?'),
+      note && days >= 0 ? h('p.small.card-note', note) : null,
+    ].filter(Boolean));
+  };
+  paintCount(hole.reunion_on, hole.reunion_note);
+  const preview = () => paintCount(reunionIn.value || hole.reunion_on, reunionNote.value);
+  reunionIn.addEventListener('input', preview); reunionIn.addEventListener('change', preview);
+  reunionNote.addEventListener('input', preview);
+  const setBtn = btn('Set the countdown', async () => {
+    const on = reunionIn.value, where = reunionNote.value.trim() || null;
+    if (!on) return toast('Pick a date.');
+    const days = daysTo(on);
+    if (days < 0) return toast('Pick a day that hasn\'t happened yet.');
+    setBtn.disabled = true; setBtn.classList.add('busy');
+    try {
+      await app.backend.setReunion(on, where);
+      app.S.hole = { ...app.S.hole, reunion_on: on, reunion_note: where };
+      paintCount(on, where);
+      countHead.classList.remove('pop'); void countHead.offsetWidth; countHead.classList.add('pop');
+      setBtn.replaceChildren(icon('check'), ' Countdown set');
+      setTimeout(() => setBtn.replaceChildren('Set the countdown'), 2400);
+      sfx.chime?.();
+      toast(days === 0 ? 'Countdown set. It\'s today.' : `Countdown set. ${days} day${days > 1 ? 's' : ''} to go.`);
+      app.backend.nudge('reunion', { note: where || '' });
+    } catch (err) {
+      toast(`Couldn't save the countdown${err?.message ? ` (${err.message})` : ''}. Try again.`);
+    } finally { setBtn.disabled = false; setBtn.classList.remove('busy'); }
+  }, 'ghost');
 
   sheet('Us', [
     h('div.card.tunnel',
@@ -158,15 +193,9 @@ export function usSheet(app) {
     h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
     h('div.card.night',
       h('span.mono.small', 'SAME POCKET'),
-      days != null && days >= 0
-        ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
-        : h('p.big-num.ask', 'When are you together next?'),
-      note && days >= 0 ? h('p.small.card-note', note) : null,
+      countHead,
       h('div.reunion-fields', h('label.rf', h('span.mono', 'WHEN'), reunionIn), h('label.rf', h('span.mono', 'WHERE'), reunionNote)),
-      btn('Set the countdown', async () => {
-        if (!reunionIn.value) return toast('Pick a date.');
-        try { await app.backend.setReunion(reunionIn.value, reunionNote.value.trim() || null); app.backend.nudge('reunion', { note: reunionNote.value.trim() }); toast('Countdown set.'); } catch { toast('Couldn\'t save. Try again.'); }
-      }, 'ghost')),
+      setBtn),
     h('div.stats',
       stat(together, 'days together here'), stat(hole.touches || 0, 'fingertip touches'),
       stat(count('kiss', app.slot()), 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kisses received'),
