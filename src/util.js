@@ -95,32 +95,3 @@ export function store(key, val) {
 
 export const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 export const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-
-// iOS home-screen apps (iOS 26) draw behind the status bar but report a page one
-// status-bar shorter than the screen, so everything pinned to the bottom stops
-// early and a band of background shows below it. On an iPhone home-screen app,
-// when the page comes up short, size the body to the real screen and make it the
-// containing block for every fixed element (html.fullfix). Elsewhere: no change.
-// `?fitgap=54` fakes the gap for testing in a desktop browser.
-let fullH = 0;
-export const viewH = () => fullH || window.innerHeight;
-export function fitScreen() {
-  const portrait = window.innerHeight >= window.innerWidth;
-  const sh = portrait ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
-  const fake = Number(new URLSearchParams(location.search).get('fitgap')) || 0;
-  const target = fake ? window.innerHeight + fake : sh;
-  const gap = target - window.innerHeight;
-  const iphoneApp = /iphone/i.test(navigator.userAgent) && isStandalone();
-  const fix = (iphoneApp || fake > 0) && gap > 8 && gap < 140;
-  fullH = fix ? target : 0;
-  const root = document.documentElement;
-  root.classList.toggle('fullfix', fix);
-  if (fix) root.style.setProperty('--app-h', `${target}px`); else root.style.removeProperty('--app-h');
-}
-let fitting = false;
-export function watchScreen() {
-  if (fitting) return; fitting = true;
-  fitScreen();
-  window.addEventListener('resize', fitScreen);
-  window.addEventListener('orientationchange', () => setTimeout(fitScreen, 250));
-}

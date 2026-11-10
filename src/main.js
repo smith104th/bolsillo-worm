@@ -1,10 +1,10 @@
 // Bolsillo Worm: carry each other.
 import { CONFIG } from './config.js';
-import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep, viewH, watchScreen } from './util.js';
+import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
 import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
-import { toast, icon, sheet, btn, closeAllSheets, onSheets, ICON, confirmBox } from './ui.js';
+import { toast, icon, sheet, btn, closeAllSheets, onSheets, topSheet, ICON, confirmBox } from './ui.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
@@ -64,7 +64,6 @@ const app = {
 boot().catch((e) => fatal(e));
 
 async function boot() {
-  watchScreen();
   if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('./sw.js').catch(() => {});
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__bwInstallPrompt = e; });
@@ -150,7 +149,7 @@ function enterPocket(data) {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
       const dock = $('#dock').getBoundingClientRect();
-      return { top: Math.max(top, 80), bottom: viewH() - dock.top + 30 };
+      return { top: Math.max(top, 80), bottom: window.innerHeight - dock.top + 30 };
     },
     onSwipe: (e) => pager?.begin(e),
     onPet: throttle(() => act('pet', {}), 4000),
@@ -220,8 +219,19 @@ function updateSky() {
 function paintEdges() {
   const sky = S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
   const i = pager?.index || 0;
-  const [top, bottom] = i === 2 ? ['#FFFFFF', SOIL_BG] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
-  document.documentElement.style.backgroundColor = top;
+  // Soil is white on top and green below: the bottom edge is whichever is showing there
+  const soilGreen = () => { const g = document.querySelector('#screen-soil .s-bottom'); return !!g && g.getBoundingClientRect().top < window.innerHeight - 2; };
+  const [top, bottom] = i === 2 ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF'] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
+  // iPhone home-screen apps (iOS 26) report a page one status bar shorter than the
+  // screen and won't draw anything below it, so a strip of the page background
+  // shows under the tab bar. Make that strip the color of whatever is at the
+  // bottom: the page's bottom color, or the open sheet's.
+  const open = topSheet();
+  const under = open ? getComputedStyle(open.card).backgroundColor || '#FFFFFF' : bottom;
+  const root = document.documentElement.style;
+  root.backgroundColor = under;
+  root.backgroundImage = `linear-gradient(${top}, ${bottom})`;
+  root.backgroundRepeat = 'no-repeat';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
   $('#edge-top').style.backgroundColor = top;
   $('#edge-bottom').style.backgroundColor = bottom;
@@ -245,7 +255,19 @@ function buildChrome() {
     h(`button.tab${id === 'pocket' ? '.on' : ''}`, { type: 'button', 'data-tab': id, 'aria-label': label, onclick: () => { closeAllSheets(); setTab(id); fn(); } },
       icon(id === 'pocket' ? 'pocket' : id === 'drop' ? 'drop' : id), h('span.lbl', label), id === 'today' ? h('span.dot', { hidden: true }) : null)));
   $('#dock').replaceChildren(bar, kissBtn());
-  onSheets((n) => { if (n === 0) setTab('pocket'); });
+  // Soil scrolls between its white and green zones: keep the bottom edge in step
+  let edgeRaf = 0;
+  document.addEventListener('scroll', (e) => {
+    if ((pager?.index || 0) !== 2 || !e.target.closest?.('#screen-soil')) return;
+    cancelAnimationFrame(edgeRaf); edgeRaf = requestAnimationFrame(paintEdges);
+  }, true);
+  let sheetsOpen = 0;
+  onSheets((n) => {
+    if (n === 0) setTab('pocket');
+    // repaint the bottom edge for the sheet; when one closes, wait for it to slide away
+    clearTimeout(onSheets.t); onSheets.t = setTimeout(paintEdges, n < sheetsOpen ? 330 : 0);
+    sheetsOpen = n;
+  });
   const code = S.hole?.code;
   $('#waiting').replaceChildren(h('div.waiting-card',
     h('span.mono.small.muted', 'YOUR POCKET IS EMPTY'),

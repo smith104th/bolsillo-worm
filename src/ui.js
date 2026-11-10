@@ -83,6 +83,7 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   return api;
 }
 export const closeAllSheets = () => [...stack].forEach((s) => s.close());
+export const topSheet = () => stack[stack.length - 1] || null;
 
 export function btn(label, onclick, cls = '') {
   return h(`button.btn${cls ? '.' + cls.split(' ').join('.') : ''}`, { onclick, type: 'button' }, label);

@@ -711,9 +711,3 @@ svg .spin { animation: recordspin 6s linear infinite; }
 .us-sheet .count-edit:active { transform: scale(0.95); }
 .us-sheet .countdown .count-top + .count-head .big-num { margin-top: 10px; }
 .us-sheet .count-when { margin: 10px 0 0; font-size: 11px; letter-spacing: 0.08em; color: #fff; }
-
-/* iOS home-screen apps that report a page shorter than the screen (see fitScreen
-   in util.js): the body takes the real screen height and becomes the containing
-   block for every fixed element, so the tab bar, sheets and screens reach the
-   true bottom edge. */
-html.fullfix body { position: fixed; top: 0; left: 0; right: 0; height: var(--app-h); transform: translateZ(0); }
