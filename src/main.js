@@ -138,6 +138,7 @@ function enterPocket(data) {
   soil = SoilPage(app, $('#screen-soil'));
   pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil')], {
     labels: ['Pocket', 'Shelf', 'Soil'],
+    onMove: tuckDock,
     onChange: (i) => {
       if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
       if (i === 2) soil.show(); else soil.hide();
@@ -150,8 +151,8 @@ function enterPocket(data) {
   pocket = new Pocket($('#pocket'), {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
-      const dock = $('#dock').getBoundingClientRect();
-      return { top: Math.max(top, 80), bottom: window.innerHeight - dock.top + 30 };
+      // the dock sits on the bottom edge; its height ignores the slide-away transform
+      return { top: Math.max(top, 80), bottom: $('#dock').offsetHeight + 30 };
     },
     onSwipe: (e) => pager?.begin(e),
     onPet: throttle(() => act('pet', {}), 4000),
@@ -237,6 +238,17 @@ function paintEdges() {
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
   $('#edge-top').style.backgroundColor = top;
   $('#edge-bottom').style.backgroundColor = bottom;
+}
+
+// The tab bar lives on the pocket only: it slides down off the screen as you swipe
+// toward the shelf (following the finger), and the page dots drop to the bottom edge.
+const PAGE_EASE = 'transform 0.46s cubic-bezier(.2,.9,.25,1)';
+function tuckDock(pos, animate, dots) {
+  const dock = $('#dock'), k = clamp(pos, 0, 1);
+  dock.style.transition = dots.style.transition = animate ? PAGE_EASE : 'none';
+  dock.style.transform = k ? `translate3d(0, calc(${k.toFixed(3)} * (100% + 24px)), 0)` : '';
+  dots.style.transform = `translate3d(-50%, ${(k * 64).toFixed(1)}px, 0)`;
+  dock.inert = k > 0.5;
 }
 
 const TABS = [

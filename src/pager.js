@@ -1,7 +1,7 @@
 // Swipe between screens: the pocket in the middle of things, the shelf one swipe away.
 import { h, clamp } from './util.js';
 
-export function Pager(screens, { labels = [], onChange } = {}) {
+export function Pager(screens, { labels = [], onChange, onMove } = {}) {
   let index = 0, pos = 0, drag = null, lastEnd = 0;
   const n = screens.length;
   const dots = h('div.pager-dots.glass', screens.map((_, k) => h('button', { type: 'button', 'aria-label': labels[k] || `Screen ${k + 1}`, onclick: () => go(k) }, h('i'))));
@@ -14,6 +14,7 @@ export function Pager(screens, { labels = [], onChange } = {}) {
     });
     const on = Math.round(pos);
     [...dots.children].forEach((d, k) => d.classList.toggle('on', k === on));
+    onMove?.(pos, animate, dots);
   };
 
   function go(k, { silent = false } = {}) {
