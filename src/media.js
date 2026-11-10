@@ -1,24 +1,55 @@
 // Photos get squeezed small enough to fit through the hole. Voices too.
 
-export function fileToImage(file) {
+// Picking a photo. iOS can drop a file input that isn't in the page while the
+// camera or Photos is open (the change event never fires and nothing happens),
+// so the input stays attached to the page until a file comes back or the
+// picker is cancelled.
+export function pickImage({ capture = false } = {}) {
+  return new Promise((resolve) => {
+    document.querySelectorAll('input.bw-picker').forEach((el) => el.remove());
+    const inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*'; inp.className = 'bw-picker';
+    if (capture) inp.setAttribute('capture', 'environment');
+    inp.style.cssText = 'position:fixed;left:-200px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+    document.body.append(inp);
+    let done = false;
+    const finish = (f) => { if (done) return; done = true; setTimeout(() => inp.remove(), 0); resolve(f || null); };
+    inp.addEventListener('change', () => finish(inp.files?.[0]));
+    inp.addEventListener('cancel', () => finish(null));
+    inp.click();
+  });
+}
+
+function loadImg(file) {
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => { res(img); setTimeout(() => URL.revokeObjectURL(url), 1000); };
-    img.onerror = rej;
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('decode')); };
     img.src = url;
   });
+}
+// Read a picked photo. If the <img> route can't decode it, try createImageBitmap;
+// if that fails too, say what the file was so the toast is useful.
+export async function fileToImage(file) {
+  try { return await loadImg(file); } catch { /* try the other way */ }
+  if (window.createImageBitmap) { try { return await createImageBitmap(file); } catch { /* fall through */ } }
+  const mb = file.size ? `${(file.size / 1048576).toFixed(1)} MB` : '';
+  throw new Error([file.type || 'unknown type', mb].filter(Boolean).join(', '));
 }
 
 export function squeeze(img, max = 1280, quality = 0.74, square = false) {
   let sw = img.naturalWidth || img.width, sh = img.naturalHeight || img.height, sx = 0, sy = 0;
+  if (!sw || !sh) throw new Error('empty image');
   if (square) { const s = Math.min(sw, sh); sx = (sw - s) / 2; sy = (sh - s) / 2; sw = sh = s; }
   const k = Math.min(1, max / Math.max(sw, sh));
   const c = document.createElement('canvas');
   c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   const x = c.getContext('2d');
   x.drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
-  return c.toDataURL('image/jpeg', quality);
+  const out = c.toDataURL('image/jpeg', quality);
+  if (out.length < 100) throw new Error('could not draw it');
+  return out;
 }
 
 export async function photoFromFile(file) {

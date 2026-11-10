@@ -5,7 +5,7 @@ import { sheet, btn, toast, segmented, icon } from './ui.js';
 import { makeSky, SKY, PAPERS, TRINKETS, renderStrokes } from './draw.js';
 import { Worm } from './worm.js';
 import { openItem, reactRow, theirReactions } from './compose.js';
-import { photoFromFile } from './media.js';
+import { photoFromFile, pickImage } from './media.js';
 import { sfx, buzz } from './feel.js';
 import { envelopeIcon, boxIcon, glyphTile, GLYPH_COLORS, trinketEmoji, recordIcon } from './icons.js';
 import { PROVIDERS } from './music.js';
@@ -302,14 +302,14 @@ export function leaveSheet(app, { mode = 'when' } = {}) {
   const papers = segmented({ rosa: 'Rosa', celeste: 'Celeste', limon: 'Limón', white: 'White' }, paper, (k) => { paper = k; card.style.background = PAPERS[k]; drawPreview(); });
   const photoBox = h('div.later-photo');
   const caption = h('input', { placeholder: 'A line on the polaroid', maxLength: 60, hidden: true });
-  const pick = (capture) => {
-    const inp = h('input', { type: 'file', accept: 'image/*' });
-    if (capture) inp.setAttribute('capture', 'environment');
-    inp.onchange = async () => {
-      const f = inp.files?.[0]; if (!f) return;
-      try { shot = await photoFromFile(f); photoBox.replaceChildren(h('div.polaroid', h('div.polaroid-img', h('img', { src: shot.full, alt: '' }))), btn('Remove photo', () => { shot = null; photoBox.replaceChildren(); caption.hidden = true; }, 'ghost small')); caption.hidden = false; } catch { toast('Couldn\'t read that photo.'); }
-    };
-    inp.click();
+  const pick = async (capture) => {
+    const f = await pickImage({ capture });
+    if (!f) return;
+    try {
+      shot = await photoFromFile(f);
+      photoBox.replaceChildren(h('div.polaroid', h('div.polaroid-img', h('img', { src: shot.full, alt: '' }))), btn('Remove photo', () => { shot = null; photoBox.replaceChildren(); caption.hidden = true; }, 'ghost small'));
+      caption.hidden = false;
+    } catch (e) { toast(`Couldn't read that photo${e?.message ? ` (${e.message})` : ''}. Try another one.`); }
   };
 
   const seal = btn('Seal it', async (ev) => {

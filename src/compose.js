@@ -4,7 +4,7 @@ import { sheet, btn, icon, toast, field, segmented } from './ui.js';
 import { PAPERS, TRINKETS, renderStrokes, REACTIONS } from './draw.js';
 import { trinketEmoji, glyphTile, GLYPH_COLORS, recordIcon } from './icons.js';
 import { songInfo, parseSong, embedHeight, PROVIDERS } from './music.js';
-import { photoFromFile, Recorder, blobToDataURL } from './media.js';
+import { photoFromFile, pickImage, Recorder, blobToDataURL } from './media.js';
 import { sfx, buzz } from './feel.js';
 
 const busy = (b, on) => { b.disabled = on; b.classList.toggle('busy', on); };
@@ -61,18 +61,14 @@ export function composePhoto(app, { daily = false, onDone } = {}) {
   let shot = null;
   const caption = h('input.handwriting', { placeholder: daily ? '' : 'Write on the bottom…', maxLength: 60 });
   const frame = h('div.polaroid.empty', h('div.polaroid-img', h('span.small.muted', 'No photo yet')), daily ? null : caption);
-  const pick = (capture) => {
-    const inp = h('input', { type: 'file', accept: 'image/*' });
-    if (capture) inp.setAttribute('capture', 'environment');
-    inp.onchange = async () => {
-      const f = inp.files?.[0]; if (!f) return;
-      try {
-        shot = await photoFromFile(f);
-        frame.classList.remove('empty');
-        frame.querySelector('.polaroid-img').replaceChildren(h('img', { src: shot.full, alt: '' }));
-      } catch { toast('Couldn\'t read that photo.'); }
-    };
-    inp.click();
+  const pick = async (capture) => {
+    const f = await pickImage({ capture });
+    if (!f) return;
+    try {
+      shot = await photoFromFile(f);
+      frame.classList.remove('empty');
+      frame.querySelector('.polaroid-img').replaceChildren(h('img', { src: shot.full, alt: '' }));
+    } catch (e) { toast(`Couldn't read that photo${e?.message ? ` (${e.message})` : ''}. Try another one.`); }
   };
   const s = sheet(daily ? 'Today\'s photo' : 'A polaroid', [
     daily ? h('p.small.muted', 'Whatever is in front of you. It stays buried until they post theirs.') : null,
