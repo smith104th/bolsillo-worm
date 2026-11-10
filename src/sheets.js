@@ -161,8 +161,7 @@ export function usSheet(app) {
   const countBar = (from, on) => {
     const start = from && from <= app.today() ? from : app.today(), total = dayNum(on) - dayNum(start);
     const pct = total > 0 ? Math.min(1, Math.max(0, (dayNum(app.today()) - dayNum(start)) / total)) : 1;
-    const gone = Math.max(0, Math.min(total, dayNum(app.today()) - dayNum(start)));
-    return h('div.tunnel-bar.count-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`), h('i', total > 0 ? `DAY ${gone} OF ${total}` : 'TODAY'));
+    return h('div.tunnel-bar.count-bar', h('span', { style: { width: `${Math.max(8, pct * 100)}%` } }), h('b', `${Math.round(pct * 100)}%`));
   };
   const bigCount = (days) => (days === 0 ? h('p.big-num', 'Today') : h('p.big-num', `${days}`, h('span', ` day${days > 1 ? 's' : ''}`)));
   const countCard = h('div.card.night.countdown');
