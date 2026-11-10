@@ -39,7 +39,7 @@ for (const [to, from] of Object.entries(fonts)) copyFileSync(`node_modules/${fro
 // edge to edge. Same recipe as makeSky() in src/draw.js. The worm drawing stays as the in-app logo.
 const SKY = { top: [0x6F, 0xBE, 0xFF], mid: [0xB7, 0xE0, 0xFF], bottom: [0xEE, 0xF6, 0xFF] };
 const hex = (c) => '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
-async function skyPNG(W, H, file) {
+async function skyPNG(W, H, file, { jpeg = false } = {}) {
   const R = Math.max(W, H);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
     <defs>
@@ -58,13 +58,14 @@ async function skyPNG(W, H, file) {
     const n = (rnd() - 0.5) * amp;
     for (let k = 0; k < 3; k++) data[i + k] = Math.max(0, Math.min(255, data[i + k] + n));
   }
-  await sharp(data, { raw: { width: info.width, height: info.height, channels: 3 } }).png().toFile(file);
+  const img = sharp(data, { raw: { width: info.width, height: info.height, channels: 3 } });
+  await (jpeg ? img.jpeg({ quality: 82, mozjpeg: true }) : img.png()).toFile(file);
 }
 await skyPNG(512, 512, `${OUT}/icons/icon-512.png`);
 await skyPNG(192, 192, `${OUT}/icons/icon-192.png`);
 await skyPNG(180, 180, `${OUT}/icons/apple-touch-icon.png`);
 await skyPNG(512, 512, `${OUT}/icons/icon-maskable-512.png`);
-await skyPNG(1200, 630, `${OUT}/og.png`);
+await skyPNG(1200, 630, `${OUT}/og.jpg`, { jpeg: true });
 await skyPNG(64, 64, `${OUT}/icons/favicon-64.png`);
 // the worm-and-hole drawing lives on as the in-app logo
 await sharp(readFileSync('src/icon.svg')).resize(192, 192).png().toFile(`${OUT}/icons/logo-192.png`);
