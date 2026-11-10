@@ -293,7 +293,11 @@ function renderDockDots() {
 
 // Kiss: tap for the emoji tray, hold to charge a kiss (five strengths)
 function kissBtn() {
-  const dots = h('div.kiss-dots', [1, 2, 3, 4, 5].map(() => h('span')));
+  // Five bars that fill as you hold: the first is full right away (a piquito),
+  // each next one fills over the 0.55 s it takes to reach that level.
+  const dots = h('div.kiss-dots', [1, 2, 3, 4, 5].map(() => h('span', h('i'))));
+  const STEP = 0.55;
+  const fillBars = (el) => [...dots.children].forEach((d, i) => { d.firstChild.style.transform = `scaleX(${i === 0 ? 1 : Math.max(0, Math.min(1, (el - (i - 1) * STEP) / STEP))})`; });
   const face = h('div.kiss-face', '💋');
   const meter = h('div.kiss-meter.glass', face, h('div.kiss-name'), dots);
   const tray = h('div.tray.glass', { hidden: true },
@@ -308,7 +312,8 @@ function kissBtn() {
   const b = h('button.kissbtn.glass', { type: 'button', 'aria-label': 'Kiss: tap for reactions, hold for a bigger kiss' }, h('span', '💋'));
   const tick = () => {
     const el = (performance.now() - t0) / 1000;
-    const lv = Math.min(5, 1 + Math.floor(el / 0.55));
+    const lv = Math.min(5, 1 + Math.floor(el / STEP));
+    fillBars(el);
     if (lv !== level) {
       level = lv; buzz(8 + lv * 6); sfx.kiss(1, lv);
       face.textContent = KISS_EMOJI[lv];
@@ -322,6 +327,7 @@ function kissBtn() {
     if (!app.them()) return toast('Waiting for your person to crawl in.');
     e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* */ }
     t0 = performance.now(); level = 0; charging = false;
+    fillBars(-1); [...dots.children].forEach((d) => d.classList.remove('on'));
     holdT = setTimeout(() => { charging = true; closeTray(); meter.classList.add('on'); tick(); if (pocket?.worm) pocket.worm.pucker = 3; }, 230);
   });
   const release = () => {
