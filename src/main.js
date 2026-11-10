@@ -614,16 +614,29 @@ async function loadShelf() {
     }
   } catch { /* the shelf can wait */ }
 }
+// Something waiting on the shelf: a new letter or capsule from them you haven't looked at,
+// or a capsule whose day has come since you last looked. Shown as a pink tab peeking in
+// from the pocket's right edge (the page dots are hidden on the pocket); tap it or swipe
+// to the shelf and it goes.
+const shelfKeys = (today = app.today()) => [...S.shelf.values()]
+  .filter((e) => e.kind === 'later' && e.from_slot !== S.slot && !e.opened_at)
+  .flatMap((e) => (e.payload?.mode === 'date' && e.payload.on <= today ? [e.id, `${e.id}:ready`] : [e.id]));
 function markShelfSeen() {
   const seen = new Set(store('shelfSeen') || []);
-  for (const e of S.shelf.values()) if (e.from_slot !== S.slot) seen.add(e.id);
+  for (const k of shelfKeys()) seen.add(k);
   store('shelfSeen', [...seen].slice(-400));
   shelfBadge();
 }
 function shelfBadge() {
   const seen = new Set(store('shelfSeen') || []);
-  const fresh = [...S.shelf.values()].some((e) => e.kind === 'later' && e.from_slot !== S.slot && !e.opened_at && !seen.has(e.id));
+  const fresh = shelfKeys().some((k) => !seen.has(k));
   pager?.dots.children[1]?.classList.toggle('new', fresh);
+  let tab = $('#shelf-tab');
+  if (!tab) {
+    tab = h('button#shelf-tab', { type: 'button', 'aria-label': 'Something is waiting on your shelf', onclick: () => pager?.go(1) }, h('i'));
+    $('#screen-pocket').append(tab);
+  }
+  tab.classList.toggle('on', fresh);
 }
 
 async function loadPlanted() {
