@@ -174,7 +174,7 @@ function enterPocket(data, { fromCache = false } = {}) {
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
   soil = SoilPage(app, $('#screen-soil'));
-  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(0) });
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(2) });
   house.setSky(S.sky);
   pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-house')], {
     labels: ['Pocket', 'Shelf', 'Soil', 'House'],

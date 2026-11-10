@@ -126,7 +126,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
   const touch = () => { dirty = 2; };
 
   // ---- state
-  const S = { built: Math.max(1, built), finished, cut: 4, place, hourOverride: hour, sky: null, running: false, drops: [] };
+  const S = { built: Math.max(1, built), finished, cut: 4, place, hourOverride: hour, dateOverride: null, sky: null, running: false, drops: [] };
 
   function applyVisibility() {
     pieces.forEach((p, i) => {
@@ -168,15 +168,16 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
   const sunDir = new THREE.Vector3();
   function applySky() {
     const where = S.place && Number.isFinite(+S.place.lat) ? { lat: +S.place.lat, lon: +S.place.lon } : TOKYO;
-    let date = new Date();
-    if (S.hourOverride != null) {
+    let date = S.dateOverride || new Date();
+    if (!S.dateOverride && S.hourOverride != null) {
       const offset = Math.round(where.lon / 15);
       const t = new Date(Date.now() + offset * 3600e3);
       date = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate()) + (S.hourOverride - offset) * 3600e3);
     }
     const { alt, az } = sunAt(date, where);
     const deg = alt * 180 / Math.PI;
-    const sky = S.sky || skyForAlt(deg, az < Math.PI);
+    // a scrubbed time paints its own sky; otherwise the app's sky (their sun, now)
+    const sky = (!S.dateOverride && S.hourOverride == null && S.sky) || skyForAlt(deg, az < Math.PI);
     el.style.background = `linear-gradient(${sky.top}, ${sky.mid} 55%, ${sky.bottom})`;
     const n = Math.cos(alt) * Math.cos(az), e = Math.cos(alt) * Math.sin(az);
     sunDir.set(-n, Math.sin(alt), -e).normalize();
@@ -291,6 +292,9 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     renderOnce() { controls.update(); people.update(0.016); renderer.shadowMap.needsUpdate = true; if (aoPass) aoPass._renderGBuffer = true; if (composer) composer.render(); else renderer.render(scene, camera); },
     setSky(sky, pl) { S.sky = sky || null; if (pl !== undefined) S.place = pl; applySky(); },
     setHour(h) { S.hourOverride = h; applySky(); },
+    // look at the house at another moment (null = now)
+    setDate(d) { S.dateOverride = d || null; applySky(); },
+    get cut() { return S.cut; },
     // how much is built. animate: new pieces drop in one by one
     setBuilt(n, { animate = false } = {}) {
       n = Math.max(1, Math.min(pieces.length, n));

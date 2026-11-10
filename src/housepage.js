@@ -2,7 +2,7 @@
 // one piece per right answer, from either of you. Its own dock: Back, Ours / Finished, Questions.
 // three.js lives in its own bundle (house/view.js) and only loads the first time you come here.
 import { h, store } from './util.js';
-import { icon } from './ui.js';
+import { icon, sheet } from './ui.js';
 import { questionsSheet } from './housequestions.js';
 
 const HOUSE = __HOUSE__; // ./house/view.js?v=<hash>, set by build.mjs
@@ -31,7 +31,9 @@ export function HousePage(app, root, { onEdge, onBack } = {}) {
   const qTab = tab('questions', 'Questions', () => openQuestions());
   const dot = h('span.dot', { hidden: true });
   qTab.append(dot);
-  const dock = h('div.hp-dock', h('div.tabbar.glass.hp-bar', back, toggle, qTab));
+  const gear = h('button.tab', { type: 'button', 'aria-label': 'Settings', onclick: () => openSettings() }, icon('gear'), h('span.lbl', 'Settings'));
+  const dock = h('div.hp-dock', h('div.tabbar.glass.hp-bar', back, toggle, qTab, gear));
+  let cut = 4, hour = null; // settings: floor cutaway, a scrubbed hour at their place (null = now)
 
   root.replaceChildren(stage, h('header.hp-head', h('h1.hp-title', 'Garden & House'), count), dock, veil);
 
@@ -75,6 +77,41 @@ export function HousePage(app, root, { onEdge, onBack } = {}) {
       }).catch((e) => { loading = null; veil.textContent = 'The house needs a signal to load the first time.'; console.warn(e); });
     }
     return loading;
+  }
+
+  // ── settings: camera views, floors, time of day where your person is
+  const theirZone = () => app.them()?.place?.tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  function hourNow() {
+    const p = new Intl.DateTimeFormat('en-GB', { timeZone: theirZone(), hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+    return +p.find((x) => x.type === 'hour').value + +p.find((x) => x.type === 'minute').value / 60;
+  }
+  const fmt = (x) => `${String(Math.floor(x)).padStart(2, '0')}:${String(Math.floor((x % 1) * 60)).padStart(2, '0')}`;
+  function setHour(x) {
+    hour = x;
+    view?.setDate(x == null ? null : new Date(Date.now() + (x - hourNow()) * 3600e3));
+  }
+  function openSettings() {
+    const views = h('div.hs-row', [['street', 'Street'], ['corner', 'Corner'], ['side', 'Side'], ['above', 'Above'], ['roof', 'Roof']].map(([k, l]) =>
+      h('button.hs-btn', { type: 'button', onclick: () => view?.view(k) }, l)));
+    const floorBtns = [['All', 4], ['4F', 3], ['3F', 2], ['2F', 1], ['1F', 0]].map(([l, k]) => h('button.hs-btn', { type: 'button', onclick: () => { cut = k; view?.setCut(k); paint(); } }, l));
+    const time = h('span.hs-time'), where = h('span.hs-where');
+    const slider = h('input.hs-slider', { type: 'range', min: 0, max: 23.95, step: 0.05 });
+    slider.addEventListener('input', () => { setHour(+slider.value); paint(); });
+    const now = h('button.hs-now', { type: 'button', onclick: () => { setHour(null); paint(); } }, 'Now');
+    const city = app.them()?.place?.city;
+    function paint() {
+      floorBtns.forEach((b, i) => b.classList.toggle('on', [4, 3, 2, 1, 0][i] === cut));
+      const x = hour ?? hourNow();
+      slider.value = x; time.textContent = fmt(x);
+      where.textContent = (city ? city : 'Their time').toUpperCase() + (hour == null ? ', NOW' : '');
+      now.classList.toggle('on', hour == null);
+    }
+    sheet('Settings', h('div.hs',
+      h('span.hs-label', 'VIEW'), views,
+      h('span.hs-label', 'FLOORS'), h('div.hs-row', floorBtns),
+      h('span.hs-label', 'TIME OF DAY'), h('div.hs-row.hs-sun', h('div.hs-clock', time, where), slider, now),
+    ));
+    paint();
   }
 
   function openQuestions() {
