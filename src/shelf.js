@@ -107,7 +107,7 @@ export function Shelf(app, root) {
   }
 
   return {
-    render, setSky,
+    render, setSky, setView,
     show() { render(); roamer?.start(); },
     hide() { roamer?.stop(); },
   };

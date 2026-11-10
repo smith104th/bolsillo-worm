@@ -7,6 +7,7 @@ import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, topSheet, ICON, confirmBox } from './ui.js';
 import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
 import { backupDue } from './backup.js';
+import { setBadge, freshOpen } from './badge.js';
 import { sfx, buzz, unlockAudio } from './feel.js';
 import { supabaseBackend } from './backend.js';
 import { mockBackend } from './mock.js';
@@ -22,6 +23,7 @@ const S = { hole: null, members: [], events: [], slot: 0, online: false, weather
 const dailyFns = new Set();
 const COMPOST_H = 72; // opened things settle into the soil after three days
 let backend, pocket, shelf, soil, pager;
+let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
 
@@ -47,7 +49,7 @@ const app = {
     if (ev.kind === 'later' || ev.kept) S.shelf.set(e.id, ev); else S.shelf.delete(e.id);
     const i = S.events.findIndex((x) => x.id === e.id); if (i >= 0) S.events[i] = { ...S.events[i], ...e };
     if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
-    shelfBadge();
+    shelfBadge(); updateBadge();
   },
   goTo: (i) => { closeAllSheets(); pager?.go(i); },
   loadPlanted,
@@ -70,7 +72,10 @@ async function boot() {
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__bwInstallPrompt = e; });
   const hashCode = (location.hash.match(/join=([A-Z0-9-]+)/i) || [])[1];
-  if (hashCode) { store('pendingCode', hashCode.replace(/-/g, '').toUpperCase()); history.replaceState(null, '', location.pathname + location.search); }
+  if (hashCode) store('pendingCode', hashCode.replace(/-/g, '').toUpperCase());
+  // a tapped notification opens the app at the thing it was about (see sw.js)
+  pendingGo = (location.hash.match(/go=([a-z-]+)/i) || [])[1] || null;
+  if (hashCode || pendingGo) history.replaceState(null, '', location.pathname + location.search);
 
   backend = DEMO ? mockBackend() : supabaseBackend(CONFIG);
   window.__bw = { backend, app };
@@ -115,12 +120,14 @@ function pocketItems() {
 // seenAt = the last moment the pocket was on screen (saved every 30 s and when the app hides).
 let fallSince = 0;
 const markSeen = () => store('seenAt', Date.now());
-const comingBack = () => { fallSince = store('seenAt') || 0; markSeen(); };
+const comingBack = () => { fallSince = store('seenAt') || 0; markSeen(); if (!DEMO) freshOpen(); };
 
 function refreshPocket() {
   if (!pocket) return;
-  pocket.syncItems(pocketItems(), { fallSince });
+  const items = pocketItems();
+  pocket.syncItems(items, { fallSince });
   fallSince = 0;
+  updateBadge(items);
   const them = app.them(), me = app.me();
   if (them) {
     pocket.setTheirWorm(them.worm, inchesFor(them.love));
@@ -186,6 +193,34 @@ function enterPocket(data) {
   loadShelf();
   syncPush();
   setTimeout(() => { if (!welcome()) setTimeout(afterArrival, 1200); }, 900);
+  navigator.serviceWorker?.addEventListener('message', (e) => { if (e.data?.type === 'bw-go') openTarget(e.data.to); });
+  if (pendingGo) { const to = pendingGo; pendingGo = null; setTimeout(() => openTarget(to), 350); }
+}
+
+// Where a tapped notification lands: the shelf for letters and capsules, Today for
+// the daily, Soil for planted questions, Us for the countdown, else the pocket.
+// If you were in the middle of making something (a note, a doodle, a typed answer),
+// a tap only brings the app back; nothing you started gets closed.
+const MAKING = /^(A note|A doodle|A polaroid|Today's photo|A whisper|A wiggle|A song|For .+, for later|Your worm|Your city)$/;
+const midMaking = () => [...document.querySelectorAll('.sheet .sheet-card')].some((c) =>
+  MAKING.test(c.querySelector('h2')?.textContent || '') || [...c.querySelectorAll('textarea, input:not([type=date]):not([type=file])')].some((i) => i.value.trim()));
+function openTarget(to) {
+  if (!pager || !S.hole || midMaking()) return;
+  closeAllSheets();
+  if (to === 'shelf' || to === 'shelf-from') { pager.go(1); shelf?.setView(to === 'shelf-from' ? 'from' : 'for'); return; }
+  if (to === 'soil') { pager.go(2); return; }
+  pager.go(0);
+  if (to === 'today') { setTab('today'); todaySheet(app); }
+  else if (to === 'us') { setTab('us'); usSheet(app); }
+}
+
+// The number on the home-screen icon: what's still waiting for you. Unopened things
+// in the pocket, plus time capsules whose day has come.
+function updateBadge(items = pocketItems()) {
+  if (DEMO && !params.has('badge')) return; // &badge lets the demo set it, for testing
+  const today = app.today();
+  const ready = [...S.shelf.values()].filter((e) => e.kind === 'later' && e.from_slot !== S.slot && !e.opened_at && e.payload?.mode === 'date' && e.payload.on <= today).length;
+  setBadge(items.filter((it) => !it.opened).length + ready, app.them()?.name);
 }
 
 async function onVisible() {
@@ -452,7 +487,7 @@ async function loadShelf() {
     const rows = await backend.shelf();
     S.shelf = new Map(rows.map((e) => [e.id, e]));
     if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
-    shelfBadge();
+    shelfBadge(); updateBadge();
     // capsules whose day has come: say so once
     const today = app.today();
     const told = new Set(store('readyTold') || []);

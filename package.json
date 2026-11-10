@@ -4,7 +4,8 @@
   "description": "Carry each other. A pocket for two worms.",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node supabase/test/schema.test.mjs"
+    "test": "node supabase/test/schema.test.mjs",
+    "test:sw": "node build.mjs && node test/sw.test.mjs docs/sw.js"
   },
   "author": "",
   "license": "ISC",
