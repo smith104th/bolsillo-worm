@@ -34,7 +34,9 @@ const r2 = READY ? new AwsClient({ accessKeyId: KEY_ID, secretAccessKey: SECRET,
 const MAX_BYTES = 4_000_000;
 const OK_TYPE = /^(image|audio)\/[a-z0-9.+-]+$/i;
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 1, prepare: false, idle_timeout: 20 });
+// DB_URL is set by .github/workflows/supabase.yml from the repo secret, so a password reset
+// only needs the GitHub secret updated; SUPABASE_DB_URL is the platform default.
+const sql = postgres(Deno.env.get("DB_URL") || Deno.env.get("SUPABASE_DB_URL")!, { max: 1, prepare: false, idle_timeout: 20 });
 
 async function putObject(key: string, bytes: Uint8Array, type: string) {
   const res = await r2!.fetch(`${BASE}/${key}`, { method: "PUT", body: bytes, headers: { "content-type": type } });

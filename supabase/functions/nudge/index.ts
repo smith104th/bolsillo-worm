@@ -15,7 +15,9 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 const b64url = (u: Uint8Array) => btoa(String.fromCharCode(...u)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-const sql = postgres(Deno.env.get("SUPABASE_DB_URL")!, { max: 1, prepare: false, idle_timeout: 20 });
+// DB_URL is set by .github/workflows/supabase.yml from the repo secret, so a password reset
+// only needs the GitHub secret updated; SUPABASE_DB_URL is the platform default.
+const sql = postgres(Deno.env.get("DB_URL") || Deno.env.get("SUPABASE_DB_URL")!, { max: 1, prepare: false, idle_timeout: 20 });
 
 let ready: Promise<string> | null = null;
 function vapid(): Promise<string> {
