@@ -634,3 +634,21 @@ body.dark .shelf-hint { color: #fff; }
 .s-top .btn.s-btn { background: #0F7A4E; color: #fff; }
 .s-top .s-seed { border-top-color: rgba(11,11,12,0.1); }
 .s-bottom .s-earlier { margin-top: 28px; }
+
+/* soil top: white page, colored cards (same colors as the shelf bands) */
+.s-top .s-meta { color: #D90042; }
+.s-top section.s-today, .s-top section.s-plant { margin-top: 18px; padding: 22px 20px 22px; border-radius: 30px; }
+.s-top section.s-today { margin-top: 26px; background: #FFC8D7; }
+.s-top section.s-plant { background: #A3E6EC; }
+.s-top .s-today .s-label, .s-top .s-today .s-who { color: #D90042; }
+.s-top .s-today .s-label { border-bottom-color: rgba(217,0,66,0.25); }
+.s-top .s-today .s-q { color: #D90042; font-weight: 800; }
+.s-top .s-today .s-planted { display: inline-block; padding: 6px 11px; border-radius: 999px; background: #fff; color: #D90042; font-weight: 600; }
+.s-top .s-today .s-input, .s-top .s-plant .s-input { background: #fff; }
+.s-top .s-today .btn.s-btn { background: #D90042; color: #fff; }
+.s-top .s-today .react-row, .s-top .s-today .their-reacts { background: #fff; }
+.s-top .s-plant .s-label, .s-top .s-plant .s-note, .s-top .s-plant .s-when, .s-top .s-plant .s-dig { color: #1546A8; }
+.s-top .s-plant .s-label { border-bottom-color: rgba(21,70,168,0.25); }
+.s-top .s-plant .btn.s-btn { background: #1546A8; color: #fff; }
+.s-top .s-plant .s-seed { border-top-color: rgba(21,70,168,0.2); }
+.soil-print { background: #FFD84A; }
