@@ -291,13 +291,17 @@ function paintEdges() {
 }
 
 // The tab bar lives on the pocket only: it slides down off the screen as you swipe
-// toward the shelf (following the finger), and the page dots drop to the bottom edge.
+// toward the shelf (following the finger). The page dots take its place: hidden on
+// the pocket, they fade in and drop to the bottom edge as the bar leaves (Manu, Nov 10).
 const PAGE_EASE = 'transform 0.46s cubic-bezier(.2,.9,.25,1)';
 function tuckDock(pos, animate, dots) {
   const dock = $('#dock'), k = clamp(pos, 0, 1);
-  dock.style.transition = dots.style.transition = animate ? PAGE_EASE : 'none';
+  dock.style.transition = animate ? PAGE_EASE : 'none';
+  dots.style.transition = animate ? `${PAGE_EASE}, opacity 0.46s cubic-bezier(.2,.9,.25,1)` : 'none';
   dock.style.transform = k ? `translate3d(0, calc(${k.toFixed(3)} * (100% + 24px)), 0)` : '';
   dots.style.transform = `translate3d(-50%, ${(k * 64).toFixed(1)}px, 0)`;
+  dots.style.opacity = k.toFixed(3);
+  dots.style.pointerEvents = k > 0.5 ? '' : 'none';
   dock.inert = k > 0.5;
 }
 
