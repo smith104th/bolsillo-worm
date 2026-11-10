@@ -55,7 +55,7 @@ export function Pager(screens, { labels = [], onChange } = {}) {
   // DOM screens (like the shelf): claim horizontal drags, leave vertical scrolling alone
   function watch(el) {
     let s = null;
-    el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button !== 0) return; s = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
+    el.addEventListener('pointerdown', (e) => { if ((e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('input, textarea')) { s = null; return; } s = { id: e.pointerId, x: e.clientX, y: e.clientY }; });
     el.addEventListener('pointermove', (e) => {
       if (!s || e.pointerId !== s.id || drag) return;
       const dx = e.clientX - s.x, dy = e.clientY - s.y;

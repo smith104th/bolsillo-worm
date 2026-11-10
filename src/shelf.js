@@ -246,6 +246,7 @@ function nap(canvas, design) {
 }
 
 // ── categories ──────────────────────────────────────────
+export const SHELF_BOTTOM = '#FFC93C';
 const CATS = [
   { key: 'when', name: 'Open when', bg: '#FFC8D7', fg: '#D90042' },
   { key: 'date', name: 'Time capsules', bg: '#0F7A4E', fg: '#FFD84A' },

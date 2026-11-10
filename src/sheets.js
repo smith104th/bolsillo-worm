@@ -1,11 +1,11 @@
 // The paper slips: feed, drop, today, us, peek, settings, the jar.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
-import { sheet, btn, icon, toast, field, segmented, confirmBox } from './ui.js';
+import { sheet, btn, icon, toast, field, segmented, confirmBox, closeAllSheets } from './ui.js';
 import { FOODS, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
 import { COLORS, PATTERNS, ACCESSORIES, inchesFor, lengthBlurb } from './worm.js';
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeTrinket, openItem, titleFor, trinketCanvas, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
-import { soilSheet, plantSheet, viewPhoto, soilGrain as soilGrainURL } from './soil.js';
+import { plantSheet, viewPhoto } from './soil.js';
 import { leaveSheet } from './shelf.js';
 import { sfx } from './feel.js';
 
@@ -103,7 +103,7 @@ export async function todaySheet(app) {
     const tA = { day: today, part: 'answer', about: 'answer' }, tP = { day: today, part: 'photo', about: 'photo of the day' };
     const theirAnswer = t.their_answer
       ? h('div.answer', h('span.who', them), h('p', t.their_answer), reactRow(app, tA))
-      : t.their_answered ? h('div.answer.buried', { style: { '--grain': soilGrainURL() } }, h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
+      : t.their_answered ? h('div.answer.buried', h('span.who', them), h('p', 'Buried. Answer to dig it up.')) : h('div.answer', h('span.who', them), h('p.muted', 'Hasn\'t answered yet.'));
 
     const layers = rows.filter((r) => String(r.day).slice(0, 10) < today && (r.my_answer || r.their_answer)).length;
 
@@ -118,7 +118,7 @@ export async function todaySheet(app) {
       h('p.question', q),
       answerBox, theirAnswer,
       h('div.soil-links',
-        h('button.soil-link', { type: 'button', onclick: () => soilSheet(app), style: { '--grain': soilGrainURL() } }, h('b', 'The soil'), h('span', layers ? `${layers} layer${layers > 1 ? 's' : ''} of answers, plus everything that settled` : 'Where everything settles')),
+        h('button.soil-link', { type: 'button', onclick: () => { s.close(); app.goTo(2); } }, h('b', 'Soil'), h('span', layers ? `${layers} earlier question${layers > 1 ? 's' : ''}, answered together` : 'Every question you both answer')),
         h('button.plant-link', { type: 'button', onclick: () => plantSheet(app) }, h('b', '🌱'), h('span', `Plant a question for ${them}`))),
     ].filter(Boolean));
   };
@@ -168,7 +168,7 @@ export function usSheet(app) {
       stat(count('note'), 'notes'), stat(count('pet'), 'pets')),
     h('div.btn-grid.four',
       btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
-      btn('🌱 Soil', () => soilSheet(app), 'ghost'),
+      btn('🌱 Soil', () => { closeAllSheets(); app.goTo(2); }, 'ghost'),
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ], { tall: true });

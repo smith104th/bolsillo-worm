@@ -4,7 +4,7 @@ import { h, fmtDistance, store } from './util.js';
 import { sheet, btn, toast, segmented } from './ui.js';
 import { makeSky, skyFor, drawHole, PAPERS, TRINKETS, drawTrinket, renderStrokes, mixHex, SKY } from './draw.js';
 import { Worm } from './worm.js';
-import { SOIL, soilGrain } from './soil.js';
+import { SOIL_BG, SOIL_FG } from './soil.js';
 
 const DPI = 180, U = DPI / 72;               // draw in points, render at 180 dpi
 const PW = 396, PH = 612, M = 36, CW = PW - M * 2;
@@ -69,17 +69,9 @@ function softShadow(x) { x.shadowColor = 'rgba(70,45,20,0.2)'; x.shadowBlur = 5;
 function noShadow(x) { x.shadowColor = 'transparent'; x.shadowBlur = 0; x.shadowOffsetY = 0; }
 
 // ── page furniture
-let grainImg = null;
-function soilFill(x, tone) {
-  x.fillStyle = tone; x.fill();
-  if (grainImg) { x.save(); x.clip(); x.globalAlpha = 0.9; x.fillStyle = x.createPattern(grainImg, 'repeat'); x.setTransform(U * 0.5, 0, 0, U * 0.5, 0, 0); x.fillRect(0, 0, PW * 2, PH * 2); x.restore(); }
-}
-function footer(x, n, tones) {
-  [0, 1, 2].forEach((i) => {
-    x.save(); x.beginPath(); wave(x, PH - 40 + i * 11, 2.2, n * 3 + i); x.lineTo(PW, PH); x.lineTo(0, PH); x.closePath();
-    soilFill(x, tones[i]); x.restore();
-  });
-  font(x, 500, 7, true); x.fillStyle = INK; x.textAlign = 'center'; x.fillText(String(n), PW / 2, PH - 12); x.textAlign = 'left';
+function footer(x, n) {
+  x.fillStyle = SOIL_BG; x.fillRect(0, PH - 26, PW, 26);
+  font(x, 500, 7, true); x.fillStyle = '#FFFFFF'; x.textAlign = 'center'; x.fillText(String(n), PW / 2, PH - 10); x.textAlign = 'left';
 }
 function runningHead(x, left) {
   font(x, 500, 6.5, true); x.fillStyle = INK2;
@@ -94,7 +86,7 @@ function headerBlock(x, app, L) {
   return { h: 20, keep: true, draw(y) {
     font(x, 500, 7, true); x.fillStyle = INK; x.fillText(label, M, y + 8);
     if (q.by && L.daily) { x.fillStyle = SEED; x.textAlign = 'right'; x.fillText(q.mine ? 'YOU PLANTED THIS ONE' : `${q.by.toUpperCase()} PLANTED THIS ONE`, PW - M, y + 8); x.textAlign = 'left'; }
-    x.strokeStyle = '#E3D6C2'; x.lineWidth = 0.7; x.beginPath(); x.moveTo(M, y + 14); x.lineTo(PW - M, y + 14); x.stroke();
+    x.strokeStyle = '#E5E5EA'; x.lineWidth = 0.7; x.beginPath(); x.moveTo(M, y + 14); x.lineTo(PW - M, y + 14); x.stroke();
   } };
 }
 function qaBlock(x, app, L, names) {
@@ -110,7 +102,7 @@ function qaBlock(x, app, L, names) {
     const by = y + ql.length * 15 + 8;
     a.forEach((c, i) => {
       const bx = M + i * (colW + 10);
-      rrect(x, bx, by, colW, boxH, 7); x.fillStyle = i ? '#F3ECDF' : '#F7F2E9'; x.fill();
+      rrect(x, bx, by, colW, boxH, 7); x.fillStyle = '#F2F2F7'; x.fill();
       font(x, 500, 6.3, true); x.fillStyle = INK; x.fillText(c.n.toUpperCase(), bx + pad, by + pad + 6);
       font(x, c.faint ? 'italic 400' : 400, 9.2); x.fillStyle = INK;
       c.lines.forEach((l, j) => x.fillText(l, bx + pad, by + pad + 20 + j * 12));
@@ -167,7 +159,7 @@ function tileFor(x, app, e, img, names) {
     }
     case 'whisper': case 'wiggle': return { h: 62, draw(X, Y) {
       x.save(); x.translate(X, Y);
-      x.beginPath(); x.ellipse(TW / 2, 24, 46, 22, -0.05, 0, Math.PI * 2); x.fillStyle = '#EFE6D6'; x.fill();
+      x.beginPath(); x.ellipse(TW / 2, 24, 46, 22, -0.05, 0, Math.PI * 2); x.fillStyle = '#F2F2F7'; x.fill();
       font(x, 500, 8.5); x.fillStyle = INK; x.textAlign = 'center';
       x.fillText(e.kind === 'whisper' ? `🐚  a ${Math.round(p.dur || 0)}s whisper` : `〰️  ${p.label || 'a wiggle'}`, TW / 2, 27);
       x.textAlign = 'left'; label(58); x.restore();
@@ -208,7 +200,7 @@ function coverPage(x, app, data, names) {
   font(x, 500, 6.5, true); x.textAlign = 'right';
   x.fillText([me?.place?.city, them?.place?.city].filter(Boolean).join(' · ').toUpperCase(), PW - M, PH - 46); x.textAlign = 'left';
 }
-function numbersPage(x, app, data, names, n, tones) {
+function numbersPage(x, app, data, names, n) {
   const S = (k, slot) => data.stats.filter((r) => r.kind === k && (slot == null || r.from_slot === slot)).reduce((a, r) => a + Number(r.n), 0);
   const both = data.dailies.filter((r) => r.my_answer && r.their_answer).length;
   const photos = data.dailies.reduce((a, r) => a + (r.my_thumb ? 1 : 0) + (r.their_thumb ? 1 : 0), 0) + data.drops.filter((e) => e.kind === 'photo').length;
@@ -240,17 +232,16 @@ function numbersPage(x, app, data, names, n, tones) {
   font(x, 400, 10); x.fillStyle = INK;
   const tail = wrap(x, `${fmtDistance(dug, units)} of tunnel dug between ${app.me()?.place?.city || 'here'} and ${app.them()?.place?.city || 'there'}${hole.tunnels_done ? `, ${hole.tunnels_done} all the way through` : ''}.`, CW);
   tail.forEach((l, i) => x.fillText(l, M, 140 + Math.ceil(items.length / 2) * 74 + 14 + i * 13));
-  footer(x, n, tones);
+  footer(x, n);
 }
-function monthPage(x, monthDay, count, tone, n) {
-  x.drawImage(makeSky(PW, PH, U, SKY), 0, 0, PW, PH);
-  x.save(); x.beginPath(); wave(x, 236, 7, n); x.lineTo(PW, PH); x.lineTo(0, PH); x.closePath(); soilFill(x, tone); x.restore();
-  x.save(); x.beginPath(); wave(x, 470, 5, n + 2); x.lineTo(PW, PH); x.lineTo(0, PH); x.closePath(); soilFill(x, mixHex(tone, '#5C4128', 0.18)); x.restore();
-  x.font = `30px ${SANS}`; x.fillText('🌱', PW - M - 34, 232);
-  font(x, 600, 62); x.fillStyle = INK;
-  x.fillText(new Date(monthDay + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }), M - 2, 320);
-  font(x, 500, 7, true); x.fillStyle = INK;
-  x.fillText(`${count} LAYER${count === 1 ? '' : 'S'}`, M, 342);
+function monthPage(x, monthDay, count) {
+  x.fillStyle = SOIL_BG; x.fillRect(0, 0, PW, PH);
+  const name = new Date(monthDay + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' }).toUpperCase();
+  font(x, 800, 66); const fit = Math.min(66, (66 * (PW - M * 2)) / x.measureText(name).width);
+  font(x, 800, fit); x.fillStyle = SOIL_FG;
+  x.fillText(name, M - 3, PH - 92);
+  font(x, 500, 8, true); x.fillStyle = '#FFFFFF';
+  x.fillText(`${count} DAY${count === 1 ? '' : 'S'} · ${monthDay.slice(0, 4)}`, M, PH - 64);
 }
 function backPage(x, app) {
   const dusk = skyFor(null, new Date(), 3);
@@ -288,7 +279,6 @@ async function toPDF(jpegs) {
 
 export async function makeZine(app, year, { onStep = () => {}, onPage = () => {} } = {}) {
   await Promise.all(['400', '500', '600'].map((w) => document.fonts.load(`${w} 12px Geist`).catch(() => {})).concat(document.fonts.load('500 12px "Geist Mono"').catch(() => {})));
-  grainImg = await loadImg(soilGrain().slice(4, -1));
   const data = await gather(app, year, onStep);
   const names = [app.me()?.name || 'You', app.them()?.name || 'Them'];
   onStep('Developing the photos…');
@@ -301,8 +291,6 @@ export async function makeZine(app, year, { onStep = () => {}, onPage = () => {}
   const x = cv.getContext('2d');
   const jpegs = [];
   const months = [...new Set(data.days.map((L) => L.day.slice(0, 7)))];
-  const toneOf = (m) => SOIL[Math.min(SOIL.length - 1, Math.max(0, (months.length - 1 - months.indexOf(m)) + 1))];
-  const tonesOf = (m) => [toneOf(m), mixHex(toneOf(m), '#6B4A2B', 0.15), mixHex(toneOf(m), '#6B4A2B', 0.3)];
   let pageNo = 0;
   const page = async (draw) => {
     x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
@@ -316,12 +304,12 @@ export async function makeZine(app, year, { onStep = () => {}, onPage = () => {}
 
   onStep('Setting the cover…');
   await page(() => coverPage(x, app, data, names));
-  await page((n) => numbersPage(x, app, data, names, n, tonesOf(months[months.length - 1] || '')));
+  await page((n) => numbersPage(x, app, data, names, n));
 
   for (const m of months) {
     const days = data.days.filter((L) => L.day.startsWith(m));
     onStep(`Laying out ${new Date(m + '-15T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' })}…`);
-    await page((n) => monthPage(x, days[0].day, days.length, toneOf(m), n));
+    await page(() => monthPage(x, days[0].day, days.length));
     // flow the month's days onto pages, keeping each day together when it fits
     const label = new Date(m + '-15T12:00:00Z').toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     const CAP = BOTTOM - TOP, GAP = 10;
@@ -329,7 +317,7 @@ export async function makeZine(app, year, { onStep = () => {}, onPage = () => {}
     const flush = async () => {
       if (!placed.length) return;
       const pl = placed; placed = []; y = TOP;
-      await page((n) => { runningHead(x, label); pl.forEach(([b, by]) => b.draw(by)); footer(x, n, tonesOf(m)); });
+      await page((n) => { runningHead(x, label); pl.forEach(([b, by]) => b.draw(by)); footer(x, n); });
     };
     for (const L of days) {
       const g = [headerBlock(x, app, L), qaBlock(x, app, L, names), photosBlock(x, dayImgs.get(L.day) || [], names), ...dropRows(x, app, L.drops, imgs, names)].filter(Boolean);
@@ -346,7 +334,7 @@ export async function makeZine(app, year, { onStep = () => {}, onPage = () => {}
     }
     await flush();
   }
-  if (!months.length) await page((n) => { runningHead(x, String(year)); font(x, 600, 22); x.fillStyle = INK; x.fillText('Nothing settled yet.', M, 120); font(x, 400, 11); x.fillStyle = INK2; wrap(x, 'Answer questions together and open what lands in your pockets. It all ends up here.', CW).forEach((l, j) => x.fillText(l, M, 146 + j * 15)); footer(x, n, [SOIL[1], SOIL[3], SOIL[5]]); });
+  if (!months.length) await page((n) => { runningHead(x, String(year)); font(x, 600, 22); x.fillStyle = INK; x.fillText('Nothing settled yet.', M, 120); font(x, 400, 11); x.fillStyle = INK2; wrap(x, 'Answer questions together and open what lands in your pockets. It all ends up here.', CW).forEach((l, j) => x.fillText(l, M, 146 + j * 15)); footer(x, n); });
   await page(() => backPage(x, app));
   onStep('Binding…');
   return { blob: await toPDF(jpegs), pages: jpegs.length, days: data.days.length };
@@ -363,7 +351,7 @@ export function zineSheet(app) {
   const go = btn('Make the zine', () => run(), 'primary wide');
   const save = btn('Save the PDF', () => share(), 'primary wide'); save.hidden = true;
   const s = sheet('Our year, printed', [
-    h('p.small.muted', 'A half-letter zine (5.5 × 8.5 in) of everything in the soil: the questions you both answered, your photos of the day, notes, polaroids, doodles and found things. Print it double-sided, or send the PDF to a print shop.'),
+    h('p.small.muted', 'A half-letter zine (5.5 × 8.5 in) of your year: the questions you both answered, your photos of the day, notes, polaroids, doodles and found things. Print it double-sided, or send the PDF to a print shop.'),
     years.length > 1 ? segmented(Object.fromEntries(years.map((y) => [y, String(y)])), String(year), (k) => { year = +k; result = null; save.hidden = true; go.hidden = false; thumbs.replaceChildren(); status.textContent = ''; }) : null,
     thumbs, status, go, save,
   ].filter(Boolean), { tall: true });

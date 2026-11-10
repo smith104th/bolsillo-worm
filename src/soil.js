@@ -1,147 +1,120 @@
-// The soil: everything you've grown, layer by layer. Newest on top, older deeper down.
-// Opened things settle here a few days after they leave the pocket, next to every
-// question you both answered.
-import { h, prettyDay, seeded } from './util.js';
+// The soil: the third page. Questions you grow together, mostly words:
+// today's question, the ones you plant for each other, and every answer so far.
+import { h, prettyDay } from './util.js';
 import { sheet, btn, toast } from './ui.js';
-import { PAPERS, TRINKETS, renderStrokes, mixHex } from './draw.js';
-import { openItem, trinketCanvas } from './compose.js';
+import { reactRow, theirReactions } from './compose.js';
 import { sfx } from './feel.js';
 import { zineSheet } from './zine.js';
 
-export const SOIL = ['#EDE0CA', '#E4D2B5', '#DAC39F', '#CFB389', '#C5A478', '#BA956A', '#AF885E', '#A37B54'];
-const WAVES = [
-  'M0 16V9C40 3 80 14 130 9S210 2 260 8S350 15 400 7V16Z',
-  'M0 16V7C50 13 90 3 150 8S240 14 290 8S370 2 400 9V16Z',
-  'M0 16V10C30 5 70 5 110 10S190 15 240 9S330 3 400 8V16Z',
-];
-const waveURL = (i) => `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 16' preserveAspectRatio='none'><path d='${WAVES[i % WAVES.length]}' fill='black'/></svg>`)}")`;
+export const SOIL_BG = '#0F7A4E', SOIL_FG = '#FFD84A';
+const monthName = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+const yearOf = (day) => day.slice(0, 4);
+const dayKey = (r) => String(r.day).slice(0, 10);
+const PRINT = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/></svg>';
 
-let grainURL = null;
-export function soilGrain() {
-  if (grainURL) return grainURL;
-  const c = document.createElement('canvas'); c.width = c.height = 160;
-  const x = c.getContext('2d'); const r = seeded(42);
-  for (let i = 0; i < 900; i++) {
-    const dark = r() < 0.7;
-    x.fillStyle = dark ? `rgba(70,45,20,${0.05 + r() * 0.12})` : `rgba(255,250,240,${0.1 + r() * 0.2})`;
-    const s = r() < 0.93 ? 1 + r() * 1.4 : 2.4 + r() * 2.4;
-    x.beginPath(); x.ellipse(r() * 160, r() * 160, s, s * (0.6 + r() * 0.5), r() * 3, 0, 7); x.fill();
+export function SoilPage(app, root) {
+  let rows = null, visible = false;
+  const scroll = h('div.soil-scroll');
+  const print = h('button.soil-print.glass', { type: 'button', 'aria-label': 'Print our year', onclick: () => zineSheet(app), html: PRINT });
+  root.replaceChildren(scroll, print);
+
+  async function load() {
+    try { rows = await app.backend.dailies(400); } catch { /* keep what we have */ }
+    render();
   }
-  grainURL = `url(${c.toDataURL('image/png')})`;
-  return grainURL;
-}
 
-const monthKey = (day) => day.slice(0, 7);
-const monthName = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-const monthsBetween = (a, b) => (+a.slice(0, 4) - +b.slice(0, 4)) * 12 + (+a.slice(5, 7) - +b.slice(5, 7));
+  function render() {
+    const them = app.them()?.name || 'Them';
+    const today = app.today();
+    const list = rows || [];
+    const t = list.find((r) => dayKey(r) === today) || {};
+    const Q = app.questionFor(today);
+    const both = list.filter((r) => r.my_answer && r.their_answer).length;
+    const out = [];
 
-// one find in the soil: a note, a polaroid, a doodle, a trinket, a whisper, a wiggle
-export function findEl(app, e) {
-  const p = e.payload || {};
-  const rot = ((e.id * 37) % 9) - 4;
-  const who = h('span.who', e.from_slot === app.slot() ? 'from you' : `from ${app.them()?.name || 'them'}`);
-  let art;
-  switch (e.kind) {
-    case 'note': art = h('div.f-paper', { style: { background: PAPERS[p.paper] || PAPERS.white, transform: `rotate(${rot}deg)` } }, p.text); break;
-    case 'photo': art = h('div.f-pol', { style: { transform: `rotate(${rot}deg)` } }, h('img', { src: p.thumb, alt: '' }), p.caption ? h('span', p.caption) : null); break;
-    case 'doodle': {
-      const c = h('canvas', { width: 160, height: 160 });
-      const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 80, 1);
-      art = h('div.f-paper.doodle', { style: { transform: `rotate(${rot}deg)` } }, c); break;
+    out.push(h('header.s-head',
+      h('div.s-meta', both ? `${both} ANSWERED TOGETHER` : 'QUESTIONS FOR TWO'),
+      h('h1.s-title', 'Soil'),
+      h('p.s-lede', 'What you grow together, one question at a time.')));
+
+    // today
+    const ans = h('textarea.s-input', { rows: 3, maxLength: 1000, placeholder: 'Your answer…' });
+    const mine = t.my_answer
+      ? h('div.s-ans', h('span.s-who', 'You'), h('p', t.my_answer), theirReactions(app, { day: today, part: 'answer' }))
+      : h('div.s-form', ans, btn('Bury my answer', async (e) => {
+        const v = ans.value.trim(); if (!v) return ans.focus();
+        const b = e.currentTarget; b.disabled = true;
+        try { const r = await app.backend.daily(today, { answer: v }); app.backend.nudge('daily', { part: 'answer', both: r.both }); sfx.chime(); await load(); }
+        catch { b.disabled = false; toast('Couldn\'t bury it. Try again.'); }
+      }, 's-btn'));
+    const theirs = t.their_answer
+      ? h('div.s-ans', h('span.s-who', them), h('p', t.their_answer), reactRow(app, { day: today, part: 'answer', about: 'answer' }))
+      : h('div.s-ans.waiting', h('span.s-who', them), h('p', t.their_answered ? `Buried. Answer yours and ${them}'s comes up.` : `Hasn't answered yet.`));
+    out.push(h('section.s-today',
+      h('div.s-label', `Today · ${prettyDay(today)}`),
+      Q.by ? h('div.s-planted', Q.mine ? '🌱 You planted this one' : `🌱 ${Q.by} planted this one`) : null,
+      h('h2.s-q', Q.q),
+      mine, theirs));
+
+    // planting
+    const seedIn = h('textarea.s-input', { rows: 2, maxLength: 200, placeholder: `Ask ${them} something…` });
+    const seeds = [...app.S.planted.values()].filter((p) => p.from_slot === app.slot() && String(p.day).slice(0, 10) > today).sort((a, b) => (a.day > b.day ? 1 : -1));
+    out.push(h('section.s-plant',
+      h('div.s-label', 'Plant a question'),
+      h('p.s-note', `It becomes the question of the day on the next free day. ${them} won't see it until it comes up.`),
+      h('div.s-form', seedIn, btn('Plant it', async (e) => {
+        const q = seedIn.value.trim(); if (q.length < 3) return seedIn.focus();
+        const b = e.currentTarget; b.disabled = true;
+        try {
+          const day = String(await app.backend.plant(q)).slice(0, 10);
+          app.backend.nudge('plant', { when: app.whenDay(day) });
+          sfx.chime(); toast(`Planted. It comes up ${app.whenDay(day)}.`, { tone: 'love' });
+          await app.loadPlanted(); render();
+        } catch (err) { b.disabled = false; toast(/too_many/.test(err.message) ? 'Seven seeds in the ground already. Let one come up first.' : 'Couldn\'t plant it. Try again.'); }
+      }, 's-btn')),
+      seeds.length ? h('div.s-seeds', seeds.map((p) => h('div.s-seed',
+        h('div', h('span.s-when', `Comes up ${app.whenDay(String(p.day).slice(0, 10))}`), h('p', p.question)),
+        h('button.s-dig', { type: 'button', onclick: async (e) => {
+          e.currentTarget.disabled = true;
+          try { await app.backend.unplant(String(p.day).slice(0, 10)); await app.loadPlanted(); render(); toast('Dug up.'); } catch { toast('Couldn\'t dig it up.'); }
+        } }, 'Dig up')))) : null));
+
+    // everything answered before today, newest first, by month
+    const past = list.filter((r) => dayKey(r) < today && (r.my_answer || r.their_answer)).sort((a, b) => (dayKey(a) < dayKey(b) ? 1 : -1));
+    const earlier = [h('div.s-label', 'Earlier')];
+    let month = null;
+    for (const r of past) {
+      const d = dayKey(r), m = d.slice(0, 7);
+      if (m !== month) { month = m; earlier.push(h('h3.s-month', monthName(d), yearOf(d) !== today.slice(0, 4) ? h('span', ` ${yearOf(d)}`) : null)); }
+      const q = app.questionFor(d);
+      earlier.push(h('article.s-entry',
+        h('div.s-date', prettyDay(d).toUpperCase(), q.by ? h('span', q.mine ? ' · YOU PLANTED THIS' : ` · ${q.by.toUpperCase()} PLANTED THIS`) : null),
+        h('h3.s-eq', q.q),
+        h('div.s-pair',
+          h('div', h('span.s-who', 'You'), h(`p${r.my_answer ? '' : '.none'}`, r.my_answer || 'No answer')),
+          h('div', h('span.s-who', them), h(`p${r.their_answer ? '' : '.none'}`, r.their_answer || (r.their_answered ? 'Buried. You never dug it up.' : 'No answer'))))));
     }
-    case 'trinket': art = h('div.f-thing', trinketCanvas(p.what, 56, p.text)); break;
-    case 'whisper': art = h('div.f-pebble', h('b', '🐚'), h('span', `${Math.round(p.dur || 0)}s`)); break;
-    case 'wiggle': art = h('div.f-pebble', h('b', '〰️'), h('span', p.label || 'wiggle')); break;
-    default: return null;
+    if (!past.length) earlier.push(h('p.s-note', rows ? 'Every question you both answer settles here, newest on top.' : 'Digging…'));
+    out.push(h('section.s-earlier', earlier));
+
+    out.push(h('footer.s-foot', btn('Print our year', () => zineSheet(app), 's-btn'), h('p.s-note', 'A half-letter zine of every question, photo and note from the year.')));
+    const y = scroll.scrollTop;
+    scroll.replaceChildren(...out.filter(Boolean));
+    scroll.scrollTop = y;
   }
-  return h('button.find', { type: 'button', onclick: () => openItem(app, app.asItem(e)), 'aria-label': `${e.kind} ${who.textContent}` }, art, who);
+
+  app.onDaily(() => { if (visible) load(); });
+  return {
+    show() { visible = true; render(); load(); },
+    hide() { visible = false; },
+    refresh() { if (visible) load(); },
+  };
 }
 
 export async function viewPhoto(app, mediaId, thumb, title = 'Photo of the day') {
   const img = h('img', { src: thumb, alt: '' });
   sheet(title, h('div.polaroid', h('div.polaroid-img', img)), { quiet: true });
   if (mediaId) try { const m = await app.backend.media(mediaId); if (m?.data) img.src = m.data; } catch { /* thumb is fine */ }
-}
-
-export function soilSheet(app) {
-  const them = app.them()?.name || 'Them';
-  const strata = h('div.soil', { style: { '--grain': soilGrain() } });
-  const s = sheet('The soil', [
-    h('p.small.muted', `Everything you two have grown. Opened things sink in here a few days after they leave the pocket, next to every question you both answered.`),
-    h('div.row', btn('🌱 Plant a question', () => plantSheet(app), 'ghost'), btn('Print our year', () => zineSheet(app), 'primary')),
-    strata,
-  ], { tall: true, className: 'soil-card' });
-  strata.append(h('div.stratum', { style: { '--soil': SOIL[0], '--wave': waveURL(0) } }, h('p.small', 'Digging…')));
-
-  let drops = [], dailies = [], more = false;
-  const PAGE = 80;
-  const load = async (before = null) => {
-    const [d, a] = await Promise.all([dailies.length ? dailies : app.backend.dailies(400), app.backend.archive({ before, limit: PAGE })]);
-    dailies = d; drops = drops.concat(a); more = a.length === PAGE;
-  };
-  const render = () => {
-    const today = app.today();
-    const horizon = more && drops.length ? app.dayOf(drops[drops.length - 1].created_at) : '';
-    const days = new Map();
-    const day = (k) => { if (!days.has(k)) days.set(k, { day: k, daily: null, finds: [] }); return days.get(k); };
-    for (const r of dailies) {
-      const k = String(r.day).slice(0, 10);
-      if (k >= today || k < horizon) continue;
-      if (r.my_answer || r.their_answer || r.my_thumb || r.their_thumb) day(k).daily = r;
-    }
-    for (const e of drops) if (app.composted(e)) day(app.dayOf(e.created_at)).finds.push(e);
-    const list = [...days.values()].sort((a, b) => (a.day < b.day ? 1 : -1));
-
-    const out = [];
-    let lastMonth = null, i = 0;
-    const tone = (k, j) => mixHex(SOIL[Math.min(SOIL.length - 1, Math.max(0, monthsBetween(today, k) * 2 + (j % 2)))], '#FFFFFF', (j % 3) * 0.03);
-    for (const L of list) {
-      if (monthKey(L.day) !== lastMonth) {
-        if (lastMonth) out.push(h('div.stratum.month', { style: { '--soil': tone(L.day, 0), '--wave': waveURL(i++) } }, h('h4', monthName(L.day)), h('span.mono.tiny', 'deeper')));
-        lastMonth = monthKey(L.day);
-      }
-      out.push(stratum(app, L, them, tone(L.day, i), waveURL(i++)));
-    }
-    if (!list.length) {
-      out.push(h('div.stratum.empty', { style: { '--soil': SOIL[0], '--wave': waveURL(0) } },
-        h('p.q', 'Nothing has settled yet.'),
-        h('p.small', 'Answer today\'s question together, open what lands in your pocket, and a few days later it all sinks in here, layer by layer.')));
-    }
-    if (more) {
-      out.push(h('div.stratum.bed', { style: { '--soil': SOIL[SOIL.length - 1], '--wave': waveURL(i++) } },
-        btn('Dig deeper', async (e) => {
-          e.currentTarget.disabled = true; e.currentTarget.textContent = 'Digging…';
-          try { await load(drops[drops.length - 1].created_at); sfx.tick(); render(); } catch { toast('Couldn\'t dig. Try again.'); e.currentTarget.disabled = false; }
-        }, 'ghost')));
-    } else if (list.length) {
-      const since = app.S.hole?.created_at ? prettyDay(app.dayOf(app.S.hole.created_at)) : '';
-      out.push(h('div.stratum.bed', { style: { '--soil': SOIL[SOIL.length - 1], '--wave': waveURL(i++) } }, h('span.mono.tiny', 'BEDROCK'), h('p.small', `Where you started${since ? `, ${since}` : ''}.`)));
-    }
-    strata.replaceChildren(...out);
-  };
-  load().then(render).catch(() => { strata.replaceChildren(h('div.stratum', { style: { '--soil': SOIL[0], '--wave': waveURL(0) } }, h('p', 'Couldn\'t reach the soil. Try again.'))); });
-  app.onDaily(() => { if (!s.el.isConnected) return false; render(); });
-  return s;
-}
-
-function stratum(app, L, them, color, wave) {
-  const r = L.daily;
-  const q = app.questionFor(L.day);
-  const kids = [h('div.stratum-head', h('span.mono.tiny', prettyDay(L.day).toUpperCase()), q.by && r ? h('span.seed', q.mine ? '🌱 you planted this' : `🌱 ${q.by} planted this`) : null)];
-  if (r) {
-    if (r.my_answer || r.their_answer) {
-      kids.push(h('p.q', q.q));
-      kids.push(h('div.slips',
-        r.my_answer ? h('div.slip', h('b', 'YOU'), h('p', r.my_answer)) : h('div.slip.faint', h('b', 'YOU'), h('p', 'No answer')),
-        r.their_answer ? h('div.slip', h('b', them.toUpperCase()), h('p', r.their_answer)) : h('div.slip.faint', h('b', them.toUpperCase()), h('p', r.their_answered ? 'Buried. You never dug it up.' : 'No answer'))));
-    }
-  }
-  const pics = [];
-  if (r?.my_thumb) pics.push(h('button.find', { type: 'button', onclick: () => viewPhoto(app, r.my_photo, r.my_thumb) }, h('div.f-pol.day', h('img', { src: r.my_thumb, alt: '' })), h('span.who', 'your day')));
-  if (r?.their_thumb) pics.push(h('button.find', { type: 'button', onclick: () => viewPhoto(app, r.their_photo, r.their_thumb) }, h('div.f-pol.day', h('img', { src: r.their_thumb, alt: '' })), h('span.who', `${them}'s day`)));
-  const finds = [...pics, ...L.finds.map((e) => findEl(app, e)).filter(Boolean)];
-  if (finds.length) kids.push(h('div.finds', finds));
-  return h('div.stratum', { style: { '--soil': color, '--wave': wave } }, kids);
 }
 
 // ── planting a question for them

@@ -13,12 +13,13 @@ import { openItem } from './compose.js';
 import { questionFor } from './questions.js';
 import { feedSheet, dropSheet, todaySheet, usSheet, peekSheet, settingsSheet } from './sheets.js';
 import { Pager } from './pager.js';
-import { Shelf } from './shelf.js';
+import { Shelf, SHELF_BOTTOM } from './shelf.js';
+import { SoilPage, SOIL_BG } from './soil.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
 const COMPOST_H = 72; // opened things settle into the soil after three days
-let backend, pocket, shelf, pager;
+let backend, pocket, shelf, soil, pager;
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
 
@@ -46,7 +47,7 @@ const app = {
     if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
     shelfBadge();
   },
-  goTo: (i) => pager?.go(i),
+  goTo: (i) => { closeAllSheets(); pager?.go(i); },
   loadPlanted,
   seed: () => hash(S.hole?.code || 'bw') % 997,
   defaultUnits: () => (/^en-US/i.test(navigator.language) ? 'mi' : 'km'),
@@ -132,14 +133,19 @@ function enterPocket(data) {
   $('#app').hidden = false;
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
-  pager = Pager([$('#screen-pocket'), $('#screen-shelf')], {
-    labels: ['Pocket', 'Shelf'],
+  soil = SoilPage(app, $('#screen-soil'));
+  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil')], {
+    labels: ['Pocket', 'Shelf', 'Soil'],
     onChange: (i) => {
       sfx.tick();
-      if (i === 1) { shelf.show(); markShelfSeen(); pocket?.stop(); } else { shelf.hide(); pocket?.start(); }
+      if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
+      if (i === 2) soil.show(); else soil.hide();
+      if (i === 0) pocket?.start(); else pocket?.stop();
+      paintEdges();
     },
   });
   pager.watch($('#screen-shelf'));
+  pager.watch($('#screen-soil'));
   pocket = new Pocket($('#pocket'), {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
@@ -207,10 +213,18 @@ function updateSky() {
   pocket?.setSky(sky);
   shelf?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', sky.top);
-  document.documentElement.style.backgroundColor = sky.top;
-  $('#edge-top').style.backgroundColor = sky.top;
-  $('#edge-bottom').style.backgroundColor = sky.bottom;
+  paintEdges();
+}
+
+// Safari tints its bars from the page edges: match whatever screen is showing
+function paintEdges() {
+  const sky = S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
+  const i = pager?.index || 0;
+  const [top, bottom] = i === 2 ? [SOIL_BG, SOIL_BG] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
+  document.documentElement.style.backgroundColor = top;
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
+  $('#edge-top').style.backgroundColor = top;
+  $('#edge-bottom').style.backgroundColor = bottom;
 }
 
 const TABS = [
