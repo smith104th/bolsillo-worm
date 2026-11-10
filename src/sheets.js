@@ -161,7 +161,7 @@ export function usSheet(app) {
         ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
         : h('p.big-num.ask', 'When are you together next?'),
       note && days >= 0 ? h('p.small.card-note', note) : null,
-      h('div.reunion-fields', reunionIn, reunionNote),
+      h('div.reunion-fields', h('label.rf', h('span.mono', 'WHEN'), reunionIn), h('label.rf', h('span.mono', 'WHERE'), reunionNote)),
       btn('Set the countdown', async () => {
         if (!reunionIn.value) return toast('Pick a date.');
         try { await app.backend.setReunion(reunionIn.value, reunionNote.value.trim() || null); app.backend.nudge('reunion', { note: reunionNote.value.trim() }); toast('Countdown set.'); } catch { toast('Couldn\'t save. Try again.'); }

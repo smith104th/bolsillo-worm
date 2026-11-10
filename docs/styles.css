@@ -652,3 +652,11 @@ body.dark .shelf-hint { color: #fff; }
 .s-top .s-plant .btn.s-btn { background: #1546A8; color: #fff; }
 .s-top .s-plant .s-seed { border-top-color: rgba(21,70,168,0.2); }
 .soil-print { background: #FFD84A; }
+
+/* Us countdown: a taller card with room around the fields */
+.us-sheet .card.night { padding: 26px 22px 24px; }
+.us-sheet .reunion-fields { margin-top: 34px; gap: 12px; }
+.us-sheet .rf { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+.us-sheet .rf .mono { font-size: 10.5px; letter-spacing: 0.08em; color: #fff; }
+.us-sheet .reunion-fields input { min-height: 58px; height: 58px; }
+.us-sheet .card.night .btn { margin-top: 18px; min-height: 58px; }
