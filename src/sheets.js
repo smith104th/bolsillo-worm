@@ -137,8 +137,6 @@ export function usSheet(app) {
   const units = store('settings')?.units || app.defaultUnits();
   const pct = hole.tunnel_km ? Math.min(1, hole.dug_km / hole.tunnel_km) : 0;
   const myIn = inchesFor(me?.love), theirIn = inchesFor(them?.love);
-  const reunionIn = h('input', { type: 'date', value: hole.reunion_on || '' });
-  const reunionNote = h('input', { placeholder: 'Where?', maxLength: 60, value: hole.reunion_note || '' });
   const ev = S.events;
   const count = (k, slot) => ev.filter((e) => e.kind === k && (slot == null || e.from_slot === slot)).reduce((a, e) => a + (e.payload?.n || 1), 0);
   const together = hole.created_at ? Math.max(1, Math.round((Date.now() - Date.parse(hole.created_at)) / 86400000)) : 1;
@@ -147,42 +145,61 @@ export function usSheet(app) {
     h('p.big-num', `${inches.toFixed(1)}`, h('span', ' in')),
     h('p.worm-name', m?.worm?.name || ''),
     h('p.small.muted.worm-blurb', lengthBlurb(inches)));
-  // The countdown redraws itself: while you pick a date (a preview), and again once it's saved.
+  // The countdown card has two states (Manu): once it's set it just reads
+  // "Same pocket in N days" with a small Edit; Edit brings back the fields and
+  // the button, and saving folds it back. With no date (or a past one) it opens
+  // straight into editing.
   const daysTo = (on) => (on ? Math.ceil((Date.parse(on + 'T00:00:00') - Date.now()) / 86400000) : null);
-  const countHead = h('div.count-head');
-  const paintCount = (on, where) => {
-    const days = daysTo(on);
-    const note = where && where.trim() && where.trim().toLowerCase() !== 'same pocket' ? where.trim() : null;
-    countHead.replaceChildren(...[
-      days != null && days >= 0
-        ? h('p.big-num', days === 0 ? 'Today' : `${days}`, days ? h('span', ` day${days > 1 ? 's' : ''} to go`) : null)
-        : h('p.big-num.ask', 'When are you together next?'),
-      note && days >= 0 ? h('p.small.card-note', note) : null,
-    ].filter(Boolean));
+  const longDate = (on) => new Date(on + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const placeOf = (where) => (where && where.trim() && where.trim().toLowerCase() !== 'same pocket' ? where.trim() : null);
+  const bigCount = (days) => (days === 0 ? h('p.big-num', 'Today') : h('p.big-num', `${days}`, h('span', ` day${days > 1 ? 's' : ''}`)));
+  const countCard = h('div.card.night.countdown');
+  let editing = !(daysTo(hole.reunion_on) >= 0);
+  const renderCount = (pop = false) => {
+    const on = S.hole?.reunion_on, where = S.hole?.reunion_note, days = daysTo(on), isSet = days != null && days >= 0;
+    if (isSet && !editing) {
+      countCard.replaceChildren(
+        h('div.count-top', h('span.mono.small', days === 0 ? 'SAME POCKET' : 'SAME POCKET IN'),
+          h('button.count-edit', { type: 'button', onclick: () => { editing = true; renderCount(); } }, 'Edit')),
+        h(`div.count-head${pop ? '.pop' : ''}`, bigCount(days)),
+        h('p.count-when.mono', [longDate(on), placeOf(where)].filter(Boolean).join('  ·  ').toUpperCase()));
+      return;
+    }
+    const dateIn = h('input', { type: 'date', value: on || '', min: app.today() });
+    const placeIn = h('input', { placeholder: 'Where?', maxLength: 60, value: where || '' });
+    const label = h('span.mono.small', 'SAME POCKET');
+    const head = h('div.count-head');
+    const paint = () => {
+      const d = daysTo(dateIn.value);
+      label.textContent = d != null && d > 0 ? 'SAME POCKET IN' : 'SAME POCKET';
+      head.replaceChildren(d != null && d >= 0 ? bigCount(d) : h('p.big-num.ask', 'When are you together next?'));
+    };
+    paint();
+    dateIn.addEventListener('input', paint); dateIn.addEventListener('change', paint);
+    const save = btn('Set the countdown', async () => {
+      const nextOn = dateIn.value, nextWhere = placeIn.value.trim() || null;
+      if (!nextOn) return toast('Pick a date.');
+      const d = daysTo(nextOn);
+      if (d < 0) return toast('Pick a day that hasn\'t happened yet.');
+      save.disabled = true; save.classList.add('busy');
+      try {
+        await app.backend.setReunion(nextOn, nextWhere);
+        app.S.hole = { ...app.S.hole, reunion_on: nextOn, reunion_note: nextWhere };
+        editing = false; renderCount(true);
+        toast('Countdown set.');
+        app.backend.nudge('reunion', { note: nextWhere || '' });
+      } catch (err) {
+        save.disabled = false; save.classList.remove('busy');
+        toast(`Couldn't save the countdown${err?.message ? ` (${err.message})` : ''}. Try again.`);
+      }
+    }, 'ghost');
+    countCard.replaceChildren(
+      h('div.count-top', label, isSet ? h('button.count-edit', { type: 'button', onclick: () => { editing = false; renderCount(); } }, 'Cancel') : null),
+      head,
+      h('div.reunion-fields', h('label.rf', h('span.mono', 'WHEN'), dateIn), h('label.rf', h('span.mono', 'WHERE'), placeIn)),
+      save);
   };
-  paintCount(hole.reunion_on, hole.reunion_note);
-  const preview = () => paintCount(reunionIn.value || hole.reunion_on, reunionNote.value);
-  reunionIn.addEventListener('input', preview); reunionIn.addEventListener('change', preview);
-  reunionNote.addEventListener('input', preview);
-  const setBtn = btn('Set the countdown', async () => {
-    const on = reunionIn.value, where = reunionNote.value.trim() || null;
-    if (!on) return toast('Pick a date.');
-    const days = daysTo(on);
-    if (days < 0) return toast('Pick a day that hasn\'t happened yet.');
-    setBtn.disabled = true; setBtn.classList.add('busy');
-    try {
-      await app.backend.setReunion(on, where);
-      app.S.hole = { ...app.S.hole, reunion_on: on, reunion_note: where };
-      paintCount(on, where);
-      countHead.classList.remove('pop'); void countHead.offsetWidth; countHead.classList.add('pop');
-      setBtn.replaceChildren(icon('check'), ' Countdown set');
-      setTimeout(() => setBtn.replaceChildren('Set the countdown'), 2400);
-      toast(days === 0 ? 'Countdown set. It\'s today.' : `Countdown set. ${days} day${days > 1 ? 's' : ''} to go.`);
-      app.backend.nudge('reunion', { note: where || '' });
-    } catch (err) {
-      toast(`Couldn't save the countdown${err?.message ? ` (${err.message})` : ''}. Try again.`);
-    } finally { setBtn.disabled = false; setBtn.classList.remove('busy'); }
-  }, 'ghost');
+  renderCount();
 
   sheet('Us', [
     h('div.card.tunnel',
@@ -191,11 +208,7 @@ export function usSheet(app) {
       h('p.big-num', fmtDistance(hole.dug_km || 0, units), h('span', ' dug')),
       h('p.small.muted.card-note', hole.tunnels_done ? `${hole.tunnels_done} tunnel${hole.tunnels_done > 1 ? 's' : ''} finished. Every pet, kiss, note and daily digs further.` : 'Every pet, kiss, note and daily digs further. Finish the tunnel and your worms meet.')),
     h('div.card.two', wormCard(me, myIn, true), wormCard(them, theirIn, false)),
-    h('div.card.night',
-      h('span.mono.small', 'SAME POCKET'),
-      countHead,
-      h('div.reunion-fields', h('label.rf', h('span.mono', 'WHEN'), reunionIn), h('label.rf', h('span.mono', 'WHERE'), reunionNote)),
-      setBtn),
+    countCard,
     h('div.stats',
       stat(together, 'days together here'), stat(hole.touches || 0, 'fingertip touches'),
       stat(count('kiss', app.slot()), 'kisses sent'), stat(count('kiss', 1 - app.slot()), 'kisses received'),
