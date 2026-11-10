@@ -15,7 +15,7 @@ const PRINT = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" strok
 export function SoilPage(app, root) {
   let rows = null, visible = false;
   const scroll = h('div.soil-scroll');
-  const print = h('button.soil-print.glass', { type: 'button', 'aria-label': 'Print our year', onclick: () => zineSheet(app), html: PRINT });
+  const print = h('button.soil-print', { type: 'button', 'aria-label': 'Print our year', onclick: () => zineSheet(app), html: PRINT });
   root.replaceChildren(scroll, print);
 
   async function load() {
@@ -97,9 +97,11 @@ export function SoilPage(app, root) {
     if (!past.length) earlier.push(h('p.s-note', rows ? 'Every question you both answer settles here, newest on top.' : 'Digging…'));
     out.push(h('section.s-earlier', earlier));
 
-    out.push(h('footer.s-foot', btn('Print our year', () => zineSheet(app), 's-btn'), h('p.s-note', 'A half-letter zine of every question, photo and note from the year.')));
+    const foot = h('footer.s-foot', btn('Print our year', () => zineSheet(app), 's-btn'), h('p.s-note', 'A half-letter zine of every question, photo and note from the year.'));
+    // what's new sits on white; everything that came before stays green
+    const [header, todaySec, plantSec, earlierSec] = out;
     const y = scroll.scrollTop;
-    scroll.replaceChildren(...out.filter(Boolean));
+    scroll.replaceChildren(h('div.s-top', header, todaySec, plantSec), h('div.s-bottom', earlierSec, foot));
     scroll.scrollTop = y;
   }
 

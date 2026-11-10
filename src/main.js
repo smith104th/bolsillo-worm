@@ -220,7 +220,7 @@ function updateSky() {
 function paintEdges() {
   const sky = S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
   const i = pager?.index || 0;
-  const [top, bottom] = i === 2 ? [SOIL_BG, SOIL_BG] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
+  const [top, bottom] = i === 2 ? ['#FFFFFF', SOIL_BG] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
   document.documentElement.style.backgroundColor = top;
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
   $('#edge-top').style.backgroundColor = top;
