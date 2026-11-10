@@ -51,11 +51,12 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: !ao, alpha: true, powerPreference: 'high-performance' });
   renderer.setClearColor(0x000000, 0);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false; // redrawn only when the sun, the pieces or the cut change
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
@@ -111,7 +112,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
       const hide = aoPass._overrideVisibility.bind(aoPass);
       aoPass._overrideVisibility = function () {
         hide();
-        scene.traverse((o) => { if (o.isMesh && o.visible && (o.material?.transparent || o.isInstancedMesh && false)) { o.visible = false; this._visibilityCache.push(o); } });
+        scene.traverse((o) => { if (o.isMesh && o.visible && (o.material?.transparent || o.userData.leaves || o.userData.person)) { o.visible = false; this._visibilityCache.push(o); } });
       };
       const setSize = aoPass.setSize.bind(aoPass);
       aoPass.setSize = (w, h) => setSize(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
@@ -119,6 +120,10 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
       composer.addPass(new OutputPass());
     } catch (e) { console.warn('AO off', e); composer = null; }
   }
+
+  // something in the scene changed: redo the sun's shadow map and the contact-shadow buffer
+  let dirty = 2;
+  const touch = () => { dirty = 2; };
 
   // ---- state
   const S = { built: Math.max(1, built), finished, cut: 4, place, hourOverride: hour, sky: null, running: false, drops: [] };
@@ -131,6 +136,8 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     });
     people.settle();
     people.setVisibleBelow(S.cut);
+    house.leaves.update();
+    touch();
   }
 
   // drop new pieces in, one after another; the nearer person sets each one down
@@ -149,6 +156,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     for (const p of pieces) {
       const a = p.obj.userData.appear;
       if (a == null) continue;
+      touch();
       if (t < a) { p.obj.position.y = p.obj.userData.baseY + 30; continue; }
       const k = Math.min(1, (t - a) / 0.75), e = 1 - Math.pow(1 - k, 3);
       p.obj.position.y = p.obj.userData.baseY + (1 - e) * 1.6;
@@ -184,6 +192,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     house.mats.lamp.emissiveIntensity = 3 * lamps;
     house.mats.curtain.emissiveIntensity = 0.32 * lamps;
     catcher.material.opacity = 0.06 + 0.12 * up;
+    touch();
     return deg;
   }
 
@@ -232,6 +241,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
   }
 
   function resize() {
+    touch();
     const w = el.clientWidth || innerWidth, h = el.clientHeight || innerHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.fov = w < h ? 46 : 36; camera.updateProjectionMatrix();
@@ -239,7 +249,8 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
   }
   const ro = new ResizeObserver(resize); ro.observe(el);
 
-  let last = now(), skyTick = 0, raf = 0;
+  let last = now(), skyTick = 0, raf = 0, lastProj = 0;
+  const lastCam = new THREE.Matrix4();
   function frame() {
     raf = 0;
     if (!S.running) return;
@@ -254,7 +265,13 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     controls.update();
     if (camera.position.y < -0.3) camera.position.y = -0.3;
     animateDrops(t);
+    house.leaves.update();
     people.update(dt);
+    camera.updateMatrixWorld();
+    if (!lastCam.equals(camera.matrixWorld) || camera.projectionMatrix.elements[0] !== lastProj) { lastCam.copy(camera.matrixWorld); lastProj = camera.projectionMatrix.elements[0]; dirty = Math.max(dirty, 1); }
+    renderer.shadowMap.needsUpdate = dirty >= 2;
+    if (aoPass) aoPass._renderGBuffer = dirty >= 1;
+    dirty = 0;
     if ((skyTick += dt) > 30) { skyTick = 0; applySky(); }
     if (composer) composer.render(); else renderer.render(scene, camera);
     raf = requestAnimationFrame(frame);
@@ -271,7 +288,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
     get built() { return S.built; },
     start() { if (S.running) return; S.running = true; last = now(); applySky(); raf = requestAnimationFrame(frame); },
     stop() { S.running = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
-    renderOnce() { controls.update(); people.update(0.016); if (composer) composer.render(); else renderer.render(scene, camera); },
+    renderOnce() { controls.update(); people.update(0.016); renderer.shadowMap.needsUpdate = true; if (aoPass) aoPass._renderGBuffer = true; if (composer) composer.render(); else renderer.render(scene, camera); },
     setSky(sky, pl) { S.sky = sky || null; if (pl !== undefined) S.place = pl; applySky(); },
     setHour(h) { S.hourOverride = h; applySky(); },
     // how much is built. animate: new pieces drop in one by one

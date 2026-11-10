@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import * as T from './tex.js';
-import { makePlant, plantMats } from './plants.js';
+import { makePlant, plantMats, LeafField } from './plants.js';
 
 export const SW = 3.8, SD = 6.6, FH = 2.8, ST = 0.25, LEVELS = 5;
 const X = (xp) => xp - SW / 2, Z = (zp) => zp - SD / 2;
@@ -339,6 +339,40 @@ function trellis(pts, level, h = 1.15) {
     if (i === 0 || acc > 0.48 || i === fine.length - 1) { acc = 0; const c = new THREE.CylinderGeometry(0.011, 0.011, h, 6); c.translate(p[0], y0 + h / 2, p[1]); parts.push(c); }
   });
   return mesh(merge(parts), m.steel);
+}
+
+// merge a piece's meshes by material (keeps instanced leaves and special meshes as they are)
+function compact(root) {
+  root.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+  const groups = new Map(), drop = [];
+  root.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || o === root) return;
+    const key = o.material.uuid + (o.castShadow ? 'c' : '') + o.renderOrder;
+    if (!groups.has(key)) groups.set(key, { mat: o.material, cast: o.castShadow, order: o.renderOrder, geos: [] });
+    const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone());
+    g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k);
+    groups.get(key).geos.push(g);
+    drop.push(o);
+  });
+  if (drop.length < 2) return;
+  // every geometry in a merge needs the same attributes
+  for (const grp of groups.values()) {
+    const want = ['position', 'normal', 'uv', 'color'].filter((k) => grp.geos.some((g) => g.attributes[k]));
+    for (const g of grp.geos) for (const k of want) if (!g.attributes[k]) {
+      const n = g.attributes.position.count, size = k === 'uv' ? 2 : 3;
+      g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(n * size).fill(k === 'color' ? 1 : 0), size));
+    }
+  }
+  for (const o of drop) o.parent.remove(o);
+  for (const grp of groups.values()) {
+    const merged = mergeGeometries(grp.geos, false);
+    if (!merged) continue;
+    const m = new THREE.Mesh(merged, grp.mat);
+    m.castShadow = grp.cast; m.receiveShadow = true; m.renderOrder = grp.order;
+    root.add(m);
+  }
 }
 
 // --- furniture ---------------------------------------------------------------------------------
@@ -679,7 +713,10 @@ export function buildHouse() {
   // last: the tree in the 4F garden that rises through the round opening in the roof
   plant(3, 2.68, 5.66, 'tree', { pot: null, h: 4.8, scale: 1.35, green: 'fresh', dense: 1.3 });
 
-  return { root, pieces, lamps, mats: m };
+  // fewer draw calls: inside each piece, merge every plain mesh that shares a material
+  for (const p of pieces) compact(p.obj);
+  const leaves = new LeafField(root, pieces);
+  return { root, pieces, lamps, mats: m, leaves };
 }
 
 export { mats as houseMats, plantMats };

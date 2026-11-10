@@ -8,7 +8,8 @@ export const wind = { value: 0 };
 let atlas, leafMat, leafDepth, geos, mats;
 
 function leafGeo(cell) {
-  const g = new THREE.PlaneGeometry(1, 1, 4, 5);
+  // few triangles per leaf: there are thousands of them
+  const g = cell === 5 ? new THREE.PlaneGeometry(1, 1, 2, 2) : new THREE.PlaneGeometry(1, 1, 1, 3);
   const p = g.attributes.position, uv = g.attributes.uv;
   if (cell === 5) {
     // schefflera umbrella: centred on its stalk, a shallow dome
@@ -75,6 +76,8 @@ const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Eule
 class Leaves {
   constructor() { this.list = []; }
   add(kind, pos, yaw, pitch, roll, size, color) { this.list.push({ kind, pos: pos.clone(), yaw, pitch, roll, size, color }); }
+  // the house draws every plant's leaves together (LeafField); a plant just carries its list
+  keep(group) { group.userData.leafList = this.list; }
   build(group) {
     const WIDTH = [0.75, 0.45, 0.75, 0.9, 0.85, 1, 1, 0.32];
     for (let kind = 0; kind < 8; kind++) {
@@ -88,6 +91,7 @@ class Leaves {
         im.setColorAt(i, _c.set(l.color));
       });
       im.castShadow = true; im.receiveShadow = true;
+      im.userData.leaves = true;
       im.customDepthMaterial = leafDepth;
       im.computeBoundingSphere();
       group.add(im);
@@ -117,10 +121,10 @@ function pot(group, kind, r, h) {
 
 function tube(points, r0, r1, mat, seg = 12) {
   const curve = new THREE.CatmullRomCurve3(points);
-  const g = new THREE.TubeGeometry(curve, seg, 1, 6, false);
+  const g = new THREE.TubeGeometry(curve, seg, 1, 4, false);
   // taper
   const p = g.attributes.position, n = g.attributes.normal;
-  const rings = seg + 1, per = 7;
+  const rings = seg + 1, per = 5;
   for (let i = 0; i < rings; i++) {
     const t = i / seg, r = r0 + (r1 - r0) * t;
     const c = curve.getPointAt(t);
@@ -337,8 +341,65 @@ export function makePlant(type, { pot: potKind = 'terracotta', potR, potH, scale
   const bag = new Bag(g);
   RECIPES[type](bag, L, y0, scale, opts);
   bag.flush();
-  L.build(g);
+  if (opts.standalone) L.build(g); else L.keep(g);
   return g;
 }
 
 export const plantMats = () => { init(); return mats; };
+
+// All leaves of the house in one InstancedMesh per leaf shape (8 draw calls instead of hundreds).
+// Each plant piece owns a range; hidden pieces get a zero matrix, dropping pieces follow their group.
+const WIDTHS = [0.75, 0.45, 0.75, 0.9, 0.85, 1, 1, 0.32];
+export class LeafField {
+  constructor(root, pieces) {
+    init();
+    this.root = root;
+    this.items = [];
+    const perKind = [[], [], [], [], [], [], [], []];
+    root.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    pieces.forEach((p) => {
+      const list = p.obj.userData.leafList;
+      if (!list) return;
+      const toRoot = new THREE.Matrix4().multiplyMatrices(inv, p.obj.matrixWorld);
+      const item = { p, baseY: p.obj.position.y, ranges: [], key: '' };
+      for (const l of list) {
+        _e.set(l.pitch, l.yaw, l.roll, 'YXZ'); _q.setFromEuler(_e);
+        _s.set(l.size * WIDTHS[l.kind], l.size, l.size);
+        const m = new THREE.Matrix4().compose(l.pos, _q, _s).premultiply(toRoot);
+        perKind[l.kind].push({ m, color: l.color, item });
+      }
+      this.items.push(item);
+    });
+    this.meshes = perKind.map((arr, kind) => {
+      if (!arr.length) return null;
+      const im = new THREE.InstancedMesh(geos[kind], leafMat, arr.length);
+      arr.forEach((a, i) => { im.setColorAt(i, _c.set(a.color)); a.i = i; });
+      im.castShadow = true; im.receiveShadow = true; im.frustumCulled = false;
+      im.customDepthMaterial = leafDepth;
+      im.userData.leaves = true;
+      root.add(im);
+      return { im, arr };
+    });
+    // index each item's instances
+    this.meshes.forEach((M) => M && M.arr.forEach((a) => a.item.ranges.push([M.im, a.i, a.m])));
+    this.update(true);
+  }
+  // write matrices for plants whose visibility or drop offset changed
+  update(force = false) {
+    const dirty = new Set();
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0), tmp = new THREE.Matrix4();
+    for (const it of this.items) {
+      const vis = it.p.obj.visible, dy = it.p.obj.position.y - it.baseY;
+      const key = vis ? dy.toFixed(3) : 'h';
+      if (!force && key === it.key) continue;
+      it.key = key;
+      for (const [im, i, m] of it.ranges) {
+        if (!vis) im.setMatrixAt(i, zero);
+        else { tmp.copy(m); tmp.elements[13] += dy; im.setMatrixAt(i, tmp); }
+        dirty.add(im);
+      }
+    }
+    for (const im of dirty) im.instanceMatrix.needsUpdate = true;
+  }
+}

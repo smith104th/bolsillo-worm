@@ -91,7 +91,7 @@ function graph() {
 function makeFigure({ shirt, pants, skin, hair, height = 1.0, beanie = false, ponytail = false }) {
   const M = (c, r = 0.75) => new THREE.MeshStandardMaterial({ color: c, roughness: r });
   const mShirt = M(shirt), mPants = M(pants), mSkin = M(skin, 0.6), mHair = M(hair, 0.85), mShoe = M('#ece9e2', 0.6);
-  const cap = (r, len, mat) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 10), mat); m.castShadow = true; m.receiveShadow = true; return m; };
+  const cap = (r, len, mat) => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 10), mat); m.receiveShadow = true; return m; };
   const root = new THREE.Group();
   const body = new THREE.Group(); root.add(body); // bobs and sinks when sitting
   body.position.y = STAND;
@@ -131,11 +131,23 @@ function makeFigure({ shirt, pants, skin, hair, height = 1.0, beanie = false, po
   can.position.set(0, -0.08, 0.06); can.visible = false;
   armR.j2.userData.hand.add(can);
 
+  root.add(new THREE.Mesh(new THREE.PlaneGeometry(0.75, 0.75).rotateX(-Math.PI / 2).translate(0, 0.012, 0), blobMat()));
+  root.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.userData.person = true; } });
   root.scale.setScalar(height);
   return { root, body, head, legL, legR, armL, armR, can, h: height };
 }
 
 const STAND = 0.775;
+let _blob;
+function blobMat() {
+  if (_blob) return _blob;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(0,0,0,0.38)'); gr.addColorStop(0.6, 'rgba(0,0,0,0.14)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  _blob = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false });
+  return _blob;
+}
 const ease = (t) => t * t * (3 - 2 * t);
 const angLerp = (a, b, t) => { let d = ((b - a + Math.PI) % (Math.PI * 2)) - Math.PI; if (d < -Math.PI) d += Math.PI * 2; return a + d * t; };
 
