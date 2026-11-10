@@ -4,7 +4,8 @@ import { h, fmtDistance, store } from './util.js';
 import { sheet, btn, toast, segmented } from './ui.js';
 import { makeSky, skyFor, drawHole, PAPERS, TRINKETS, renderStrokes, mixHex, SKY } from './draw.js';
 import { drawEmoji } from './brush.js';
-import { trinketEmoji, drawGlyphTile } from './icons.js';
+import { trinketEmoji, drawGlyphTile, drawRecord } from './icons.js';
+import { PROVIDERS } from './music.js';
 import { Worm } from './worm.js';
 import { SOIL_BG, SOIL_FG } from './soil.js';
 
@@ -14,7 +15,7 @@ const TOP = 58, BOTTOM = PH - 58;
 const SANS = 'Geist, -apple-system, "Helvetica Neue", Arial, sans-serif';
 const MONO = '"Geist Mono", ui-monospace, Menlo, monospace';
 const INK = '#0B0B0C', INK2 = '#6E6E73', SEED = '#2E5A1C';
-const DROP_KINDS = ['note', 'photo', 'doodle', 'trinket', 'whisper', 'wiggle'];
+const DROP_KINDS = ['note', 'photo', 'doodle', 'song', 'trinket', 'whisper', 'wiggle'];
 
 // ── gathering a year out of the soil
 async function gather(app, year, onStep) {
@@ -150,6 +151,19 @@ function tileFor(x, app, e, img, names) {
       x.save(); x.translate(X, Y); softShadow(x); x.fillStyle = '#fff'; x.fillRect(0, 0, TW, TW); noShadow(x);
       renderStrokes(x, p.strokes || [], TW, 1); label(111); x.restore();
     } };
+    case 'song': {
+      font(x, 600, 8); const tl = wrap(x, p.title || 'A song', TW - 4, 2);
+      font(x, 400, 7.5); const extra = [p.artist, p.line ? `“${p.line}”` : null].filter(Boolean).flatMap((t) => wrap(x, t, TW - 6, 2));
+      const hh = 78 + tl.length * 10 + extra.length * 9.5 + 12;
+      return { h: hh, draw(X, Y) {
+        x.save(); x.translate(X + TW / 2, Y + 34); drawRecord(x, 76, { img, accent: PROVIDERS[p.provider]?.accent }); x.restore();
+        x.textAlign = 'center';
+        font(x, 600, 8); x.fillStyle = INK; tl.forEach((l, i) => x.fillText(l, X + TW / 2, Y + 80 + i * 10));
+        font(x, 400, 7.5); x.fillStyle = INK2; extra.forEach((l, i) => x.fillText(l, X + TW / 2, Y + 80 + tl.length * 10 + i * 9.5));
+        x.textAlign = 'left';
+        x.save(); x.translate(X, Y); label(hh - 3); x.restore();
+      } };
+    }
     case 'trinket': {
       font(x, 400, 7.5); const ins = p.inscription ? wrap(x, p.inscription, TW - 6, 3) : [];
       return { h: 74 + ins.length * 9.5 + 12, draw(X, Y) {
@@ -285,7 +299,7 @@ export async function makeZine(app, year, { onStep = () => {}, onPage = () => {}
   const names = [app.me()?.name || 'You', app.them()?.name || 'Them'];
   onStep('Developing the photos…');
   const imgs = new Map();
-  await Promise.all(data.drops.filter((e) => e.kind === 'photo').map(async (e) => imgs.set(e.id, await loadImg(e.payload?.thumb))));
+  await Promise.all(data.drops.filter((e) => e.kind === 'photo' || e.kind === 'song').map(async (e) => imgs.set(e.id, await loadImg(e.kind === 'song' ? e.payload?.cover : e.payload?.thumb))));
   const dayImgs = new Map();
   await Promise.all(data.days.filter((L) => L.daily).map(async (L) => dayImgs.set(L.day, await Promise.all([loadImg(L.daily.my_thumb), loadImg(L.daily.their_thumb)]))));
 

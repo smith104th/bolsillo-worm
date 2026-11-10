@@ -47,6 +47,7 @@ function compose(kind: string, me: any, extra: any = {}) {
     case "whisper": return { title: `${n} whispered something`, body: "Hold it up to your ear." };
     case "wiggle":  return { title: `${w} wiggled at you`, body: extra.label ?? "Feel it." };
     case "trinket": return { title: `${n} found you ${extra.what ?? "something"}`, body: extra.inscription || "It's in your pocket." };
+    case "song":    return { title: `${n} sent you a song 🎵`, body: [extra.title ? `${extra.title}${extra.artist ? ` · ${extra.artist}` : ""}` : null, extra.line ? `“${extra.line}”` : null].filter(Boolean).join("  ") || "It's spinning in your pocket." };
     case "kiss":    return { title: `${n} sent you ${KISS[extra.level ?? 1] ?? "a kiss"} ${KISS_EMOJI[extra.level ?? 1] ?? "💋"}`, body: "💋".repeat(Math.max(1, Math.min(5, extra.level ?? 1))) };
     case "react":   return extra.about ? { title: `${n} reacted ${extra.emoji ?? "❤️"}`, body: `To your ${extra.about}.` } : { title: `${n} sent you ${extra.emoji ?? "❤️"}`, body: "Through the hole." };
     case "knock":   return { title: "Knock knock", body: `${n} is thinking about you.` };

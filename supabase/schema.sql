@@ -233,7 +233,7 @@ declare
 begin
   select * into m from members where user_id = auth.uid();
   if not found then raise exception 'no_hole'; end if;
-  if p_kind not in ('pet','boop','kiss','react','feed','mist','note','doodle','photo','whisper','wiggle','trinket','knock','ring','touch') then
+  if p_kind not in ('pet','boop','kiss','react','feed','mist','note','doodle','photo','whisper','wiggle','song','trinket','knock','ring','touch') then
     raise exception 'bad_kind';
   end if;
   if pg_column_size(coalesce(p_payload, '{}')) > 200000 then raise exception 'too_big'; end if;
@@ -265,7 +265,7 @@ begin
     when 'pet' then 2 when 'boop' then 1 when 'feed' then 8 when 'mist' then 6
     when 'kiss' then 6 * least(5, greatest(1, coalesce((p_payload->>'level')::int, 1)))
     when 'note' then 40 when 'doodle' then 40 when 'photo' then 35 when 'whisper' then 45
-    when 'wiggle' then 15 when 'trinket' then 20 when 'knock' then 4 when 'touch' then 60 when 'react' then 3
+    when 'wiggle' then 15 when 'song' then 30 when 'trinket' then 20 when 'knock' then 4 when 'touch' then 60 when 'react' then 3
     else 0 end;
   lv := case p_kind
     when 'pet' then 1 when 'boop' then 1 when 'feed' then 3 when 'mist' then 2

@@ -72,6 +72,10 @@ await as(U.B, `select wh_act('react', '{"emoji":"🥺"}')`);
 assert.equal((await as(U.A, `select payload->>'emoji' e from events where kind = 'react'`))[0].e, '🥺');
 const her = (await as(U.B, 'select * from members where slot = 1'))[0];
 assert.equal(her.love, 3 + 8 + 4 + 4, 'love: 3 pets + kiss lvl4 + note + photo');
+// songs are a thing you can drop in
+const song = (await as(U.A, `select * from wh_act('song', '{"provider":"spotify","title":"Bésame Mucho","url":"https://open.spotify.com/track/x"}')`))[0];
+assert.equal(song.kind, 'song');
+assert.equal((await as(U.B, `select payload->>'title' as t from events where kind = 'song'`))[0].t, 'Bésame Mucho', 'partner sees the song');
 const photo = (await as(U.B, `select * from events where kind = 'photo'`))[0];
 assert.ok(photo.media_id);
 assert.equal((await as(U.B, 'select data from media where id = $1', [photo.media_id]))[0].data, 'data:image/jpeg;base64,AAAA');

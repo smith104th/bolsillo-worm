@@ -1,7 +1,8 @@
 // Everything that lives in a pocket, drawn by hand on canvas.
 import { seeded, hash } from './util.js';
 import { wobblyCircle, drawEmoji } from './brush.js';
-import { envelopeImage, iconShadow, noShadow, roundRect, drawGlyphTile, trinketEmoji } from './icons.js';
+import { envelopeImage, iconShadow, noShadow, roundRect, drawGlyphTile, trinketEmoji, drawRecord } from './icons.js';
+import { PROVIDERS } from './music.js';
 
 
 // ── light-wash denim, flat color + woven texture ─────────────
@@ -273,11 +274,11 @@ export const TRINKETS = {
   candy: 'a candy', key: 'a tiny key',
 };
 // ── things that arrive through the hole ──────────────────────
-export const ITEM_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'];
+export const ITEM_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
 export const PAPERS = { white: '#FFFFFF', rosa: '#FCD3DC', celeste: '#CFE6FA', limon: '#F6F1A6' };
 
 export function itemRadius(kind) {
-  return { note: 25, doodle: 24, photo: 27, whisper: 18, wiggle: 15, trinket: 17 }[kind] || 16;
+  return { note: 25, doodle: 24, photo: 27, whisper: 18, wiggle: 15, song: 24, trinket: 17 }[kind] || 16;
 }
 
 // Things in the pocket wear the same icons as the shelf (src/icons.js): an
@@ -329,6 +330,12 @@ export function drawItem(x, it, t, images) {
       const hop = it.hop || 0;
       x.translate(0, -hop * 7); x.rotate(Math.sin(t * 20) * hop * 0.5);
       drawGlyphTile(x, 'sine', 28, t, { k, live: fresh ? 1 : 0 });
+      break;
+    }
+    case 'song': {
+      // a record; the label spins slowly, faster while it's still unopened
+      const img = images && p.cover ? images(p.cover) : null;
+      drawRecord(x, 58, { img, accent: PROVIDERS[p.provider]?.accent, angle: t * (fresh ? 1.6 : 0.5) + (it.seed || 0), k });
       break;
     }
     case 'trinket':

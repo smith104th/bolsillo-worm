@@ -2,7 +2,8 @@
 import { h, ago, clamp } from './util.js';
 import { sheet, btn, icon, toast, field, segmented } from './ui.js';
 import { PAPERS, TRINKETS, renderStrokes, REACTIONS } from './draw.js';
-import { trinketEmoji, glyphTile, GLYPH_COLORS } from './icons.js';
+import { trinketEmoji, glyphTile, GLYPH_COLORS, recordIcon } from './icons.js';
+import { songInfo, parseSong, embedHeight, PROVIDERS } from './music.js';
 import { photoFromFile, Recorder, blobToDataURL } from './media.js';
 import { sfx, buzz } from './feel.js';
 
@@ -170,23 +171,57 @@ export function composeWiggle(app) {
 export function trinketArt(kind, size = 64) {
   return h('span.temoji', { style: { fontSize: `${size}px` } }, trinketEmoji(kind));
 }
-export function composeTrinket(app) {
-  let what = null;
-  const label = h('input', { placeholder: 'Ticket line, bar name…', maxLength: 9 });
-  const note = h('input', { placeholder: 'Where did you find it?', maxLength: 80 });
-  const labelField = field('Printed on it', label); labelField.hidden = true;
-  const grid = h('div.trinkets', Object.entries(TRINKETS).map(([k, name]) =>
-    h('button.trinket', { type: 'button', onclick: (e) => { what = k; [...grid.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); labelField.hidden = !['ticket', 'matchbook'].includes(k); } },
-      trinketArt(k, 38), h('span', name.replace(/^an? /, '')))));
-  const s = sheet('Something you found', [
-    grid, labelField, field('A line about it', note),
-    btn('Slip it in', async (e) => {
-      if (!what) return toast('Pick a thing.');
+// ── a song: paste a link, it lands as a record in their pocket
+export function composeSong(app) {
+  let info = null, asked = '', seq = 0;
+  const link = h('input', { placeholder: 'Paste a song link', inputmode: 'url', autocomplete: 'off', autocapitalize: 'off', });
+  const line = h('input', { placeholder: 'This one is us.', maxLength: 80 });
+  const preview = h('div.song-preview.empty', h('div.song-art', { html: recordIcon({ size: 76, shadow: false }) }), h('div.song-meta', h('b', 'Spotify, Apple Music or YouTube'), h('span', 'Copy the link from the Share button and paste it here.')));
+  const show = (st) => {
+    preview.classList.toggle('empty', st !== 'ok');
+    if (st === 'ok') {
+      preview.replaceChildren(h('div.song-art', { html: recordIcon({ cover: info.cover, accent: PROVIDERS[info.provider].accent, size: 76, shadow: false, spin: true }) }),
+        h('div.song-meta', h('b', info.title || 'A song'), info.artist ? h('span', info.artist) : null, h('span.song-src.mono', PROVIDERS[info.provider].name.toUpperCase())));
+    } else {
+      preview.replaceChildren(h('div.song-art', { html: recordIcon({ size: 76, shadow: false }) }),
+        h('div.song-meta', h('b', st === 'loading' ? 'Finding it…' : st === 'bad' ? 'That link isn\'t a song' : 'Couldn\'t reach it'),
+          h('span', st === 'loading' ? ' ' : st === 'bad' ? 'Use a Spotify, Apple Music or YouTube link.' : 'Check the link or your connection and try again.')));
+    }
+  };
+  const look = async () => {
+    const text = link.value.trim();
+    if (text === asked) return; asked = text; info = null;
+    if (!text) return show('idle');
+    if (!parseSong(text)) return show('bad');
+    const my = ++seq; show('loading');
+    try { const r = await songInfo(text); if (my !== seq) return; info = r; show('ok'); }
+    catch (e) { if (my !== seq) return; show(e?.message === 'not_a_song' ? 'bad' : 'error'); }
+  };
+  link.addEventListener('input', () => { clearTimeout(link._t); link._t = setTimeout(look, 350); });
+  link.addEventListener('paste', () => setTimeout(look, 30));
+  const paste = navigator.clipboard?.readText ? btn('Paste', async () => { try { link.value = await navigator.clipboard.readText(); look(); } catch { link.focus(); } }, 'ghost small') : null;
+  const s = sheet('A song', [
+    preview,
+    field('Link', h('div.song-link', link, paste)),
+    field('A line about it', line),
+    btn('Drop it in', async (e) => {
+      if (!link.value.trim()) return toast('Paste a song link first.');
+      if (!info) { await look(); if (!info) return toast('That link didn\'t work. Try the Share → Copy link from the app.'); }
       busy(e.currentTarget, true);
-      const payload = { what, text: label.value.trim() || null, inscription: note.value.trim() || null };
-      if (await app.send('trinket', payload, { what: TRINKETS[what], inscription: payload.inscription })) s.close(); else busy(e.currentTarget, false);
+      const payload = { ...info, line: line.value.trim() || null };
+      if (await app.send('song', payload, { title: info.title, artist: info.artist, line: payload.line })) s.close(); else busy(e.currentTarget, false);
     }, 'primary'),
-  ], { wide: true });
+  ]);
+  setTimeout(() => link.focus(), 350);
+}
+
+// The player for a song, right in the sheet.
+function songPlayer(p) {
+  if (!p.embed) return null;
+  const hgt = embedHeight(p);
+  const frame = h('iframe', { src: p.embed, title: p.title || 'Song', loading: 'lazy', allow: 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture', allowfullscreen: true, frameborder: '0' });
+  if (hgt) frame.style.height = hgt + 'px';
+  return h(`div.song-player.${p.provider}`, frame);
 }
 
 // ── emoji reactions on things
@@ -259,6 +294,18 @@ export function openItem(app, it) {
       setTimeout(feel, 400);
       break;
     }
+    case 'song': {
+      const pv = PROVIDERS[p.provider] || PROVIDERS.spotify;
+      body = [
+        h('div.song-big', { html: recordIcon({ cover: p.cover, accent: pv.accent, size: 168, spin: true }) }),
+        h('p.big-quote.song-title', p.title || 'A song'),
+        p.artist ? h('p.song-artist', p.artist) : null,
+        p.line ? h('p.handwriting.center', p.line) : null,
+        songPlayer(p),
+        p.url ? h('a.btn.ghost.song-open', { href: p.url, target: '_blank', rel: 'noopener' }, `Open in ${pv.name}`) : null,
+      ].filter(Boolean);
+      break;
+    }
     case 'trinket':
       body = [h('div.trinket-big', trinketArt(p.what, 120)), h('p.big-quote', TRINKETS[p.what] || 'Something'), p.text ? h('p.trinket-print.mono', p.text) : null, p.inscription ? h('p.handwriting.center', p.inscription) : null].filter(Boolean);
       break;
@@ -273,12 +320,12 @@ export function openItem(app, it) {
     app.refreshPocket();
   };
   const stash = btn('Put in the jar', () => { app.stash(it.id); s.close(); }, 'ghost');
-  const about = { note: 'note', doodle: 'doodle', photo: 'polaroid', whisper: 'whisper', wiggle: 'wiggle', trinket: 'found thing' }[it.kind];
+  const about = { note: 'note', doodle: 'doodle', photo: 'polaroid', whisper: 'whisper', wiggle: 'wiggle', song: 'song', trinket: 'found thing' }[it.kind];
   const target = { to: it.id, about };
   const s = sheet(titleFor(it), [...body, meta, it.mine ? theirReactions(app, target) : reactRow(app, target), h('div.row', keepBtn, it.mine ? null : stash)], { onClose, quiet: true });
   if (!it.mine && !it.opened_at) { it.opened_at = new Date().toISOString(); it.opened = true; app.backend.open(it.id).catch(() => {}); app.refreshPocket(); }
 }
 
 export function titleFor(it) {
-  return { note: 'A note', doodle: 'A doodle', photo: 'A polaroid', whisper: 'A whisper', wiggle: 'A wiggle', trinket: 'Something they found' }[it.kind] || 'Something';
+  return { note: 'A note', doodle: 'A doodle', photo: 'A polaroid', whisper: 'A whisper', wiggle: 'A wiggle', song: 'A song', trinket: 'Something they found' }[it.kind] || 'Something';
 }

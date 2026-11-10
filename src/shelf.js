@@ -7,7 +7,8 @@ import { Worm } from './worm.js';
 import { openItem, reactRow, theirReactions } from './compose.js';
 import { photoFromFile } from './media.js';
 import { sfx, buzz } from './feel.js';
-import { envelopeIcon, boxIcon, glyphTile, GLYPH_COLORS, trinketEmoji } from './icons.js';
+import { envelopeIcon, boxIcon, glyphTile, GLYPH_COLORS, trinketEmoji, recordIcon } from './icons.js';
+import { PROVIDERS } from './music.js';
 
 const INK = '#26324D';
 export const WHEN_PRESETS = ['you\'re sad', 'you can\'t sleep', 'you miss me', 'you need a laugh', 'you had a bad day', 'it\'s your birthday', 'you need a hug', 'you\'re proud of yourself'];
@@ -28,6 +29,7 @@ function keptIcon(e) {
     case 'trinket': return h('div.k2.emoji', trinketEmoji(p.what));
     case 'whisper': return html(glyphTile('wave', GLYPH_COLORS.whisper));
     case 'wiggle': return html(glyphTile('sine', GLYPH_COLORS.wiggle));
+    case 'song': return html(recordIcon({ cover: p.cover, accent: PROVIDERS[p.provider]?.accent, size: 112 }));
   }
   return null;
 }
@@ -190,7 +192,7 @@ function card(app, e, onChange) {
     else { art = html(boxIcon()); badge = lockBadge(); title = dayLabel(p.on); meta = `${left}d`; }
   } else {
     art = keptIcon(e); if (!art) return null;
-    title = e.kind === 'trinket' ? cap((TRINKETS[p.what] || 'something').replace(/^an? /, '')) : { note: 'Note', photo: p.caption || 'Polaroid', doodle: 'Doodle', whisper: 'Whisper', wiggle: cap(p.label) || 'Wiggle' }[e.kind];
+    title = e.kind === 'trinket' ? cap((TRINKETS[p.what] || 'something').replace(/^an? /, '')) : { note: 'Note', photo: p.caption || 'Polaroid', doodle: 'Doodle', whisper: 'Whisper', wiggle: cap(p.label) || 'Wiggle', song: p.title || 'Song' }[e.kind];
     meta = short(e.created_at);
   }
   return h('button.c-card', { type: 'button', onclick: () => { buzz(8); if (e.kind === 'later') openLater(app, e, onChange); else openItem(app, app.asItem(e)); } },

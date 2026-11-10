@@ -144,3 +144,58 @@ export function drawGlyphTile(x, kind, size, t, { k, live = 0 } = {}) {
   }
   x.restore();
 }
+
+// ── songs: a vinyl record, the cover as its label ──────────
+// SVG for the DOM. `cover` is the small JPEG data URL kept in the song's payload.
+export function recordIcon({ cover = null, accent = '#1C1C1E', size = 104, shadow = true, spin = false } = {}) {
+  const id = `ic${++uid}`;
+  const grooves = Array.from({ length: 8 }, (_, i) => `<circle cx="60" cy="60" r="${24 + i * 3.2}" fill="none" stroke="#fff" stroke-opacity="${i % 2 ? 0.05 : 0.08}" stroke-width=".8"/>`).join('');
+  const label = cover
+    ? `<clipPath id="${id}c"><circle cx="60" cy="60" r="19"/></clipPath><image href="${cover}" x="41" y="41" width="38" height="38" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id}c)"/>`
+    : `<circle cx="60" cy="60" r="19" fill="${accent}"/><path d="M60 45 a15 15 0 0 1 15 15" fill="none" stroke="#fff" stroke-opacity=".45" stroke-width="2.4" stroke-linecap="round"/>`;
+  return `<svg viewBox="0 0 120 120" width="${size}" height="${size}" aria-hidden="true" style="overflow:visible"><defs>
+    <radialGradient id="${id}d0" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#2E2E32"/><stop offset=".55" stop-color="#18181B"/><stop offset="1" stop-color="#0B0B0C"/></radialGradient>
+    <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".16"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    ${shadowDef(`${id}d`)}</defs>
+    ${shadow ? `<g filter="url(#${id}d)">` : '<g>'}<circle cx="60" cy="60" r="50" fill="url(#${id}d0)"/></g>
+    ${grooves}
+    <path d="M60 60 L32 18 A50 50 0 0 1 52 10.6 Z M60 60 L88 102 A50 50 0 0 1 68 109.4 Z" fill="url(#${id}s)"/>
+    <circle cx="60" cy="60" r="49.4" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width=".8"/>
+    <g${spin ? ' class="spin"' : ''} style="transform-origin:60px 60px">${label}</g>
+    <circle cx="60" cy="60" r="19" fill="none" stroke="#000" stroke-opacity=".25" stroke-width=".8"/>
+    <circle cx="60" cy="60" r="2.6" fill="#E9E9EE"/>
+  </svg>`;
+}
+
+// Canvas record for the pocket: the label turns, the shine stays put.
+export function drawRecord(x, size, { img = null, accent = '#1C1C1E', angle = 0, k } = {}) {
+  if (k == null) { const m = x.getTransform(); k = Math.hypot(m.a, m.b) || 1; }
+  const u = size / 120, R = 50 * u, L = 19 * u;
+  x.save();
+  iconShadow(x, k, size);
+  const g = x.createRadialGradient(0, 0, 0, 0, 0, R);
+  g.addColorStop(0, '#2E2E32'); g.addColorStop(0.55, '#18181B'); g.addColorStop(1, '#0B0B0C');
+  x.fillStyle = g; x.beginPath(); x.arc(0, 0, R, 0, 7); x.fill();
+  noShadow(x);
+  x.lineWidth = 0.8 * u;
+  for (let i = 0; i < 8; i++) { x.strokeStyle = `rgba(255,255,255,${i % 2 ? 0.05 : 0.08})`; x.beginPath(); x.arc(0, 0, (24 + i * 3.2) * u, 0, 7); x.stroke(); }
+  // shine: two soft wedges across from each other
+  const sg = x.createLinearGradient(-R, -R, R, R);
+  sg.addColorStop(0, 'rgba(255,255,255,0)'); sg.addColorStop(0.5, 'rgba(255,255,255,0.16)'); sg.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = sg;
+  for (const a0 of [-2.16, 0.98]) { x.beginPath(); x.moveTo(0, 0); x.arc(0, 0, R, a0, a0 + 0.42); x.closePath(); x.fill(); }
+  x.strokeStyle = 'rgba(255,255,255,0.12)'; x.beginPath(); x.arc(0, 0, R - 0.6 * u, 0, 7); x.stroke();
+  // label
+  x.save(); x.rotate(angle);
+  x.beginPath(); x.arc(0, 0, L, 0, 7); x.clip();
+  if (img && img.complete && img.naturalWidth) x.drawImage(img, -L, -L, L * 2, L * 2);
+  else {
+    x.fillStyle = accent; x.fillRect(-L, -L, L * 2, L * 2);
+    x.strokeStyle = 'rgba(255,255,255,0.45)'; x.lineWidth = 2.4 * u; x.lineCap = 'round';
+    x.beginPath(); x.arc(0, 0, L * 0.78, -Math.PI / 2, 0); x.stroke();
+  }
+  x.restore();
+  x.strokeStyle = 'rgba(0,0,0,0.25)'; x.lineWidth = 0.8 * u; x.beginPath(); x.arc(0, 0, L, 0, 7); x.stroke();
+  x.fillStyle = '#E9E9EE'; x.beginPath(); x.arc(0, 0, 2.6 * u, 0, 7); x.fill();
+  x.restore();
+}

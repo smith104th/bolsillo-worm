@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const EVENT_COLS = 'id,hole_id,from_slot,kind,payload,media_id,created_at,opened_at,kept';
-const ARCHIVE_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'];
+const ARCHIVE_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
 
 export function supabaseBackend(cfg) {
   const sb = createClient(cfg.supabaseUrl, cfg.supabaseKey, {

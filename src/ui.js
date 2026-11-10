@@ -22,6 +22,7 @@ export const ICON = {
   ring: I('<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>'),
   mist: I('<path d="M12 3.5c3 4 5 6.6 5 9.5a5 5 0 0 1-10 0c0-2.9 2-5.5 5-9.5Z"/>'),
   close: I('<path d="M6 6l12 12M18 6 6 18"/>'),
+  song: I('<path d="M9 17.5V6.5l10-2.5v11"/><circle cx="6.6" cy="17.5" r="2.4"/><circle cx="16.6" cy="15" r="2.4"/>'),
   check: I('<path d="M5 12.5 10 17.5 19 7"/>'),
   back: I('<path d="M15 5l-7 7 7 7"/>'),
   heart: I('<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10Z"/>'),

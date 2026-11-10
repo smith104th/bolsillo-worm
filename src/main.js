@@ -495,8 +495,8 @@ function react(ev, fromThem) {
     case 'mist': toast(`${name} misted you. Fresh.`, { icon: 'mist' }); pocket.burst('drop', pocket.hole.x, pocket.hole.y, 12); break;
     case 'knock': pocket.knocked(); sfx.knock(); buzz([40, 90, 40]); toast(`Knock knock. ${name} is thinking of you.`, { icon: 'knock' }); break;
     case 'ring': toast(`${name} is waiting at the hole.`, { icon: 'ring', tone: 'love' }); buzz([20, 60, 20]); break;
-    case 'note': case 'doodle': case 'photo': case 'whisper': case 'wiggle': case 'trinket': {
-      const words = { note: 'slipped a note into your pocket', doodle: 'drew you something', photo: 'dropped a polaroid in', whisper: 'whispered something', wiggle: 'sent a wiggle', trinket: `found you ${TRINKETS[p.what] || 'something'}` };
+    case 'note': case 'doodle': case 'photo': case 'whisper': case 'wiggle': case 'song': case 'trinket': {
+      const words = { note: 'slipped a note into your pocket', doodle: 'drew you something', photo: 'dropped a polaroid in', whisper: 'whispered something', wiggle: 'sent a wiggle', song: `sent you a song${p.title ? `: ${p.title}` : ''} 🎵`, trinket: `found you ${TRINKETS[p.what] || 'something'}` };
       pocket.addItem(app.asItem(ev), true);
       toast(`${name} ${words[ev.kind]}.`, { tone: 'love' });
       sfx.chime(); buzz([15, 40, 15]);

@@ -32,6 +32,7 @@ export function mockBackend() {
     events.push(
       { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'note', payload: { text: 'Found a café that plays only boleros. You would sit there for six hours.', paper: 'rosa' }, created_at: old(5), opened_at: null, kept: false },
       { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'trinket', payload: { what: 'ticket', text: 'Metro', inscription: 'Line 1, thought of you between stops' }, created_at: old(9), opened_at: old(8), kept: true },
+      { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'song', payload: { provider: 'spotify', type: 'track', url: 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC', embed: 'https://open.spotify.com/embed/track/4uLU6hMCjMI75M1A2tKUQC', title: 'Bésame Mucho', artist: 'Consuelo Velázquez', cover: fakeThumb(['#F6416C', '#FFF6B7'], '💿'), line: 'Para el viaje.' }, created_at: old(3), opened_at: null, kept: false },
       { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'wiggle', payload: { pattern: [120, 90, 120, 90, 400], label: 'te quiero' }, created_at: old(20), opened_at: null, kept: false },
       { id: ++id, hole_id: hole.id, from_slot: 1, kind: 'doodle', payload: { strokes: [{ c: '#C4314B', w: 22, p: [300, 420, 360, 330, 450, 320, 500, 400, 550, 320, 640, 330, 700, 420, 600, 560, 500, 660, 400, 560, 300, 420] }] }, created_at: old(30), opened_at: null, kept: false },
       { id: ++id, hole_id: hole.id, from_slot: 0, kind: 'kiss', payload: { level: 3 }, created_at: old(2), opened_at: null, kept: false },
@@ -47,6 +48,7 @@ export function mockBackend() {
     add(0, 'note', { text: 'Your worm slept on my phone all night. I let him.', paper: 'celeste' }, 24 * 5 + 7);
     add(1, 'photo', { thumb: fakeThumb(['#F7B267', '#F4845F'], '🌇'), caption: 'Gran Vía at 8' }, 24 * 6 + 2);
     add(1, 'trinket', { what: 'leaf', inscription: 'Retiro, the big tree' }, 24 * 8 + 5);
+    add(0, 'song', { provider: 'apple', type: 'song', url: 'https://music.apple.com/us/album/wahdon/1421088406?i=1421088814', embed: 'https://embed.music.apple.com/us/album/wahdon/1421088406?i=1421088814', title: 'Wahdon', artist: 'Fairouz', cover: fakeThumb(['#2B5876', '#4E4376'], '🎶'), line: 'Sunday morning.' }, 24 * 10 + 3);
     add(0, 'photo', { thumb: fakeThumb(['#8EC5FC', '#E0C3FC'], '🥐'), caption: 'medialuna count: 3' }, 24 * 9 + 1);
     add(1, 'wiggle', { pattern: [80, 90, 140, 420, 80, 90, 140], label: 'heartbeat' }, 24 * 11 + 4);
     add(0, 'doodle', { strokes: [{ c: '#2F7BFF', w: 14, p: [200, 700, 300, 500, 420, 640, 520, 420, 640, 600, 760, 380] }] }, 24 * 13 + 8);
@@ -97,7 +99,7 @@ export function mockBackend() {
       if (r < 0.25) { ev(1, 'pet', { n: 1 }); }
       else if (r < 0.32) ev(1, 'kiss', { level: 1 + Math.floor(Math.random() * 5) });
       else if (r < 0.36) ev(1, 'note', { text: pick(['Your worm keeps stealing my crumbs.', 'Te extraño, gusano.', 'Ate a medialuna in your honor.']), paper: pick(['white', 'celeste', 'limon']) });
-      else if (r < 0.39) ev(1, 'trinket', { what: pick(['pebble', 'leaf', 'coin', 'flower', 'feather']), inscription: 'from my walk' });
+      else if (r < 0.39) ev(1, 'song', { provider: 'youtube', type: 'video', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', embed: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0', title: pick(['Never Gonna Give You Up', 'Lo que siento', 'Ojitos lindos']), artist: pick(['Rick Astley', 'Cuco', 'Bad Bunny']), cover: fakeThumb(['#43CBFF', '#9708CC'], '🎧'), line: 'listen to this one' });
       else if (r < 0.41) ev(1, 'knock', {});
       else if (r < 0.46) ev(1, 'react', { emoji: pick(['❤️', '🥺', '✨', '🔥']) });
     }, 9000);
@@ -198,7 +200,7 @@ export function mockBackend() {
       return [...m].map(([k, n]) => ({ kind: k.split(':')[0], from_slot: +k.split(':')[1], n }));
     },
     async archive({ before = null, after = null, limit = 80 } = {}) {
-      return events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'trinket'].includes(e.kind) && (!before || e.created_at < before) && (!after || e.created_at >= after))
+      return events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'].includes(e.kind) && (!before || e.created_at < before) && (!after || e.created_at >= after))
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit).map((e) => ({ ...e }));
     },
     async nudge() {},
