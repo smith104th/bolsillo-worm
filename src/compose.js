@@ -31,18 +31,33 @@ export function composeDoodle(app) {
   const cv = h('canvas.doodle-pad', { width: size * 2, height: size * 2, style: { width: size + 'px', height: size + 'px' } });
   const x = cv.getContext('2d'); x.scale(2, 2);
   const inks = ['#0B0B0C', '#FF2D55', '#FF9EC2', '#2F7BFF', '#34C759', '#FF9A3C'];
-  let ink = inks[1], width = 14;
+  let ink = inks[1], width = 14, erasing = false;
   const strokes = []; let cur = null;
-  const redraw = () => { x.clearRect(0, 0, size, size); renderStrokes(x, strokes, size, 1); };
+  const ERASE = { 8: 36, 14: 56, 30: 110 }; // eraser widths for Fine / Marker / Fat: roomier than the pens
+  const redraw = () => {
+    x.clearRect(0, 0, size, size); renderStrokes(x, strokes, size, 1);
+    if (cur?.e) { // show how big the eraser is under the finger
+      const n = cur.p.length, r = (cur.w / 1000) * size / 2;
+      x.save(); x.lineWidth = 1.5; x.strokeStyle = 'rgba(28,28,30,0.35)'; x.setLineDash([3, 3]);
+      x.beginPath(); x.arc((cur.p[n - 2] / 1000) * size, (cur.p[n - 1] / 1000) * size, r, 0, Math.PI * 2); x.stroke(); x.restore();
+    }
+  };
   const pt = (e) => { const r = cv.getBoundingClientRect(); return [Math.round(clamp((e.clientX - r.left) / r.width, 0, 1) * 1000), Math.round(clamp((e.clientY - r.top) / r.height, 0, 1) * 1000)]; };
-  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); cur = { c: ink, w: width, p: pt(e) }; strokes.push(cur); redraw(); });
+  cv.addEventListener('pointerdown', (e) => {
+    cv.setPointerCapture(e.pointerId);
+    cur = erasing ? { c: '#FFFFFF', w: ERASE[width] || width * 4, p: pt(e), e: 1 } : { c: ink, w: width, p: pt(e) };
+    strokes.push(cur); redraw();
+  });
   cv.addEventListener('pointermove', (e) => {
     if (!cur) return; const [a, b] = pt(e), n = cur.p.length;
     if (Math.hypot(a - cur.p[n - 2], b - cur.p[n - 1]) > 5) { cur.p.push(a, b); redraw(); }
   });
-  const end = () => { cur = null; };
+  const end = () => { cur = null; redraw(); };
   cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
-  const inkRow = h('div.inks', inks.map((c) => h(`button.ink${c === ink ? '.on' : ''}`, { type: 'button', style: { background: c }, onclick: (e) => { ink = c; [...inkRow.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } })));
+  const pick = (el) => { [...inkRow.children].forEach((b) => b.classList.toggle('on', b === el)); };
+  const inkRow = h('div.inks',
+    inks.map((c) => h(`button.ink${c === ink ? '.on' : ''}`, { type: 'button', 'aria-label': 'Pen', style: { background: c }, onclick: (e) => { ink = c; erasing = false; pick(e.currentTarget); } })),
+    h('button.ink.eraser', { type: 'button', 'aria-label': 'Eraser', title: 'Eraser', onclick: (e) => { erasing = true; pick(e.currentTarget); } }, icon('eraser')));
   const s = sheet('A doodle', [
     h('div.doodle-wrap', cv),
     inkRow,
@@ -50,7 +65,7 @@ export function composeDoodle(app) {
       segmented({ 8: 'Fine', 14: 'Marker', 30: 'Fat' }, '14', (k) => { width = +k; }),
       h('div.row', h('button.icon-btn', { type: 'button', onclick: () => { strokes.pop(); redraw(); }, title: 'Undo' }, icon('undo')))),
     btn('Drop it in', async (e) => {
-      if (!strokes.length) return toast('Draw something first.');
+      if (!strokes.some((st) => !st.e)) return toast('Draw something first.');
       busy(e.currentTarget, true);
       if (await app.send('doodle', { strokes })) s.close(); else busy(e.currentTarget, false);
     }, 'primary'),

@@ -35,6 +35,7 @@ export const ICON = {
   stop: I('<rect x="6.5" y="6.5" width="11" height="11" rx="1" fill="currentColor"/>'),
   mic: I('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   undo: I('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
+  eraser: I('<path d="M8.5 20 3.6 15.1a2 2 0 0 1 0-2.8l8.7-8.7a2 2 0 0 1 2.8 0l5.3 5.3a2 2 0 0 1 0 2.8L12 20"/><path d="m8 8 8 8"/><path d="M8.5 20H21"/>'),
   gear: I('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
   later: I('<path d="M4 7h16v11H4z"/><path d="m4 7 8 5.5L20 7"/><path d="M12 16.6s-2.3-1.4-2.3-2.8a1.15 1.15 0 0 1 2.3-.5 1.15 1.15 0 0 1 2.3.5c0 1.4-2.3 2.8-2.3 2.8Z" fill="currentColor" stroke="none"/>'),
   jar: I('<path d="M7 4h10M8 4v2c-2 1-3 3-3 5v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8c0-2-1-4-3-5V4"/><path d="M5 12h14"/>'),

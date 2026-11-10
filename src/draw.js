@@ -328,8 +328,28 @@ export function doodleThumb(it) {
   return c;
 }
 
-// strokes: [{c: color, w: width(0..1000 scale), p: [x,y,x,y,...] in 0..1000}]
+// strokes: [{c: color, w: width(0..1000 scale), p: [x,y,x,y,...] in 0..1000, e?: 1 for eraser}]
+// Eraser strokes cut through the ink only, never what's underneath (a tile, a zine page):
+// when a doodle has any, the ink is drawn on its own layer first. Eraser strokes also
+// carry c: white, so an older app that doesn't know `e` paints them white on the white tile.
+let layer = null;
 export function renderStrokes(x, strokes, size, progress = 1) {
+  if (strokes.some((s) => s.e)) {
+    const m = x.getTransform ? x.getTransform() : { a: 1, b: 0 };
+    const px = Math.max(1, Math.ceil(size * (Math.hypot(m.a, m.b) || 1)));
+    layer = layer || document.createElement('canvas');
+    if (layer.width !== px || layer.height !== px) { layer.width = px; layer.height = px; } // resizing also clears
+    const l = layer.getContext('2d');
+    l.setTransform(1, 0, 0, 1, 0, 0); l.clearRect(0, 0, px, px);
+    l.setTransform(px / size, 0, 0, px / size, 0, 0);
+    paintStrokes(l, strokes, size, progress);
+    l.globalCompositeOperation = 'source-over';
+    x.drawImage(layer, 0, 0, size, size);
+    return;
+  }
+  paintStrokes(x, strokes, size, progress);
+}
+function paintStrokes(x, strokes, size, progress) {
   const total = strokes.reduce((a, s) => a + s.p.length / 2, 0);
   let budget = total * progress;
   x.lineCap = 'round'; x.lineJoin = 'round';
@@ -337,7 +357,8 @@ export function renderStrokes(x, strokes, size, progress = 1) {
     if (budget <= 0) break;
     const n = Math.min(s.p.length / 2, Math.ceil(budget));
     budget -= s.p.length / 2;
-    x.strokeStyle = s.c; x.lineWidth = (s.w / 1000) * size;
+    x.globalCompositeOperation = s.e ? 'destination-out' : 'source-over';
+    x.strokeStyle = s.e ? '#000' : s.c; x.lineWidth = (s.w / 1000) * size;
     x.beginPath();
     for (let i = 0; i < n; i++) {
       const px = (s.p[i * 2] / 1000) * size, py = (s.p[i * 2 + 1] / 1000) * size;
