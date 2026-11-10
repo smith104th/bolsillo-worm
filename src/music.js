@@ -77,8 +77,11 @@ export async function songInfo(text) {
     const o = await getJSON(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(s.url)}`);
     title = o.title || null; artist = (o.author_name || '').replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').trim() || null;
     art = `https://i.ytimg.com/vi/${s.id}/hqdefault.jpg`;
-    // "Artist - Song (Official Video)" → song title, artist from the title
-    const m = title?.match(/^(.+?)\s+[-–—]\s+(.+?)(?:\s*[([](?:official|video|audio|lyric|visualizer|en vivo|live)[^)\]]*[)\]])*\s*$/i);
+    // Drop the video noise: "(Official Video)", "[4K Remaster]", "(Lyrics)", "| Video Oficial"…
+    const NOISE = /\s*(?:[([][^)\]]*\b(?:official|oficial|video|videoclip|audio|lyrics?|letra|visuali[sz]er|remaster(?:ed)?|4k|hd|hq|en vivo|live|clip)\b[^)\]]*[)\]]|[|｜].*)\s*$/i;
+    for (let i = 0; i < 4 && title && NOISE.test(title); i++) title = title.replace(NOISE, '').trim();
+    // "Artist - Song" → song title, artist from the title
+    const m = title?.match(/^(.+?)\s+[-–—]\s+(.+)$/);
     if (m) { artist = m[1].trim(); title = m[2].trim(); }
   }
   const cover = await coverThumb(art);
