@@ -1,6 +1,6 @@
 // The shelf: one swipe from the pocket. Wooden planks on the same sky, holding
 // "open when…" envelopes, photos that open on a date, and the things you kept.
-import { h, ago, prettyDay, seeded } from './util.js';
+import { h, ago, prettyDay, seeded, viewH } from './util.js';
 import { sheet, btn, toast, segmented, icon } from './ui.js';
 import { makeSky, SKY, PAPERS, TRINKETS, renderStrokes } from './draw.js';
 import { Worm } from './worm.js';
@@ -77,7 +77,7 @@ export function Shelf(app, root) {
 
   function setView(v) { view = v; [...tabs.children].forEach((b) => b.classList.toggle('on', b.dataset.v === v)); render(); scroll.scrollTop = 0; }
   function setSky(sky) {
-    const w = window.innerWidth, hh = window.innerHeight;
+    const w = window.innerWidth, hh = viewH();
     if (skyKey === sky.key && W === w && H === hh) return;
     W = w; H = hh; skyKey = sky.key;
     const dpr = Math.min(devicePixelRatio || 1, 2);

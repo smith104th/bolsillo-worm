@@ -5,7 +5,7 @@ import { makeSky, drawHole, drawItem, drawFood, itemRadius, SKY } from './draw.j
 import { preloadIcons } from './icons.js';
 import { dab, drawEmoji } from './brush.js';
 import { KISS_EMOJI } from './draw.js';
-import { clamp, rand, pick, seeded } from './util.js';
+import { clamp, rand, pick, seeded, viewH } from './util.js';
 import { sfx, buzz } from './feel.js';
 
 export class Pocket {
@@ -41,7 +41,7 @@ export class Pocket {
 
   // ── setup
   resize() {
-    const W = window.innerWidth, H = window.innerHeight;
+    const W = window.innerWidth, H = viewH();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.W = W; this.H = H; this.dpr = dpr;
     this.cv.width = Math.round(W * dpr); this.cv.height = Math.round(H * dpr);

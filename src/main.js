@@ -1,6 +1,6 @@
 // Bolsillo Worm: carry each other.
 import { CONFIG } from './config.js';
-import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
+import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep, viewH, watchScreen } from './util.js';
 import { Pocket } from './pocket.js';
 import { inchesFor } from './worm.js';
 import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
@@ -64,6 +64,7 @@ const app = {
 boot().catch((e) => fatal(e));
 
 async function boot() {
+  watchScreen();
   if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('./sw.js').catch(() => {});
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__bwInstallPrompt = e; });
@@ -149,7 +150,7 @@ function enterPocket(data) {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
       const dock = $('#dock').getBoundingClientRect();
-      return { top: Math.max(top, 80), bottom: window.innerHeight - dock.top + 30 };
+      return { top: Math.max(top, 80), bottom: viewH() - dock.top + 30 };
     },
     onSwipe: (e) => pager?.begin(e),
     onPet: throttle(() => act('pet', {}), 4000),
