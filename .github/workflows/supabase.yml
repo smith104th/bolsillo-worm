@@ -1,7 +1,7 @@
 name: Supabase
 # Whenever migrations or functions change on main: apply the new migrations, hand the
 # R2 keys to the functions, and deploy them. Nothing to paste into the dashboard.
-# Repo secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_URL (session pooler), R2_ACCOUNT_ID,
+# Repo secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, R2_ACCOUNT_ID,
 # R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
 on:
   push:
@@ -16,16 +16,31 @@ jobs:
     env:
       PROJECT_REF: kgoxwpmefkpmmlsgyyau
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - name: Database connection
+        # SUPABASE_DB_PASSWORD (just the password) wins; the connection string is built here,
+        # with the password percent-encoded. A full SUPABASE_DB_URL secret still works as a fallback.
+        env:
+          PW: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          URL_SECRET: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -n "$PW" ]; then
+            enc=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["PW"].strip(), safe=""))')
+            url="postgresql://postgres.kgoxwpmefkpmmlsgyyau:${enc}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+          else
+            url="$URL_SECRET"
+          fi
+          [ -n "$url" ] || { echo "::error::Add the repo secret SUPABASE_DB_PASSWORD"; exit 1; }
+          echo "::add-mask::$url"
+          echo "DB_URL=$url" >> "$GITHUB_ENV"
       - name: Check the secrets are there
         run: |
           missing=0
-          for v in SUPABASE_ACCESS_TOKEN DB_URL R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
+          for v in SUPABASE_ACCESS_TOKEN R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY; do
             if [ -z "${!v}" ]; then echo "::error::Missing repo secret for $v (Settings → Secrets and variables → Actions)"; missing=1; fi
           done
           exit $missing

@@ -13,7 +13,6 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     env:
-      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
       AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -22,10 +21,26 @@ jobs:
       AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
       BUCKET: bolsillo-worm
     steps:
+      - name: Database connection
+        # SUPABASE_DB_PASSWORD (just the password) wins; the connection string is built here,
+        # with the password percent-encoded. A full SUPABASE_DB_URL secret still works as a fallback.
+        env:
+          PW: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          URL_SECRET: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -n "$PW" ]; then
+            enc=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["PW"].strip(), safe=""))')
+            url="postgresql://postgres.kgoxwpmefkpmmlsgyyau:${enc}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+          else
+            url="$URL_SECRET"
+          fi
+          [ -n "$url" ] || { echo "::error::Add the repo secret SUPABASE_DB_PASSWORD"; exit 1; }
+          echo "::add-mask::$url"
+          echo "DB_URL=$url" >> "$GITHUB_ENV"
       - name: Check the secrets are there
         run: |
           missing=0
-          for v in DB_URL R2_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+          for v in R2_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
             if [ -z "${!v}" ]; then echo "::error::Missing repo secret for $v"; missing=1; fi
           done
           exit $missing
