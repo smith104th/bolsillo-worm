@@ -1,0 +1,68 @@
+name: Backup
+# Every day: dump the database into the private R2 bucket under backups/ (the photo files
+# themselves already live in R2). Keeps the last 30 days plus one copy per month, forever.
+# The daily connection also counts as activity, so the free Supabase project never pauses.
+# How to restore: supabase/BACKUPS.md
+on:
+  schedule: [{ cron: '23 7 * * *' }]   # 04:23 in Buenos Aires
+  workflow_dispatch:
+  push: { branches: [main], paths: ['.github/workflows/backup.yml'] }
+permissions: { contents: read, actions: write }
+concurrency: { group: backup }
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      BUCKET: bolsillo-worm
+    steps:
+      - name: Check the secrets are there
+        run: |
+          missing=0
+          for v in DB_URL R2_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::Missing repo secret for $v"; missing=1; fi
+          done
+          exit $missing
+      - name: Install pg_dump (newest, so it's never older than the server)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          pg_dump --version
+      - name: Dump
+        run: |
+          set -euo pipefail
+          day=$(date -u +%F)
+          pg_dump "$DB_URL" --no-owner --no-privileges --schema=public --schema=private | gzip -9 > "pocket-$day.sql.gz"
+          pg_dump "$DB_URL" --no-owner --no-privileges --data-only --table=auth.users --table=auth.identities | gzip -9 > "auth-$day.sql.gz"
+          ls -la ./*.gz
+          [ "$(stat -c %s "pocket-$day.sql.gz")" -gt 2000 ] || { echo "::error::The dump looks empty"; exit 1; }
+      - name: Upload to R2 and prune
+        run: |
+          set -euo pipefail
+          ep="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          s3() { aws s3 "$@" --endpoint-url "$ep" --only-show-errors; }
+          day=$(date -u +%F); month=$(date -u +%Y-%m)
+          for f in pocket auth; do s3 cp "$f-$day.sql.gz" "s3://$BUCKET/backups/daily/$f-$day.sql.gz"; done
+          # one per month: the first good one of the month
+          if ! aws s3 ls "s3://$BUCKET/backups/monthly/pocket-$month.sql.gz" --endpoint-url "$ep" >/dev/null 2>&1; then
+            for f in pocket auth; do s3 cp "$f-$day.sql.gz" "s3://$BUCKET/backups/monthly/$f-$month.sql.gz"; done
+            echo "saved the monthly copy for $month"
+          fi
+          cutoff=$(date -u -d '30 days ago' +%F)
+          aws s3 ls "s3://$BUCKET/backups/daily/" --endpoint-url "$ep" | awk '{print $4}' | while read -r f; do
+            d=$(echo "$f" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' || true)
+            if [ -n "$d" ] && [[ "$d" < "$cutoff" ]]; then s3 rm "s3://$BUCKET/backups/daily/$f"; echo "pruned $f"; fi
+          done
+          echo "Backups now:"; aws s3 ls "s3://$BUCKET/backups/" --recursive --endpoint-url "$ep" | tail -8
+      - name: Keep this schedule switched on
+        # GitHub turns off schedules in public repos after 60 days without commits
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/backup.yml/enable" || echo "couldn't re-enable (not fatal)"
