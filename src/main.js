@@ -323,6 +323,9 @@ async function enqueue(item) {
   box.push(item); await cache.set('outbox', box);
   S.waiting = box.length;
 }
+// the server turned us away because the sign-in is stale (it renews on its own), not because of the thing itself
+const authError = (e) => /jwt|token|expired|unauthori[sz]ed|401|not authenticated|invalid claim|session/i.test(String(e?.message || e));
+
 async function flushOutbox() {
   if (flushing || DEMO) return;
   flushing = true;
@@ -338,7 +341,7 @@ async function flushOutbox() {
         if (it.nudge) backend.nudge(...it.nudge);
         sent++;
       } catch (e) {
-        if (offlineError(e)) break; // still no signal; try again later
+        if (offlineError(e) || authError(e)) break; // no signal, or the sign-in is still renewing; try again later
         console.warn('outbox: dropped', it.kind, e); // the server refused it; don't retry forever
       }
       box = box.slice(1); await cache.set('outbox', box); S.waiting = box.length;
