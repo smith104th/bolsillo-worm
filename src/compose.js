@@ -5,7 +5,7 @@ import { PAPERS, TRINKETS, renderStrokes, REACTIONS } from './draw.js';
 import { trinketEmoji, glyphTile, GLYPH_COLORS, recordIcon } from './icons.js';
 import { songInfo, parseSong, embedHeight, PROVIDERS } from './music.js';
 import { photoFromFile, pickImage, Recorder, blobToDataURL } from './media.js';
-import { sfx, buzz } from './feel.js';
+import { sfx, buzz, stopBuzz } from './feel.js';
 
 const busy = (b, on) => { b.disabled = on; b.classList.toggle('busy', on); };
 
@@ -161,7 +161,7 @@ export function composeWiggle(app) {
   const up = () => {
     if (!down) return;
     const now = performance.now(); pattern.push(Math.min(1500, Math.round(now - down))); lastUp = now; down = 0;
-    pad.classList.remove('on'); navigator.vibrate?.(0); draw();
+    pad.classList.remove('on'); stopBuzz(); draw();
     if (pattern.length > 17) pattern = pattern.slice(0, 17);
   };
   pad.addEventListener('pointerup', up); pad.addEventListener('pointercancel', up); pad.addEventListener('pointerleave', up);
@@ -306,11 +306,10 @@ export function openItem(app, it) {
       let back = null;
       const again = () => {
         if (back) return;
+        // buzz right away, inside the tap (iOS only gives haptics close to a touch); the card drops while the worm dances
+        const ms = feel();
         s.el.classList.add('lowered');
-        back = setTimeout(() => {
-          const ms = feel();
-          back = setTimeout(() => { back = null; if (s.el.isConnected) s.el.classList.remove('lowered'); }, ms + 1100);
-        }, 380);
+        back = setTimeout(() => { back = null; if (s.el.isConnected) s.el.classList.remove('lowered'); }, ms + 1400);
       };
       body = [h('div.shell-art', { html: glyphTile('sine', GLYPH_COLORS.wiggle, 132) }), h('p.big-quote', p.label ? `“${p.label}”` : 'A wiggle'), btn('Feel it again', again, 'primary')];
       setTimeout(feel, 400);

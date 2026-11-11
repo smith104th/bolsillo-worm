@@ -21,6 +21,9 @@ function iosTick() {
   iosSwitch.click();
 }
 
+// iOS can only tick, so a long beat becomes a quick run of ticks (a rumble) for as long as it lasts.
+const RUMBLE = 70;
+let pending = [];
 export function buzz(pattern = 12) {
   if (settings().haptics === false) return;
   if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
@@ -28,8 +31,18 @@ export function buzz(pattern = 12) {
     if (navigator.vibrate) { navigator.vibrate(pattern); return; }
     const arr = Array.isArray(pattern) ? pattern : [pattern];
     let t = 0;
-    arr.forEach((ms, i) => { if (i % 2 === 0) setTimeout(iosTick, t); t += ms; });
+    arr.forEach((ms, i) => {
+      if (i % 2 === 0) {
+        if (t === 0) iosTick(); else pending.push(setTimeout(iosTick, t));
+        for (let k = RUMBLE; ms >= 150 && k < ms - 20; k += RUMBLE) pending.push(setTimeout(iosTick, t + k));
+      }
+      t += ms;
+    });
   } catch { /* fine */ }
+}
+export function stopBuzz() {
+  pending.forEach(clearTimeout); pending = [];
+  try { navigator.vibrate?.(0); } catch { /* fine */ }
 }
 
 let out = null;
