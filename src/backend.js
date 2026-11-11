@@ -83,7 +83,19 @@ export function supabaseBackend(cfg) {
   return {
     kind: 'supabase',
     async init() {
-      let { data: { session } } = await sb.auth.getSession();
+      // getSession can hang on iPhone (token refresh on a dead connection, a stuck auth lock).
+      // After 6 s fall back to the user id already stored on the phone; the client keeps refreshing on its own.
+      const stalled = new Promise((ok) => setTimeout(() => ok('stalled'), 6000));
+      const got = await Promise.race([sb.auth.getSession(), stalled]);
+      if (got === 'stalled') {
+        let stored = null;
+        try { stored = JSON.parse(localStorage.getItem('bw-auth') || 'null'); } catch {}
+        const id = stored?.user?.id || stored?.currentSession?.user?.id;
+        if (!id) throw new Error('Signing in timed out');
+        userId = id;
+        return userId;
+      }
+      let { data: { session } } = got;
       if (!session) {
         const { data, error } = await sb.auth.signInAnonymously();
         if (error) throw new Error(error.message);

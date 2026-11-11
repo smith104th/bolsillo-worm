@@ -310,6 +310,7 @@ export function nice(err) {
   if (m.includes('already_in_hole')) return 'This phone is already in a pocket.';
   if (m.includes('anonymous') || m.includes('Anonymous')) return 'Sign-ins are switched off on the server.';
   if (m.includes('Failed to fetch') || m.includes('NetworkError')) return 'No connection. Try again.';
+  if (m.includes('timed out')) return 'The connection is too slow right now. Try again.';
   return 'Something snagged: ' + m.slice(0, 80);
 }
 export { rand };

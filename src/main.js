@@ -93,7 +93,7 @@ async function boot() {
     enterPocket(copy, { fromCache: true });
     return;
   }
-  let data = await backend.load();
+  let data = await withTimeout(backend.load(), 20000); // never hang on a blank sky: a stall shows "The pocket is stuck"
   if (!data.hole) {
     if (DEMO && !params.has('onboard')) {
       await backend.create('Manu', { name: 'Fideo', color: 'lombriz', pattern: 'rings', acc: 'beanie' }, { city: 'Buenos Aires', country: 'Argentina', lat: -34.6, lon: -58.38, tz: 'America/Argentina/Buenos_Aires' });

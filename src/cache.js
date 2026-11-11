@@ -12,6 +12,8 @@ function open() {
     req.onsuccess = () => ok(req.result);
     req.onerror = () => no(req.error);
     req.onblocked = () => no(new Error('blocked'));
+    // iOS sometimes never answers indexedDB.open after the app was suspended: give up, open without the copy
+    setTimeout(() => no(new Error('idb_timeout')), 2500);
   }).catch((e) => { dbp = null; throw e; });
   return dbp;
 }
