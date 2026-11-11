@@ -64,7 +64,7 @@ export function createHouseView(el, { place = null, sky = null, built = 1, finis
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 400);
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.25, 150);
   const controls = new OrbitControls(camera, canvas);
   Object.assign(controls, { enableDamping: true, dampingFactor: 0.08, minDistance: 2.5, maxDistance: 40, maxPolarAngle: Math.PI * 0.53, rotateSpeed: 0.7, zoomSpeed: 0.9, enablePan: true });
   controls.target.set(0, 5.4, 0.6);

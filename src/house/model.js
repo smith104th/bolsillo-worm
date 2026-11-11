@@ -122,6 +122,18 @@ const polyLen = (pts) => pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - 
 const toShape = (pts, flip) => new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, flip ? z : -z)));
 const toPath = (pts, flip) => new THREE.Path(pts.map(([x, z]) => new THREE.Vector2(x, flip ? z : -z)));
 
+// ExtrudeGeometry puts the caps in group 0 and the sides in group 1; keep the sides
+function sidesOf(geo) {
+  const gr = geo.groups.find((x) => x.materialIndex === 1);
+  const out = new THREE.BufferGeometry();
+  for (const k of ['position', 'normal', 'uv']) {
+    const a = geo.attributes[k];
+    out.setAttribute(k, new THREE.BufferAttribute(a.array.slice(gr.start * a.itemSize, (gr.start + gr.count) * a.itemSize), a.itemSize));
+  }
+  geo.dispose();
+  return out;
+}
+
 function slab(level, holes = [], { roof = false, ground = false } = {}) {
   const m = mats();
   const g = new THREE.Group();
@@ -130,17 +142,23 @@ function slab(level, holes = [], { roof = false, ground = false } = {}) {
   const t = ground ? 0.3 : ST;
   // body (edges)
   const s = toShape(outline); holes.forEach((h) => s.holes.push(toPath(h)));
-  const body = new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false, curveSegments: 24 });
+  // only the sides: the top and underside are their own faces below, and a second face 2 mm
+  // away z-fights on phones (striped triangles across the floor when you orbit)
+  const body = sidesOf(new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false, curveSegments: 24 }));
   body.rotateX(-Math.PI / 2); body.translate(0, y - t, 0);
   g.add(mesh(body, m.edge));
   // finished top
-  const top = new THREE.ShapeGeometry(s, 24); top.rotateX(-Math.PI / 2); top.translate(0, y + 0.002, 0);
+  const top = new THREE.ShapeGeometry(s, 24); top.rotateX(-Math.PI / 2); top.translate(0, y, 0);
   g.add(mesh(top, roof ? m.roof : m.floor, false));
   // exposed soffit
   if (!ground) {
     const s2 = toShape(outline, true); holes.forEach((h) => s2.holes.push(toPath(h, true)));
-    const bot = new THREE.ShapeGeometry(s2, 24); bot.rotateX(Math.PI / 2); bot.translate(0, y - t - 0.002, 0);
-    g.add(mesh(bot, m.ceiling, false));
+    const bot = new THREE.ShapeGeometry(s2, 24); bot.rotateX(Math.PI / 2); bot.translate(0, y - t, 0);
+    g.add(mesh(bot, m.ceiling)); // casts: its back side is what the shadow pass draws
+  } else {
+    const s2 = toShape(outline, true);
+    const bot = new THREE.ShapeGeometry(s2, 24); bot.rotateX(Math.PI / 2); bot.translate(0, y - t, 0);
+    g.add(mesh(bot, m.edge));
   }
   return g;
 }
