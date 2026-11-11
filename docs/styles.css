@@ -135,6 +135,9 @@ body.dark .kiss-dots span { background: rgba(255,255,255,0.22); }
 }
 .sheet.in .sheet-card { transform: none; }
 .sheet-card.dragging { transition: none; }
+/* the card ducks out of the way (e.g. Feel it again on a wiggle) so the pocket shows, then comes back */
+.sheet.lowered { background: rgba(0,0,0,0); pointer-events: none; }
+.sheet.in.lowered .sheet-card { transform: translateY(calc(100% + 40px)); transition-duration: 0.36s; }
 .sheet-card.tall { min-height: 80vh; }
 .grabber { position: sticky; top: 0; z-index: 3; height: 18px; display: flex; justify-content: center; align-items: flex-end; background: #fff; touch-action: none; }
 .grabber::after { content: ''; width: 38px; height: 5px; border-radius: 3px; background: #D5D5DA; }

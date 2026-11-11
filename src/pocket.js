@@ -198,13 +198,25 @@ export class Pocket {
     this.parts.push({ type: 'emojifly', ch, x: this.W - 48, y: this.H - 60, tx: { x: this.W / 2 + rand(-40, 40), y: -70 }, life: 0.8, max: 0.8, size: 46, rot: 0, toSky: true });
   }
   wiggle(pattern) {
-    // pattern: [on, off, on, off...] in ms, played as dance pulses on whichever worm lives here
-    const w = this.worm; if (!w) return;
+    // pattern: [on, off, on, off...] in ms, played as dance pulses on whichever worm lives here,
+    // with music notes floating up off its head. Returns how long it lasts (ms).
+    const w = this.worm; if (!w) return 0;
     let t = 0;
     pattern.forEach((ms, i) => {
-      if (i % 2 === 0) setTimeout(() => { w.dance = Math.max(w.dance, ms / 1000 + 0.15); w.danceAmp = this.R * 0.55; w.happy = 1; }, t);
+      if (i % 2 === 0) setTimeout(() => {
+        w.dance = Math.max(w.dance, ms / 1000 + 0.15); w.danceAmp = this.R * 0.55; w.happy = 1;
+        const n = ms > 250 ? 3 : ms > 110 ? 2 : 1;
+        for (let k = 0; k < n; k++) this.note(k * 0.12);
+      }, t);
       t += ms;
     });
+    return t;
+  }
+  // one 🎵 / 🎶 drifting up off the worm's head
+  note(delay = 0) {
+    const w = this.worm; if (!w) return;
+    const h = w.head();
+    this.parts.push({ type: 'note', ch: Math.random() < 0.5 ? '🎵' : '🎶', x: h.x + rand(-10, 10), y: h.y - this.R * 0.4, vx: rand(-45, 45), vy: rand(-110, -70), delay, life: 1.7, max: 1.7, size: rand(20, 28), rot: rand(-0.35, 0.35), ph: rand(0, 6) });
   }
   knocked() {
     this.shake = 0.6; this.jolt(0.6);
@@ -594,7 +606,7 @@ export class Pocket {
         continue;
       }
       if (p.ty != null) { p.y += (p.ty - p.y) * Math.min(1, dt * 3.4); continue; } // floating down to a spot
-      p.vy = (p.vy || 0) + (p.type === 'heart' ? -20 : p.type === 'drop' ? 300 : p.type === 'z' ? -10 : p.type === 'emojibig' ? 40 : 120) * dt * (p.type === 'emojiout' ? 0.6 : 1);
+      p.vy = (p.vy || 0) + (p.type === 'heart' ? -20 : p.type === 'drop' ? 300 : p.type === 'z' ? -10 : p.type === 'note' ? -25 : p.type === 'emojibig' ? 40 : 120) * dt * (p.type === 'emojiout' ? 0.6 : 1);
       p.x += (p.vx || 0) * dt; p.y += p.vy * dt;
     }
     this.parts = this.parts.filter((p) => p.life > 0 || p.delay > 0);
@@ -691,6 +703,7 @@ export class Pocket {
         case 'ripple': { const k = 1 - p.life / p.max; x.strokeStyle = `rgba(255,255,255,${0.7 * (1 - k)})`; x.lineWidth = 2; x.beginPath(); x.arc(p.x, p.y, 6 + k * 26, 0, 7); x.stroke(); break; }
         case 'emojifly': { const k = 1 - p.life / p.max; drawEmoji(x, p.ch, p.x, p.y, p.size * (p.toSky ? 1 - k * 0.55 : 0.7 + k * 0.4), p.rot); break; }
         case 'emojiout': { const k = 1 - p.life / p.max; x.globalAlpha = Math.min(1, p.life * 2); drawEmoji(x, p.ch, p.x, p.y, p.size * (1 + k * p.grow), p.rot + Math.sin(this.t * 6 + p.size) * 0.15); break; }
+        case 'note': { const k = 1 - p.life / p.max; if (this.sky?.dark) { x.shadowColor = 'rgba(255,255,255,0.95)'; x.shadowBlur = 12 * (this.dpr || devicePixelRatio || 1); } x.globalAlpha = Math.min(1, p.life * 1.6, k * 8); drawEmoji(x, p.ch, p.x + Math.sin(this.t * 5 + p.ph) * 7, p.y, p.size * (0.7 + Math.min(1, k * 5) * 0.3), p.rot + Math.sin(this.t * 4 + p.ph) * 0.25); x.shadowBlur = 0; x.shadowColor = 'transparent'; break; }
         case 'emojibig': { const k = 1 - p.life / p.max; const pop = k < 0.15 ? k / 0.15 : 1; x.globalAlpha = Math.min(1, p.life * 1.5); drawEmoji(x, p.ch, p.x + Math.sin(this.t * 3) * 10, p.y, p.size * (0.4 + 0.75 * pop), p.rot + Math.sin(this.t * 4) * 0.12); break; }
       }
       x.restore();

@@ -300,8 +300,19 @@ export function openItem(app, it) {
       break;
     }
     case 'wiggle': {
-      const feel = () => { buzz(p.pattern || [200]); app.pocket.wiggle(p.pattern || [200]); };
-      body = [h('div.shell-art', { html: glyphTile('sine', GLYPH_COLORS.wiggle, 132) }), h('p.big-quote', p.label ? `“${p.label}”` : 'A wiggle'), btn('Feel it again', feel, 'primary')];
+      const pattern = p.pattern || [200];
+      const feel = () => { buzz(pattern); return app.pocket.wiggle(pattern); };
+      // feel it again: the card drops out of the way so you see your worm dance, then comes back up
+      let back = null;
+      const again = () => {
+        if (back) return;
+        s.el.classList.add('lowered');
+        back = setTimeout(() => {
+          const ms = feel();
+          back = setTimeout(() => { back = null; if (s.el.isConnected) s.el.classList.remove('lowered'); }, ms + 1100);
+        }, 380);
+      };
+      body = [h('div.shell-art', { html: glyphTile('sine', GLYPH_COLORS.wiggle, 132) }), h('p.big-quote', p.label ? `“${p.label}”` : 'A wiggle'), btn('Feel it again', again, 'primary')];
       setTimeout(feel, 400);
       break;
     }
