@@ -21,7 +21,7 @@ const PILE_MAX = 15;
 export const LEVEL = { 3: 'Adore', 2: 'Love', 1: 'Like', [-1]: 'Don\'t like', [-2]: 'Dislike', [-3]: 'Hate' };
 const YOU = { 3: 'adore', 2: 'love', 1: 'like', [-1]: 'don\'t like', [-2]: 'dislike', [-3]: 'hate' };
 const THEY = { 3: 'adores', 2: 'loves', 1: 'likes', [-1]: 'doesn\'t like', [-2]: 'dislikes', [-3]: 'hates' };
-const STEPS = [0.14, 0.32, 0.52]; // share of the card's width for each level
+const STEPS = [0.1, 0.22, 0.36]; // share of the card's width for each level (Manu: closer together)
 
 const KINDS = { chair: 'Chairs', lamp: 'Lamps', furniture: 'Furniture', house: 'Houses', building: 'Buildings' };
 const GROUP = { chair: 'chair', lamp: 'object', furniture: 'object', house: 'house', building: 'building' };
@@ -216,37 +216,35 @@ export function DesignPage(app, root) {
     undoBtn.disabled = !history.length;
     const m = bothLike(); count.textContent = m ? String(m) : '';
     if (failed === 'deck' || (!deck && !st)) {
-      meta.textContent = shortDate(app.today()).toUpperCase();
+      meta.textContent = '\u00a0';
       stage.replaceChildren(h('div.dt-empty', h('p', failed === 'deck' ? 'The deck needs a signal the first time.' : 'Shuffling the deck…')));
       return;
     }
     if (!deck) return;
     const today = dealtOn(dayIndex());
     const p = pile();
-    const left = p.filter((x) => x.i === dayIndex()).length;
-    const earlier = p.length - left;
-    meta.textContent = [`NO. ${String(dayIndex() + 1).padStart(2, '0')}`, shortDate(app.today()).toUpperCase(),
-      !today.length ? 'DECK DONE' : left ? `${left} LEFT` : earlier ? `${earlier} FROM EARLIER` : 'DONE',
-      left && earlier ? `${earlier} FROM EARLIER` : null].filter(Boolean).join(' · ');
+    meta.textContent = `${p.length} LEFT`; // just how many are left to answer (Manu)
     if (!p.length) { stage.replaceChildren(donePanel(today)); return; }
     const W = stage.clientWidth || window.innerWidth - 32, H = stage.clientHeight || window.innerHeight * 0.6;
     const cards = p.slice(0, 2).map((x, k) => cardEl(x, W, H, k));
-    if (rising) cards[0].classList.add('rise');
+    const top = cards[0];
+    if (rising) top.classList.add('rise');
     rising = false;
-    stage.replaceChildren(...cards.reverse());
+    stage.replaceChildren(...cards.reverse(), top._rate);
     prefetch(p.slice(2, 7).map((x) => x.c));
   }
 
   // A card is a little article: the photo edge to edge at its own shape, then the name and who
   // made it. Tapping the text (or Read) slides the rest of the article up over the photo.
+  // The card itself is the whole width of the screen with white margins (it extends past the
+  // stage, see .dt-card), so a swiped card reads as a page, not a photo cut out of one.
   function cardEl(x, W, H, depth) {
     const c = x.c;
     const foot = 38;
     const room = H - foot - 150; // the photo leaves at least this much for the name and maker
     // its own shape, allowed to run a little taller (cropping the sides) so less page sits empty
     const picH = Math.round(clamp(W * (c.h / c.w) * 1.22, Math.min(170, room), room));
-    const rate = h('div.dt-rate', h('b'), scaleEl(0));
-    const pic = h('div.dt-pic', { style: { height: `${picH}px` } }, img(c, '.dt-img'), rate);
+    const pic = h('div.dt-pic', { style: { height: `${picH}px` } }, img(c, '.dt-img'));
     const long = c.name.length > 26;
     const readBtn = h('button.dt-read', { type: 'button' }, 'READ');
     const text = h('div.dt-text',
@@ -262,15 +260,22 @@ export function DesignPage(app, root) {
       pic.style.height = on ? `${Math.round(Math.min(picH, H * 0.28))}px` : `${picH}px`;
       text.scrollTop = 0;
     };
+    // a drag that ends where it started (or a mouse drag) still fires a click; that's not a tap
+    const tapped = () => performance.now() - (el._dragEnd || 0) > 300;
     readBtn.addEventListener('click', () => flip());
-    text.addEventListener('click', (e) => { if (!el.classList.contains('open') && !e.target.closest('a')) flip(true); });
-    pic.addEventListener('click', () => { if (el.classList.contains('open')) flip(false); });
-    if (!depth) drag(el, x, rate);
+    text.addEventListener('click', (e) => { if (tapped() && !el.classList.contains('open') && !e.target.closest('a')) flip(true); });
+    pic.addEventListener('click', () => { if (tapped() && el.classList.contains('open')) flip(false); });
+    if (!depth) {
+      // the level you're dragging to sits on the page over the photo, not on the card, so it stays
+      // readable however far the card goes
+      el._rate = h('div.dt-rate', { style: { top: `${picH / 2}px` } }, h('b'), scaleEl(0));
+      drag(el, x, el._rate, pic);
+    }
     return el;
   }
 
   // Gradual swipe: the further you drag, the stronger the feeling. Let go to rate at that level.
-  function drag(el, x, rate) {
+  function drag(el, x, rate, pic) {
     let s = null, lv = 0;
     const W = () => el.offsetWidth || window.innerWidth;
     const levelAt = (dx) => { const r = Math.abs(dx) / W(); const n = r < STEPS[0] ? 0 : r < STEPS[1] ? 1 : r < STEPS[2] ? 2 : 3; return Math.sign(dx) * n; };
@@ -281,17 +286,25 @@ export function DesignPage(app, root) {
       rate.style.opacity = lv ? 1 : clamp(Math.abs(dx) / (W() * STEPS[0]), 0, 1) * 0.5;
       rate.style.transform = `translate(-50%, -50%) scale(${1 + Math.abs(lv) * 0.07})`;
     };
+    el.addEventListener('dragstart', (e) => e.preventDefault()); // dragging selected text would cancel the swipe
     el.addEventListener('pointerdown', (e) => {
-      if (busy || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button, a') || (el.classList.contains('open') && e.target.closest('.dt-text'))) return;
-      s = { id: e.pointerId, x: e.clientX, y: e.clientY, hist: [{ x: e.clientX, t: performance.now() }], moved: false };
-      try { el.setPointerCapture(e.pointerId); } catch { /* */ }
-      el.style.transition = 'none';
+      if (busy || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button, a')) return;
+      // while reading, the text scrolls up and down and still swipes sideways
+      const reading = el.classList.contains('open') && !!e.target.closest('.dt-text');
+      s = { id: e.pointerId, x: e.clientX, y: e.clientY, hist: [{ x: e.clientX, t: performance.now() }], moved: false, reading };
+      if (!reading) { try { el.setPointerCapture(e.pointerId); } catch { /* */ } }
     });
     el.addEventListener('pointermove', (e) => {
       if (!s || e.pointerId !== s.id) return;
       const dx = e.clientX - s.x, dy = e.clientY - s.y;
-      if (!s.moved && Math.hypot(dx, dy) < 5) return;
-      if (!s.moved) el.classList.add('dragging');
+      if (!s.moved && Math.hypot(dx, dy) < 6) return;
+      if (!s.moved) {
+        if (s.reading && Math.abs(dy) > Math.abs(dx)) { s = null; return; } // a scroll, not a swipe
+        if (s.reading) { try { el.setPointerCapture(e.pointerId); } catch { /* */ } window.getSelection()?.removeAllRanges(); }
+        el.style.transition = 'none';
+        el.classList.add('dragging');
+        rate.style.top = `${pic.offsetHeight / 2}px`;
+      }
       s.moved = true;
       el.style.transform = `translate3d(${dx}px, ${dy * 0.25}px, 0) rotate(${(dx / W()) * 10}deg)`;
       show(dx);
@@ -302,9 +315,15 @@ export function DesignPage(app, root) {
       const dx = e.clientX - s.x, dy = e.clientY - s.y;
       const a = s.hist[0], z = s.hist[s.hist.length - 1];
       const v = (z.x - a.x) / Math.max(16, z.t - a.t);
+      const moved = s.moved;
       s = null;
+      if (!moved) return;
+      el._dragEnd = performance.now();
       const score = lv || (Math.abs(v) > 0.6 && Math.abs(dx) > 30 ? Math.sign(dx) : 0);
-      if (score) return commit(x, score, el, dy);
+      if (score) {
+        rate.style.transition = 'opacity 0.2s 0.12s'; rate.style.opacity = '0';
+        return commit(x, score, el, dy);
+      }
       el.classList.remove('dragging');
       el.style.transition = 'transform 0.42s cubic-bezier(.2,1.4,.4,1)';
       el.style.transform = '';
