@@ -138,10 +138,10 @@ export function mockBackend() {
     ds.started = day(-2);
     try {
       const order = dealOrder(await loadDeck(), hole.id);
-      const likes = (id, salt) => hash(id + salt) % 100 < 60;
-      order.slice(0, 5).forEach((c) => { ds.swipes[0].set(c.id, { liked: likes(c.id, 'm'), day: day(-2) }); ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(-2) }); });
-      order.slice(5, 10).forEach((c) => ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(-1) }));
-      order.slice(10, 13).forEach((c) => ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(0) }));
+      const score = (id, salt) => { const k = hash(id + salt) % 100; return k < 14 ? -3 : k < 28 ? -2 : k < 42 ? -1 : k < 62 ? 1 : k < 82 ? 2 : 3; };
+      order.slice(0, 5).forEach((c) => { ds.swipes[0].set(c.id, { score: score(c.id, 'm'), day: day(-2) }); ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-2) }); });
+      order.slice(5, 10).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-1) }));
+      order.slice(10, 13).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(0) }));
     } catch (e) { console.warn('demo deck', e); }
   }
 
@@ -285,7 +285,7 @@ export function mockBackend() {
         pending: [...t.keys()].filter((k) => !m.has(k)),
       };
     },
-    async dsSwipe(item, day, liked) { ds.swipes[0].set(item, { liked, day }); const t = ds.swipes[1].get(item); return { item, liked, theirs: t ? t.liked : null }; },
+    async dsSwipe(item, day, score) { ds.swipes[0].set(item, { score, day }); const t = ds.swipes[1].get(item); return { item, score, theirs: t ? t.score : null }; },
     async dsUndo(item) { ds.swipes[0].delete(item); },
     async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },
     async nudge() {},

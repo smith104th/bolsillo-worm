@@ -91,7 +91,7 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   const grab = h('div.grabber');
   const head = h('header.sheet-head', h('h2', title), h('button.icon-btn', { onclick: close, 'aria-label': 'Close' }, icon('close')));
   const card = h(`div.sheet-card${wide ? '.wide' : ''}${tall ? '.tall' : ''}`, grab, head, h('div.sheet-body', body));
-  if (className) card.classList.add(className);
+  if (className) card.classList.add(...className.split(' ').filter(Boolean));
   const el = h('div.sheet', { onclick: (e) => { if (e.target === el) close(); } }, card);
   // swipe down on the grabber or title to dismiss
   let y0 = null, dy = 0;

@@ -55,9 +55,6 @@ writeFileSync(`${OUT}/.nojekyll`, '');
 const fonts = {
   'geist.woff2': '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2',
   'geist-mono.woff2': '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2',
-  // Design Tinder's names and big numbers; only downloaded when that page shows them
-  'fraunces.woff2': '@fontsource-variable/fraunces/files/fraunces-latin-wght-normal.woff2',
-  'fraunces-italic.woff2': '@fontsource-variable/fraunces/files/fraunces-latin-wght-italic.woff2',
 };
 for (const [to, from] of Object.entries(fonts)) copyFileSync(`node_modules/${from}`, `${OUT}/fonts/${to}`);
 

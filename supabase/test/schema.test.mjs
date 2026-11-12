@@ -307,24 +307,26 @@ console.log('all schema tests passed');
   await fails(B, 'select * from design_decks', [], /permission denied/);
   let [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
   assert.equal(sa.started, sa.today); assert.deepEqual(sa.mine, []); assert.deepEqual(sa.theirs, []); assert.deepEqual(sa.pending, []);
-  const swipe = (u, item, liked, day = sa.today) => as(u, 'select wh_ds_swipe($1,$2,$3) r', [item, day, liked]);
-  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['Bad Item!', sa.today, true], /bad_item/);
-  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', '2030-01-01', true], /bad_day/);
+  const swipe = (u, item, score, day = sa.today) => as(u, 'select wh_ds_swipe($1,$2,$3) r', [item, day, score]);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['Bad Item!', sa.today, 1], /bad_item/);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', '2030-01-01', 1], /bad_day/);
   await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', sa.today, null], /bad_swipe/);
-  let [{ r }] = await swipe(A, 'egg', true);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', sa.today, 0], /bad_swipe/);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', sa.today, 4], /bad_swipe/);
+  let [{ r }] = await swipe(A, 'egg', 3);
   assert.equal(r.theirs, null);
-  await swipe(A, 'pantheon', false);
+  await swipe(A, 'pantheon', -2);
   // B sees that A swiped two cards, not which way
   let [{ wh_ds_state: sb }] = await as(B, 'select wh_ds_state()');
   assert.equal(sb.started, sa.started); assert.deepEqual(sb.pending, ['egg', 'pantheon']); assert.deepEqual(sb.theirs, []);
-  [{ r }] = await swipe(B, 'egg', true);
-  assert.equal(r.theirs, true); // a match
+  [{ r }] = await swipe(B, 'egg', 1);
+  assert.equal(r.theirs, 3); // a match: A adores it, B likes it
   [{ wh_ds_state: sb }] = await as(B, 'select wh_ds_state()');
-  assert.deepEqual(sb.pending, ['pantheon']); assert.equal(sb.theirs.length, 1); assert.equal(sb.theirs[0].liked, true);
+  assert.deepEqual(sb.pending, ['pantheon']); assert.equal(sb.theirs.length, 1); assert.equal(sb.theirs[0].score, 3);
   // changing your mind keeps one row; undo removes yours only
-  await swipe(A, 'pantheon', true);
+  await swipe(A, 'pantheon', 2);
   [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
-  assert.equal(sa.mine.length, 2); assert.equal(sa.mine.find((x) => x.item === 'pantheon').liked, true);
+  assert.equal(sa.mine.length, 2); assert.equal(sa.mine.find((x) => x.item === 'pantheon').score, 2);
   await as(B, 'select wh_ds_undo($1)', ['egg']);
   [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
   assert.equal(sa.mine.length, 2); assert.deepEqual(sa.theirs, []);

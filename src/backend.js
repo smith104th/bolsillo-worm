@@ -149,7 +149,7 @@ export function supabaseBackend(cfg) {
     hqDelete: (id) => rpc('wh_hq_delete', { p_id: id }),
     // Design Tinder: the deck's start day for this pocket and who swiped what (theirs only once you have)
     dsState: () => rpc('wh_ds_state'),
-    dsSwipe: (item, day, liked) => rpc('wh_ds_swipe', { p_item: item, p_day: day, p_liked: liked }),
+    dsSwipe: (item, day, score) => rpc('wh_ds_swipe', { p_item: item, p_day: day, p_score: score }),
     dsUndo: (item) => rpc('wh_ds_undo', { p_item: item }),
     // the shelf: everything left for later, plus what either of you kept
     async shelf() {
