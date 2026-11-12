@@ -295,7 +295,7 @@ fagus|Fagus Gropius Hauptgebaeude 200705 wiki front.jpg|960|576|ct|Carsten Janss
 chilehaus|Chilehaus - Hamburg.jpg|960|969|ct|Esther Westerveld|CC BY 2.0
 helsinki-station|Estación central de FF.CC. de Helsinki, Finlandia, 2012-08-14, DD 05.JPG|960|716|ct|Diego Delso|CC BY-SA 3.0
 temppeliaukio|Temppeliaukio Church Helsinki.jpg|960|395|ct|Jens Strauß|CC BY-SA 4.0
-klippan|Sankt Petri kyrka Klippan vattendammen.JPG|960|643|ct|Bengt Oberger|CC BY-SA 3.0
+klippan|Vindue fra Skt. Petri Kirke i Klippan.jpg|960|720|ct|Orf3us|CC BY-SA 4.0
 louisiana|The modern art museum Louisiana, Humlebæk, Denmark - panoramio.jpg|960|588|ct|Helle Krog|CC BY 3.0
 bruder-klaus|Chapel in the fields.jpg|960|641|ct|Hausleiten|CC BY-SA 4.0
 arab-world|Paris - Institut du Monde Arabe (27136624340).jpg|960|640|et|Fred Romero|CC BY 2.0
@@ -351,7 +351,6 @@ toronto-city-hall|Toronto - ON - Rathaus und Nathan Phillips Square.jpg|960|482|
 parthenon|The Parthenon in Athens.jpg|960|675|ct|Steve Swayne|CC BY 2.0
 lovell-beach|Lovell Beach House in Newport Beach, CA.jpg|960|720|ct|Codera23|CC BY-SA 4.0
 lovell-health|Lovell House, Los Angeles, California.JPG|960|720|ct|Los Angeles|CC BY-SA 3.0
-frey-house|Albert Frey House (Palm Springs, California).jpg|960|640|ct|Visitor7|CC BY-SA 3.0
 dymaxion|Henry Ford Museum July 2013 2 (Dymaxion House).jpg|960|720|ct|Michael Barera|CC BY-SA 4.0
 villa-noailles|Villa Noailles (Mallet-Stevens, 1923).JPG|960|720|ct|Daniel Wilk|CC BY-SA 3.0
 villa-girasole|Veduta di Villa Girasole, Marcellise, Verona (1936).jpg|960|752|ct||Public domain
