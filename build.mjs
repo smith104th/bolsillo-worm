@@ -55,6 +55,8 @@ writeFileSync(`${OUT}/.nojekyll`, '');
 const fonts = {
   'geist.woff2': '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2',
   'geist-mono.woff2': '@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2',
+  // the game names on the Games page (Manu: a display serif)
+  'instrument-serif.woff2': '@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2',
 };
 for (const [to, from] of Object.entries(fonts)) copyFileSync(`node_modules/${from}`, `${OUT}/fonts/${to}`);
 
