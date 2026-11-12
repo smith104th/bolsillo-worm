@@ -834,7 +834,7 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 /* ── Design Tinder: each card a little article. The app's type and colors on a white page,
    square corners, the photo edge to edge (Manu, Nov 12) ── */
 #screen-design { transform: translate3d(300%,0,0); overflow: hidden; background: #fff; color: var(--ink); display: flex; flex-direction: column; --rule: 1px solid rgba(11,11,12,0.12); }
-.dt-head { flex: none; padding: calc(var(--safe-t) + 12px) 22px 0; }
+.dt-head { position: relative; z-index: 4; flex: none; padding: calc(var(--safe-t) + 12px) 22px 0; } /* above the cards, so the g in Design keeps its tail */
 .dt-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dt-meta { flex: 1; min-width: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: #D90042; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dt-title { margin: 8px 0 0; font: 600 46px/0.98 var(--sans); letter-spacing: -0.05em; color: var(--ink); white-space: nowrap; }
