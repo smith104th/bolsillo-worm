@@ -4,13 +4,12 @@
 // on to the shelf and the pocket as before.
 // Laid out like the shelf (Manu): the header, both worms wandering together in a strip of sky,
 // then the bands, white with hairlines between them and the names in each game's color. The
-// sky here is always the daytime blue, whatever time it is where they are.
+// sky follows the time of day like every other page, and the bands start level with the shelf's.
 import { h } from './util.js';
 import { makeSky, SKY } from './draw.js';
 import { buzz } from './feel.js';
 import { roam } from './shelf.js';
 
-export const GAMES_SKY = SKY;
 export const GAMES_BOTTOM = '#FFFFFF';
 export const GAMES = [
   { id: 'soil', name: 'Soil', fg: '#0F7A4E' },
@@ -20,7 +19,7 @@ export const GAMES = [
 
 // status(id) → short text for the band's pill when something waits there, else null
 export function GamesPage(app, root, { open, status }) {
-  let W = 0, H = 0, roamer = null;
+  let W = 0, H = 0, skyKey = null, roamer = null;
   const bg = h('canvas.shelf-sky');
   const meta = h('div.hd-meta');
   const roamCv = h('canvas.roamer', { 'aria-label': 'Your two worms, wandering' });
@@ -29,13 +28,13 @@ export function GamesPage(app, root, { open, status }) {
   const scroll = h('div.shelf-scroll', h('header.shelf-head', meta, h('div.hd-name', 'Games')), h('div.shelf-content.games-content', roamWrap, bands));
   root.replaceChildren(bg, scroll);
 
-  // always the daytime gradient (Manu), only redrawn when the screen size changes
-  function setSky() {
+  // the same sky as every other page (it follows the time of day where they are)
+  function setSky(sky) {
     const w = window.innerWidth, hh = window.innerHeight;
-    if (W === w && H === hh) return;
-    W = w; H = hh;
+    if (skyKey === sky?.key && W === w && H === hh) return;
+    W = w; H = hh; skyKey = sky?.key;
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    const c = makeSky(w, hh, dpr, GAMES_SKY);
+    const c = makeSky(w, hh, dpr, sky || SKY);
     bg.width = c.width; bg.height = c.height; bg.getContext('2d').drawImage(c, 0, 0);
   }
 
@@ -60,9 +59,10 @@ export function GamesPage(app, root, { open, status }) {
     }));
   }
 
+  render(); // drawn from the start, so the first swipe over from the shelf already shows it
   return {
     render, setSky,
-    show() { setSky(); render(); worms(); roamer?.start(); },
+    show() { render(); worms(); roamer?.start(); },
     hide() { roamer?.stop(); },
   };
 }

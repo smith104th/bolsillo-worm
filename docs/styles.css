@@ -966,7 +966,11 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 
 /* ── Games: the third page (Manu, Nov 12). Bands like the shelf's; each game slides in over it ── */
 #screen-games { transform: translate3d(200%,0,0); overflow: hidden; background: #B7E0FF; }
-.games-content .bands { margin-top: 30px; }
+/* level with the shelf: its bands start right under the worm strip, and its header is taller by the
+   For you / From you tabs (14px margin + 42px), so the Games strip is that much taller */
+.games-content .roam-wrap { height: calc(176px + 56px); }
+.games-content .bands { margin-top: 0; }
+#screen-games .hd-meta:empty::before { content: '\00a0'; }
 /* white bands with hairlines between them; each name in its game's color, the pill filled with it */
 .band.game { min-height: 104px; }
 .band.game + .band.game { border-top: 1px solid rgba(11,11,12,0.12); }
