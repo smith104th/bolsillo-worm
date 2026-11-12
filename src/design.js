@@ -467,7 +467,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       items.length ? grid(items) : h('p.dt-empty-line', empty));
     sheet('Matches', [
       h('div.dt-hero',
-        h('span.dt-hero-label', 'YOU AGREE ON'),
+        h('span.dt-hero-label', 'YOU AGREE ON, ALL TIME'),
         h('div.dt-hero-num', list.length ? pct(agree / list.length) : '0%'),
         h('p', list.length ? `${agree} of the ${list.length} cards you've both swiped landed on the same side.` : `Once you and ${n} have both swiped a card, it lands here.`)),
       statsList(list),
@@ -481,7 +481,8 @@ export function DesignPage(app, root, { onBack } = {}) {
   // both swiped (so it's a fair comparison).
   function statsList(list) {
     const n = them();
-    const head = h('div.dt-label', h('span', 'TASTE PROFILES'), h('span', `${list.length} SHARED`));
+    // every card you've both ever swiped, not just today's (Manu: the stats keep adding up)
+    const head = h('div.dt-label', h('span', 'TASTE PROFILES'), h('span', `ALL TIME · ${list.length} CARDS`));
     if (!list.length) return h('section.dt-sec', head, h('p.dt-empty-line', 'Stats start with the first card you\'ve both swiped.'));
     const a = taste(list, 'me'), b = taste(list, 'them');
     const v = (x) => x ?? '–';
