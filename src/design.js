@@ -133,14 +133,24 @@ function more(c) {
     h('a.dt-credit', { href: c.source, target: '_blank', rel: 'noopener' }, `Photo: ${c.credit || 'Wikimedia Commons'}`));
 }
 
-function img(c, cls = '') {
-  const i = h(`img${cls}`, { alt: '', draggable: false, decoding: 'async' });
-  i.crossOrigin = 'anonymous';
-  i.src = c.img;
+// Wikimedia photos load with CORS (the service worker keeps them for offline). Photos linked from
+// other sites load plainly with no referrer, and fall back to the card's Wikimedia photo if the link breaks.
+const WIKI = /^https:\/\/upload\.wikimedia\.org\//;
+export function setPhoto(i, c) {
+  const use = (src) => {
+    if (WIKI.test(src)) { i.crossOrigin = 'anonymous'; i.removeAttribute('referrerpolicy'); }
+    else { i.removeAttribute('crossorigin'); i.referrerPolicy = 'no-referrer'; }
+    i.src = src;
+  };
+  i.onerror = c.fallback ? () => { if (i.src !== c.fallback) { i.onerror = null; use(c.fallback); } } : null;
+  use(c.img);
   return i;
 }
+function img(c, cls = '') {
+  return setPhoto(h(`img${cls}`, { alt: '', draggable: false, decoding: 'async' }), c);
+}
 function prefetch(cards) {
-  for (const c of cards) { const i = new Image(); i.crossOrigin = 'anonymous'; i.decoding = 'async'; i.src = c.img; }
+  for (const c of cards) { const i = new Image(); i.decoding = 'async'; setPhoto(i, c); }
 }
 
 // ── the page ────────────────────────────────────────────────
@@ -437,7 +447,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       h('h2.dt-done-title', 'Done for today.'),
       h('p.dt-lede', waiting ? `${n} hasn't swiped ${waiting === today.length ? 'today\'s yet' : `${waiting} of them yet`}. New five tomorrow.` : 'New five tomorrow.'),
       h('div.dt-five', today.map((x) => h('button.dt-mini', { type: 'button', onclick: () => cardSheet(x.c) },
-        h('div.dt-mini-pic', h('img', { crossOrigin: 'anonymous', src: x.c.img, alt: '' })),
+        h('div.dt-mini-pic', setPhoto(h('img', { alt: '' }), x.c)),
         h('div.dt-mini-row', h('span', 'You'), scaleEl(mine.get(x.c.id)?.score || 0)),
         h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0))))),
       h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'),
@@ -458,7 +468,7 @@ export function DesignPage(app, root, { onBack } = {}) {
     const split = list.filter((x) => Math.sign(x.me) !== Math.sign(x.them));
     const neither = list.filter((x) => x.me < 0 && x.them < 0);
     const grid = (items) => h('div.dt-grid', items.map((x) => h('button.dt-tile', { type: 'button', onclick: () => cardSheet(x.c) },
-      h('div.dt-tile-pic', h('img', { crossOrigin: 'anonymous', loading: 'lazy', src: x.c.img, alt: '' })),
+      h('div.dt-tile-pic', setPhoto(h('img', { loading: 'lazy', alt: '' }), x.c)),
       h('b', x.c.name),
       h('div.dt-tile-row', h('span', 'You'), scaleEl(x.me)),
       h('div.dt-tile-row', h('span', n), scaleEl(x.them)))));

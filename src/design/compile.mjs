@@ -27,6 +27,14 @@ export function compileDeck() {
     const [id, file, w, h, where, by, lic] = l.split('|');
     photos.set(id, { file, w: +w, h: +h, where, by, lic });
   }
+  // Better photos linked from other sites (links.txt). The Wikimedia one stays as the fallback.
+  const links = new Map();
+  for (const l of rows('links.txt')) {
+    if (!l.trim() || l.startsWith('#')) continue;
+    const [id, url, w, h, credit, page] = l.split('|');
+    if (!/^https:\/\//.test(url) || !(+w > 0) || !(+h > 0)) throw new Error(`links.txt: bad line for ${id}`);
+    links.set(id, { url, w: +w, h: +h, credit, page });
+  }
   const editions = [];
   const ids = new Set();
   for (const l of rows('deck.txt')) {
@@ -51,11 +59,18 @@ export function compileDeck() {
       palette: tags[1] === 'c' ? 'color' : 'neutral',
       feel: tags[2] === 'm' ? 'minimal' : 'expressive',
       note,
-      img: imageUrl(p.file, p.where), w: p.w, h: p.h,
-      credit: [p.by, p.lic].filter(Boolean).join(' · '),
-      source: pageUrl(p.file, p.where),
+      ...(links.has(id) ? {
+        img: links.get(id).url, w: links.get(id).w, h: links.get(id).h,
+        credit: links.get(id).credit, source: links.get(id).page,
+        fallback: imageUrl(p.file, p.where),
+      } : {
+        img: imageUrl(p.file, p.where), w: p.w, h: p.h,
+        credit: [p.by, p.lic].filter(Boolean).join(' · '),
+        source: pageUrl(p.file, p.where),
+      }),
     });
   }
+  for (const id of links.keys()) if (!ids.has(id)) throw new Error(`links.txt: no card ${id}`);
   return { v: 1, editions };
 }
 
