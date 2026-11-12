@@ -268,3 +268,134 @@ bosco|Bosco Verticale Milano.jpg|960|1280|et|Darsheni|CC BY-SA 3.0
 louvre-abu-dhabi|LouvreAD exterior.jpg|960|689|et|Boubloub|CC BY-SA 4.0
 hassan-ii|Hassan II mosque, Casablanca 2.jpg|960|998|et|Petar Milošević|CC BY-SA 4.0
 doha-mia|Museum of Islamic Art in Doha, Qatar (32673171432).jpg|960|636|et|Ralf Steinberger|CC BY 2.0
+# Edition 2: resolved and checked by eye on Nov 12, 2026.
+kunsthaus-graz|Graz Kunsthaus-4476.jpg|960|720|ct|Isiwal|CC BY-SA 4.0
+kimbell|Kimbell Art Museum Highsmith.jpg|960|740|ct|Carol M. Highsmith|Public domain
+exeter-library|Phillips-Exeter-Academy-Library-Interior-Exeter-New-Hampshire-Apr-2014-a.jpg|960|591|ct|Gunnar Klack|CC BY-SA 4.0
+pampulha|Igreja de São Francisco de Assis Jani Pereira (6).jpg|960|720|ct|Jani Pereira|CC BY-SA 4.0
+flatiron|2003-03-Flatiron-Building-New-York-City.jpg|960|1455|ct|Gunnar Klack|CC BY-SA 4.0
+empire-state|Empire State Building (aerial view).jpg|846|1270|co|Sam Valadi|Public domain
+guaranty|Guaranty (Prudential) Building, Church Street and Pearl Street, Buffalo, NY - 52674539907.jpg|960|1280|ct|w_lemay|CC BY-SA 2.0
+johnson-wax|Racine October 2023 102 (S. C. Johnson and Son Administration Building and Research Tower).jpg|960|640|ct|Michael Barera|CC BY-SA 4.0
+neue-nationalgalerie|Berlin Neue Nationalgalerie asv2021-11 img2.jpg|960|540|ct|A.Savin|FAL
+beinecke|20170420 Beinecke Rare Book Library Interior Yale University New Haven Connecticut.jpg|960|778|ct|Michael Kastelic|CC BY-SA 4.0
+breuer-building|6 16 2021 Frick old Whitney building 945 Madison Avenue NYC.jpg|960|720|ct|Wil540|CC BY-SA 4.0
+seattle-library|Seattle Library 01.jpg|960|690|ct|Ɱ|CC BY-SA 4.0
+vitra-fire|Vitra Campus - Hadid Fire Station - full view, blue sky.jpg|960|720|ct|Marsupium|CC0
+national-theatre|Royal National Theatre - London.jpg|960|640|ct|Carlos Delgado|CC BY-SA 3.0
+isokon|Isokon Flats, Lawn Road - geograph.org.uk - 2670870.jpg|960|602|ct|Jim Osley|CC BY-SA 2.0
+de-la-warr|De La Warr Pavilion, Bexhill.jpg|960|394|ct|Alan Stanton|CC BY-SA 2.0
+glasgow-art|Schoolofart1.jpg|960|720|ct|Twid|CC BY-SA 3.0
+battersea|Battersea Power Station from the river.jpg|960|640|ct|Alberto Pascual|CC BY-SA 3.0
+stoclet|20120923 Brussels PalaisStoclet Hoffmann DSC06725 PtrQs.jpg|960|540|ct|PtrQs|CC BY-SA 4.0
+hotel-tassel|Tassel House stairway.JPG|960|813|ct|Henry Townsend|Public domain
+looshaus|Looshaus Michaelerplatz.JPG|960|688|ct|Thomas Ledl|CC BY-SA 4.0
+postsparkasse|Otto Wagner's main post office in Vienna, Austria (22691715830).jpg|960|640|ct|traveljunction|CC BY-SA 2.0
+fagus|Fagus Gropius Hauptgebaeude 200705 wiki front.jpg|960|576|ct|Carsten Janssen|CC BY-SA 2.0 de
+chilehaus|Chilehaus - Hamburg.jpg|960|969|ct|Esther Westerveld|CC BY 2.0
+helsinki-station|Estación central de FF.CC. de Helsinki, Finlandia, 2012-08-14, DD 05.JPG|960|716|ct|Diego Delso|CC BY-SA 3.0
+temppeliaukio|Temppeliaukio Church Helsinki.jpg|960|395|ct|Jens Strauß|CC BY-SA 4.0
+klippan|Sankt Petri kyrka Klippan vattendammen.JPG|960|643|ct|Bengt Oberger|CC BY-SA 3.0
+louisiana|The modern art museum Louisiana, Humlebæk, Denmark - panoramio.jpg|960|588|ct|Helle Krog|CC BY 3.0
+bruder-klaus|Chapel in the fields.jpg|960|641|ct|Hausleiten|CC BY-SA 4.0
+arab-world|Paris - Institut du Monde Arabe (27136624340).jpg|960|640|et|Fred Romero|CC BY 2.0
+casa-del-fascio|Como - Casa del Fascio - 27-09-2017.jpg|960|640|ct|Danny Alexander Lettkemann|Public domain
+pirelli|Looking up at Torre Pirelli from Piazza Duca d'Aosta, Milan.jpg|960|1458|et||CC BY-SA 4.0
+lingotto|Lingotto (1966) - Test Track.jpg|960|972|ct|Fiat Historic Centre|Public domain
+san-cataldo|San Cataldo Cemetery, Modena (39522135471).jpg|960|720|ct|Dage - Looking For Europe|CC BY 2.0
+arts-sciences|Sunset In The City Of Arts And Sciences Valencia Spain (58944456).jpeg|960|640|ct|O Palsson|CC BY 3.0
+torres-blancas|TorresBlancas Madrid.jpg|960|1280|ct|Håkan Svensson|CC BY 3.0
+palau-musica|22 11 01 Palau DSCF2611 52502512616 cc1e7db845 k.jpg|960|643|ct|Ralf Roletschek|GFDL 1.2
+metropol-parasol|Metropol Parasol Plaza de la Encarnación 1.jpg|960|640|ct|kallerna|CC BY-SA 4.0
+harpa|Harpa Concert Hall, Reykjavik.jpg|960|640|et|Ivan Sabljak|CC BY-SA 3.0
+hiroshima-peace|Hiroshima Peace Memorial Museum 2009.jpg|960|437|ct|Wiiii|CC BY-SA 3.0
+sendai-mediatheque|Sendai Mediatheque 2009.jpg|857|1280|co|scarletgreen|CC BY 2.0
+kinkakuji|Golden Pavilion Kinkaku-ji water mirror 2024.jpg|960|1440|ct|Nacaru|CC BY-SA 4.0
+jantar-mantar|20191218 Jantar Mantar, Jaipur 0906 8983 DxO.jpg|960|638|ct|Jakub Hałun|CC BY-SA 4.0
+chand-baori|Chand Baori perspective panorama (July 2022).jpg|960|396|ct|Chainwit|CC BY-SA 4.0
+humayun|Tomb of Humayun, Delhi.jpg|960|324|ct|Muhammad Mahdi Karim|GFDL 1.2
+azadi|Azadi Tower (29358497718).jpg|960|540|ct|Blondinrikard Fröberg|CC BY 2.0
+suleymaniye|SüleymaniyeMosqueIstanbul (cropped).jpg|960|718|ct|Hunanuk|CC0
+kuwait-towers|Kuwait Towers RB.jpg|960|1415|et|Richard Bartz|CC BY-SA 3.0
+hsbc-hk|HSBC Building (Hong Kong) 20170808.jpg|960|640|ct|Suicasmo|CC BY-SA 4.0
+potala|Potala Palace in Lhasa, Tibet.jpg|960|633|ct|Jan Kranendonk|CC BY-SA 4.0
+temple-of-heaven|Temple of Heaven 20160323 01.jpg|960|639|ct|Shujianyang|CC BY-SA 4.0
+chengqi-lou|Chengqi Tulou 20140829.JPG|960|600|ct|颐园新居|CC BY-SA 4.0
+borobudur|Borobudur Magelang.jpg|960|639|ct|Zaenulihsan91|CC BY-SA 4.0
+bulguksa|Bulguksa temple entrance gate stairs flower bed and blue sky in Gyeongju South Korea.jpg|960|540|ct|Basile Morin|CC BY-SA 4.0
+taipei-101|Taipei 101 2009 amk.jpg|960|1530|ct|AngMoKio|CC BY-SA 3.0
+lalibela|Ethiopia - sunset at Church of Saint George, Lalibela 01.jpg|960|640|ct|Thomas Fuhrmann|CC BY-SA 4.0
+eastgate|Eastgate Centre, Harare, Zimbabwe.jpg|960|640|ct|David Brazier|CC BY-SA 3.0
+yamoussoukro|Notre dame de la paix yamoussoukro by felix krohn.jpg|960|720|et|Felix Krohn|CC BY-SA 2.0
+cairo-tower|Cairo Tower (14795997855).jpg|960|1445|ct|Jorge Láscar|CC BY 2.0
+bibliotheca|Alexandria's Bibliotheca.jpg|960|640|et|Shivani Singh04|CC BY-SA 4.0
+lagos-theatre|National Theater in Lagos State-Nigeria.jpg|960|480|ct|Omoeko Media|CC BY-SA 4.0
+smiling-lion|O Leão Que Ri building Maputo.JPG|960|720|ct|Jcornelius|CC BY-SA 4.0
+museo-antropologia|2019-02-24 - Museo Nacional de Antropología - 015.jpg|960|1280|ct|Oleg Yunakov|CC BY-SA 4.0
+chichen-itza|Chichen Itza 3.jpg|960|511|ct|Daniel Schwen|CC BY-SA 4.0
+teatro-colon|Teatro Colón - Columbus Theatre - Buenos Aires - Argentina.jpg|960|636|ct|Jimmy Baikovicius|CC BY-SA 2.0
+palacio-barolo|Palacio Barolo visto de frente.jpg|960|720|ct|EEJCC|CC0
+narkomfin|Moscow, Narkomfin building in May 2021 03.jpg|960|640|ct|Retired electrician|CC0
+jested|Jested.jpg|960|674|ct|Bernd Gutte|CC BY-SA 3.0
+slovak-radio|Upside down Pyramid, Bratislava 02.jpg|960|754|ct|Thomas Ledl|CC BY-SA 4.0
+palace-of-culture|Palace of Culture and Science, Warsaw (by Pudelek).jpg|960|696|ct|Pudelek|CC BY-SA 4.0
+olympiastadion|2022-08-21 Olympiapark München by Sandro Halank–025.jpg|960|467|ct|Sandro Halank|CC BY-SA 4.0
+grande-arche|La Grande Arche de la Défense.jpg|960|766|et|Coldcreation|CC BY-SA 2.5
+pompidou-metz|Metz 47.jpg|960|640|et|FrDr|CC BY-SA 4.0
+cube-houses|Cube Houses Rotterdam 02.jpg|960|720|ct|Sindala|CC BY 4.0
+zonnestraal|WLM - EvaM1978 - Zonnestraal.jpg|960|718|ct|EvaM1978|CC BY 2.0
+aqua-tower|Aqua Tower Chicago.jpg|960|1280|ct|George Showman|CC BY 2.0
+sea-ranch|Condominium 1, 110-128 Sea Walk Dr., Sea Ranch, CA 7-5-2010 7-07-18 PM.JPG|960|423|ct|Sanfranman59|CC BY-SA 3.0
+burj-al-arab|Burj Al Arab, Dubai, by Joi Ito Dec2007.jpg|960|1344|et|Joi Ito|CC BY 2.0
+toronto-city-hall|Toronto - ON - Rathaus und Nathan Phillips Square.jpg|960|482|ct|Taxiarchos228|CC BY 3.0
+parthenon|The Parthenon in Athens.jpg|960|675|ct|Steve Swayne|CC BY 2.0
+lovell-beach|Lovell Beach House in Newport Beach, CA.jpg|960|720|ct|Codera23|CC BY-SA 4.0
+lovell-health|Lovell House, Los Angeles, California.JPG|960|720|ct|Los Angeles|CC BY-SA 3.0
+frey-house|Albert Frey House (Palm Springs, California).jpg|960|640|ct|Visitor7|CC BY-SA 3.0
+dymaxion|Henry Ford Museum July 2013 2 (Dymaxion House).jpg|960|720|ct|Michael Barera|CC BY-SA 4.0
+villa-noailles|Villa Noailles (Mallet-Stevens, 1923).JPG|960|720|ct|Daniel Wilk|CC BY-SA 3.0
+villa-girasole|Veduta di Villa Girasole, Marcellise, Verona (1936).jpg|960|752|ct||Public domain
+soane|Sir John Soane's Museum, Lincoln's Inn Fields, London 08.jpg|960|1280|ct|Simon Burchell|CC BY-SA 4.0
+strawberry-hill|Strawberry Hill House from garden in 2012 after restoration.jpg|960|561|ct|Chiswick Chap|CC BY-SA 3.0
+monticello|Thomas Jefferson's Monticello.JPG|960|505|ct|Martin Falbisoner|CC BY-SA 3.0
+hvittrask|Hvitträsk Kirkkonummi 100621.jpg|960|594|ct|Drefer|CC BY-SA 4.0
+glaumbaer|Glaumbaer-52-Museum-Kirche-2018-gje.jpg|960|513|ct|Gerd Eichmann|CC BY-SA 4.0
+shirakawa-go|Gassho-zukuri farmhouse-01.jpg|960|594|ct|Bernard Gagnon|CC BY-SA 3.0
+trulli|Alberobello BW 2016-10-16 13-43-03.jpg|960|646|ct|Berthold Werner|CC BY-SA 3.0
+tongkonan|Tongkonan, Toraja houses.jpg|960|720|ct|RianHS|CC BY-SA 4.0
+musgum|Cam0492 Habitation de Pouss.jpg|960|640|ct|Bruno Trédez|CC BY-SA 4.0
+casas-colgadas|Casas Colgadas.jpg|960|1440|ct|Fernando|CC BY-SA 4.0
+haus-am-horn|Außenaufnahmen Haus am Horn in Weimar 03.jpg|960|479|ct|JensKunstfreund|CC BY-SA 4.0
+eames-lounge|Ngv design, charles eames and herman miller, lounge chair 670, 1956.JPG|960|777|ct|sailko|CC BY 2.5
+cab|Sedia cab anteprima.jpg|960|672|ct|Cassina|CC0
+savonarola|Folding armchair (sedia a Savonarola type) MET SLP1982-1.jpg|960|1280|ct|Metropolitan Museum of Art|CC0
+chippendale|Chippendale Carved Mahogany Side Chair MET DP265161.jpg|960|1379|ct|Metropolitan Museum of Art|CC0
+akan-stool|Stool-Asante (British Museum).jpg|960|657|ct|Ji-Elle|CC BY-SA 4.0
+safari|Safari chair Kaare Klint.jpg|960|1088|ct|Nasjonalmuseet|CC BY-SA 4.0
+domus|Domus tuoli.jpg|960|1284|ct|Otto-Ville Mikkelä|Public domain
+s-chair|S-Chair by Tom Dixon.jpg|672|837|co|Cappellini|CC BY 3.0
+gerald-summers|Gerald Summers armchair 1934 birch plywood 3.JPG|960|1280|ct|Philafrenzy|CC BY-SA 4.0
+thonet-rocker|Moravská galerie 02 - Thonet-Mundus křeslo.jpg|960|720|ct|Dominik Matus|CC BY-SA 3.0
+lamino|Y Ekstroem lamino.jpg|960|739|ct|Holger Ellgaard|CC BY-SA 3.0
+ekstrem|Ekstrem by Terje Ekstrøm.jpg|960|720|ct|Tokumeigakarinoaoshima|CC0
+tripp-trapp|STOKKE TRIPP TRAPP (3891978042).jpg|600|800|co|yosshi|CC BY-SA 2.0
+spaghetti|Spaghetti chair.jpg|960|1280|ct|Pava|Public domain
+aj-lamp|Lamp arne-jacobsen.jpg|960|1208|ct|Christos Vittoratos|CC BY-SA 3.0
+lava-lamp|1990s Mathmos Astro.jpg|900|1500|co|Novemberchild|CC BY-SA 4.0
+murano-chandelier|Lampadario in vetro di Murano - Ca' Rezzonico, Venice.jpg|960|831|ct|Didier Descouens|CC BY-SA 4.0
+galle-lamp|Lampe à décor de prunellier, Émile Gallé.jpg|960|1280|ct|Erigaydon|CC BY-SA 4.0
+bocca|Sofá Bocca, Studio 65.jpg|960|721|ct|Jl FilpoC|CC BY-SA 4.0
+pratone|' 71 - ITALY - Pratone Triennale Design Museum 2011 - Strum - Gufram.JPG|960|720|ct|Pava|CC BY-SA 3.0 it
+billy|IKEA Billy bookshelf (80x106 cm birch veneer).jpg|960|1440|ct|Magnus Bäck|Public domain
+boulle|Clevelandart 1949.539.jpg|960|858|ct|Cleveland Museum of Art|CC0
+arabesco|Arabesque table by Carlo Mollino, V&A London 01.jpg|960|805|ct|14GTR|CC0
+bauhaus-cradle|Peter keler, culla, 1922, 03.JPG|960|959|ct|sailko|CC BY-SA 3.0
+berlin-chair|Gerrit rietveld, sedia berlin, 1923.jpg|960|1255|ct|Sailko|CC BY 3.0
+drouant-chair|"Drouant" Side Chair MET DP108169.jpg|960|1015|ct|Metropolitan Museum of Art|CC0
+fauteuil-jacob|Armchair (Fauteuil à la reine) MET DP160901.jpg|960|1280|ct|Metropolitan Museum of Art|CC0
+hitchcock|Side chair, Lambert Hitchcock (1795-1852), 1826-1829, painted wood and woven rush seat - De Young Museum - DSC00816.JPG|960|1423|ct|Daderot|CC0
+roman-lamp|Terracotta oil lamp MET DP232.jpg|960|960|ct|Metropolitan Museum of Art|CC0
+carimate|Carimate Chair Vico Magistretti Cassina Austin Calhoon Photograph.jpg|690|800|co|Austin Calhoon|CC BY-SA 3.0
+gj-chair|Grete Jalk - GJ chair.jpg|960|720|ct|tomislav medak|CC BY 2.0
+ultrafragola|Ultrafragola.jpg|960|1280|ct|Manuelarosi|CC BY-SA 4.0
+bone-chair|Laarman Bone-Chair 01.jpg|960|1280|ct|Saimmad|CC BY-SA 4.0
