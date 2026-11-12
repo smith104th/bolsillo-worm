@@ -55,7 +55,7 @@ create index if not exists events_hole_time on public.events (hole_id, created_a
 -- pet counts), so coming back to the app doesn't reload the whole pocket.
 alter table public.events add column if not exists updated_at timestamptz not null default now();
 create index if not exists events_hole_updated on public.events (hole_id, updated_at desc);
-create or replace function public.wh_touch() returns trigger language plpgsql as $$
+create or replace function public.wh_touch() returns trigger language plpgsql set search_path = public as $$
 begin new.updated_at := now(); return new; end $$;
 drop trigger if exists events_touch on public.events;
 create trigger events_touch before update on public.events for each row execute function public.wh_touch();
@@ -118,7 +118,7 @@ end $$;
 
 -- great-circle distance between two places, in km
 create or replace function public.wh_km(a jsonb, b jsonb) returns double precision
-language sql immutable as $$
+language sql immutable set search_path = public as $$
   select case
     when (a->>'lat') is null or (b->>'lat') is null then 5000
     else greatest(50, 6371 * 2 * asin(sqrt(
