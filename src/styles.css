@@ -11,6 +11,8 @@
   --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 }
+/* iPhone home-screen app whose page already stops short of the home bar: no bottom inset (main.js fitBottom) */
+html.short-bottom { --safe-b: 0px; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }

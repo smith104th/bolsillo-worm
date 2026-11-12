@@ -74,7 +74,30 @@ const app = {
 };
 
 // ─────────────────────────────────────────────── boot
+fitBottom();
+window.addEventListener('resize', fitBottom);
 boot().catch((e) => fatal(e));
+
+// iPhone home-screen app (iOS 26): the page draws under the status bar but ends about a status
+// bar's height above the bottom of the screen, and iOS draws nothing below that line (see the
+// build notes). That line is already clear of the home bar, yet env(safe-area-inset-bottom) still
+// says 34 pt, so every bottom bar, dot and card sat 34 pt higher than it had to (Manu, Nov 12:
+// "a lot of unused space at the bottom"). When the page is that much shorter than the screen,
+// the bottom inset goes to 0 (html.short-bottom sets --safe-b). Safari and older iOS, where the
+// page reaches the bottom edge, are untouched.
+function fitBottom() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;left:0;top:0;width:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)';
+  document.body.append(probe);
+  const cs = getComputedStyle(probe), top = parseFloat(cs.paddingTop) || 0, bottom = parseFloat(cs.paddingBottom) || 0;
+  probe.remove();
+  const portrait = window.innerHeight >= window.innerWidth;
+  const screenH = portrait ? Math.max(screen.height, screen.width) : Math.min(screen.height, screen.width);
+  const short = screenH - window.innerHeight; // what iOS keeps for itself below the page
+  const on = isIOS() && isStandalone() && top > 20 && bottom > 0 && short >= 30 && short < 200; // < 200: not the keyboard
+  document.documentElement.classList.toggle('short-bottom', on);
+  window.__bwFit = { top, bottom, short, screenH, innerHeight: window.innerHeight, on };
+}
 
 async function boot() {
   if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('./sw.js').catch(() => {});
