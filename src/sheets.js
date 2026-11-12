@@ -122,7 +122,7 @@ export async function todaySheet(app) {
       h('p.question', q),
       answerBox, theirAnswer,
       h('div.soil-links',
-        h('button.soil-link', { type: 'button', onclick: () => { s.close(); app.goTo(2); } }, h('b', 'Soil'), h('span', layers ? `${layers} earlier question${layers > 1 ? 's' : ''}, answered together` : 'Every question you both answer')),
+        h('button.soil-link', { type: 'button', onclick: () => { s.close(); app.openGame('soil'); } }, h('b', 'Soil'), h('span', layers ? `${layers} earlier question${layers > 1 ? 's' : ''}, answered together` : 'Every question you both answer')),
         h('button.plant-link', { type: 'button', onclick: () => plantSheet(app) }, h('b', '🌱'), h('span', `Plant a question for ${them}`))),
     ].filter(Boolean));
   };
@@ -237,7 +237,7 @@ export function usSheet(app) {
     stats,
     h('div.btn-grid.four',
       btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
-      btn('🌱 Soil', () => { closeAllSheets(); app.goTo(2); }, 'ghost'),
+      btn('🌱 Soil', () => { closeAllSheets(); app.openGame('soil'); }, 'ghost'),
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ].filter(Boolean), { tall: true, className: 'us-sheet' });

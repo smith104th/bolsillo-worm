@@ -1,7 +1,7 @@
-// The soil: the third page. Questions you grow together, mostly words:
+// The soil, one of the games. Questions you grow together, mostly words:
 // today's question, the ones you plant for each other, and every answer so far.
 import { h, prettyDay } from './util.js';
-import { sheet, btn, toast } from './ui.js';
+import { sheet, btn, toast, icon } from './ui.js';
 import { reactRow, theirReactions } from './compose.js';
 import { sfx } from './feel.js';
 import { zineSheet } from './zine.js';
@@ -12,11 +12,13 @@ const yearOf = (day) => day.slice(0, 4);
 const dayKey = (r) => String(r.day).slice(0, 10);
 const PRINT = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V3.5h10V9"/><rect x="3.5" y="9" width="17" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/></svg>';
 
-export function SoilPage(app, root) {
+export function SoilPage(app, root, { onBack } = {}) {
   let rows = null, visible = false;
   const scroll = h('div.soil-scroll');
   const print = h('button.soil-print', { type: 'button', 'aria-label': 'Print our year', onclick: () => zineSheet(app), html: PRINT });
-  root.replaceChildren(scroll, print);
+  // Back to Games, in the same glass bar the House uses
+  const back = h('button.tab', { type: 'button', 'aria-label': 'Back', onclick: () => onBack?.() }, icon('back'), h('span.lbl', 'Back'));
+  root.replaceChildren(scroll, print, h('div.hp-dock.soil-dock', h('div.tabbar.glass.hp-bar', back)));
 
   async function load() {
     try { rows = await app.backend.dailies(400); } catch { /* keep what we have */ }

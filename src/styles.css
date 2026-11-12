@@ -572,7 +572,7 @@ body.dark .shelf-hint { color: #fff; }
 .preview-label { font: 600 15px/1.2 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
 
 /* ── soil: the third page, mostly words, on green ── */
-#screen-soil { transform: translate3d(200%,0,0); background: linear-gradient(#FFFFFF 50%, #0F7A4E 50%); overflow: hidden; color: #fff; }
+#screen-soil { background: linear-gradient(#FFFFFF 50%, #0F7A4E 50%); overflow: hidden; color: #fff; }
 .soil-scroll { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; display: flex; flex-direction: column; }
 .soil-print { position: absolute; z-index: 3; top: calc(var(--safe-t) + 14px); right: 16px; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: #F2F2F7; color: var(--ink); }
 .s-head { padding-right: 64px; }
@@ -646,7 +646,7 @@ body.dark .shelf-hint { color: #fff; }
 
 /* soil: today on white, everything earlier on green */
 .s-top { background: #fff; color: var(--ink); padding: calc(var(--safe-t) + 16px) 22px 40px; }
-.s-bottom { flex: 1; background: #0F7A4E; padding: 8px 22px calc(var(--safe-b) + 64px); }
+.s-bottom { flex: 1; background: #0F7A4E; padding: 8px 22px calc(var(--safe-b) + 104px); } /* room for the Back bar */
 .s-top .s-meta, .s-top .s-label, .s-top .s-who, .s-top .s-when, .s-top .s-dig { color: #0F7A4E; }
 .s-top .s-title, .s-top .s-lede, .s-top .s-planted, .s-top .s-note, .s-top .s-ans p, .s-top .s-seed p { color: var(--ink); }
 .s-top .s-label { border-bottom-color: rgba(11,11,12,0.12); }
@@ -753,7 +753,7 @@ svg .spin { animation: recordspin 6s linear infinite; }
 .toasts { z-index: 60; }
 
 /* ── the house (last page) ───────────────────── */
-#screen-house { transform: translate3d(400%,0,0); overflow: hidden; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); color: var(--ink); }
+#screen-house { overflow: hidden; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); color: var(--ink); }
 .hp-stage { position: absolute; inset: 0; }
 .hp-head { position: absolute; z-index: 2; top: calc(var(--safe-t) + 16px); left: 22px; right: 22px; pointer-events: none; }
 .hp-title { font: 600 40px/0.98 var(--sans); letter-spacing: -0.05em; margin: 0; color: var(--ink); }
@@ -833,7 +833,7 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 
 /* ── Design Tinder: each card a little article. The app's type and colors on a white page,
    square corners, the photo edge to edge (Manu, Nov 12) ── */
-#screen-design { transform: translate3d(300%,0,0); overflow: hidden; background: #fff; color: var(--ink); display: flex; flex-direction: column; --rule: 1px solid rgba(11,11,12,0.12); }
+#screen-design { overflow: hidden; background: #fff; color: var(--ink); display: flex; flex-direction: column; --rule: 1px solid rgba(11,11,12,0.12); }
 .dt-head { position: relative; z-index: 4; flex: none; padding: calc(var(--safe-t) + 12px) 22px 0; } /* above the cards, so the g in Design keeps its tail */
 .dt-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dt-meta { flex: 1; min-width: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: #D90042; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -873,7 +873,9 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-facts dd { font: 400 15px/1.35 var(--sans); color: var(--ink); }
 .dt-credit { display: block; margin-top: 12px; font: 400 11px/1.4 var(--mono); color: var(--ink-3); text-decoration: none; overflow-wrap: anywhere; }
 .dt-foot { flex: none; height: 38px; display: flex; align-items: center; justify-content: space-between; border-top: var(--rule); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
-.dt-read { height: 100%; padding: 0 14px; font: inherit; letter-spacing: inherit; color: var(--ink); }
+.dt-back, .dt-read { height: 100%; font: inherit; letter-spacing: inherit; color: var(--ink); }
+.dt-back { padding: 0 18px 0 0; }
+.dt-read { padding: 0 0 0 18px; }
 
 /* the level you're dragging to: on the page over the photo, so it never leaves the screen */
 .dt-rate { position: absolute; z-index: 3; top: 50%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 150px; padding: 16px 20px 15px; background: #fff; opacity: 0; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.14s cubic-bezier(.2,1.4,.4,1); }
@@ -961,3 +963,10 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-verdict .dt-scale i { width: 8px; height: 8px; }
 .dt-verdict b { font: 500 15px/1.2 var(--sans); color: var(--ink); }
 .dt-article .dt-more { display: block; }
+
+/* ── Games: the third page (Manu, Nov 12). Bands like the shelf's; each game slides in over it ── */
+#screen-games { transform: translate3d(200%,0,0); overflow: hidden; background: #B7E0FF; }
+.games-content .bands { margin-top: 30px; }
+.games-content .band { min-height: 120px; }
+#screen-soil, #screen-design, #screen-house { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
+body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }

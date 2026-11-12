@@ -1,4 +1,4 @@
-// The last page: Garden and House (Ryue Nishizawa, Tokyo). Questions about each other build it,
+// Garden and House (Ryue Nishizawa, Tokyo), one of the games. Questions about each other build it,
 // one piece per right answer, from either of you. Its own dock: Back, Ours / Finished, Questions.
 // three.js lives in its own bundle (house/view.js) and only loads the first time you come here.
 import { h, store } from './util.js';
@@ -135,6 +135,7 @@ export function HousePage(app, root, { onEdge, onBack, onSky } = {}) {
     setSky(s) { sky = s; if (view && visible) view.setSky(s, app.them()?.place || null); },
     async openQuestions() { await reload(); openQuestions(); },
     reload,
+    waiting: () => !!(st && !st.answered_today && st.next), // a question for you today
     sky: () => shown,
   };
 }

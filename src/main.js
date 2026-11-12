@@ -20,14 +20,16 @@ import { Shelf, SHELF_BOTTOM } from './shelf.js';
 import { SoilPage, SOIL_BG } from './soil.js';
 import { HousePage } from './housepage.js';
 import { DesignPage } from './design.js';
+import { GamesPage, GameStack, GAMES_BOTTOM } from './games.js';
 import { cache, offlineError } from './cache.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
-const PAGE = { pocket: 0, shelf: 1, soil: 2, design: 3, house: 4 };
+// Pocket, Shelf, Games. Soil, Design Tinder and Garden & House open from Games (Manu, Nov 12).
+const PAGE = { pocket: 0, shelf: 1, games: 2 };
 const DESIGN_BG = '#FFFFFF';
 const COMPOST_H = 72; // opened things settle into the soil after three days
-let backend, pocket, shelf, soil, design, house, pager;
+let backend, pocket, shelf, soil, design, house, games, stack, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
@@ -56,7 +58,8 @@ const app = {
     if (pager?.index === 1) { shelf?.render(); markShelfSeen(); }
     shelfBadge(); updateBadge();
   },
-  goTo: (i) => { closeAllSheets(); pager?.go(i); },
+  goTo: (i) => { closeAllSheets(); stack?.close({ animate: false }); pager?.go(i); },
+  openGame: (id) => openGame(id),
   loadPlanted,
   seed: () => hash(S.hole?.code || 'bw') % 997,
   defaultUnits: () => (/^en-US/i.test(navigator.language) ? 'mi' : 'km'),
@@ -176,26 +179,34 @@ function enterPocket(data, { fromCache = false } = {}) {
   $('#app').hidden = false;
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
-  soil = SoilPage(app, $('#screen-soil'));
-  design = DesignPage(app, $('#screen-design'));
-  // the House is the last page; its Back goes to the page before it (Design Tinder since Nov 12)
-  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(PAGE.design), onSky: () => paintEdges() });
+  soil = SoilPage(app, $('#screen-soil'), { onBack: () => stack?.close() });
+  design = DesignPage(app, $('#screen-design'), { onBack: () => stack?.close() });
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => stack?.begin(e), onBack: () => stack?.close(), onSky: () => paintEdges() });
   house.setSky(S.sky);
-  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-design'), $('#screen-house')], {
-    labels: ['Pocket', 'Shelf', 'Soil', 'Design Tinder', 'House'],
+  games = GamesPage(app, $('#screen-games'), { open: (id) => openGame(id), status: gameStatus });
+  games.setSky(S.sky);
+  const GAME = { soil, design, house };
+  stack = GameStack({ soil: $('#screen-soil'), design: $('#screen-design'), house: $('#screen-house') }, {
+    onChange: (id, was) => {
+      if (was) GAME[was].hide();
+      if (id) GAME[id].show(); else games.render();
+      paintEdges();
+    },
+  });
+  stack.watch($('#screen-soil'));
+  stack.watch($('#screen-design'));
+  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-games')], {
+    labels: ['Pocket', 'Shelf', 'Games'],
     onMove: tuckDock,
     onChange: (i) => {
-      if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
-      if (i === 2) soil.show(); else soil.hide();
-      if (i === PAGE.design) design.show(); else design.hide();
-      if (i === PAGE.house) house.show(); else house.hide();
-      if (i === 0) pocket?.start(); else pocket?.stop();
+      if (i === PAGE.shelf) { shelf.show(); markShelfSeen(); } else shelf.hide();
+      if (i === PAGE.games) { games.show(); primeGames(); } else { games.hide(); stack.close({ animate: false }); }
+      if (i === PAGE.pocket) pocket?.start(); else pocket?.stop();
       paintEdges();
     },
   });
   pager.watch($('#screen-shelf'));
-  pager.watch($('#screen-soil'));
-  pager.watch($('#screen-design'));
+  pager.watch($('#screen-games'));
   pocket = new Pocket($('#pocket'), {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
@@ -247,13 +258,33 @@ const midMaking = () => [...document.querySelectorAll('.sheet .sheet-card')].som
 function openTarget(to) {
   if (!pager || !S.hole || midMaking()) return;
   closeAllSheets();
-  if (to === 'shelf' || to === 'shelf-from') { pager.go(1); shelf?.setView(to === 'shelf-from' ? 'from' : 'for'); return; }
-  if (to === 'soil') { pager.go(2); return; }
-  if (to === 'house') { pager.go(PAGE.house); house?.openQuestions(); return; }
-  if (to === 'design') { pager.go(PAGE.design); return; }
-  pager.go(0);
+  if (to === 'soil' || to === 'design') { openGame(to); return; }
+  if (to === 'house') { openGame('house'); house?.openQuestions(); return; }
+  stack?.close({ animate: false });
+  if (to === 'shelf' || to === 'shelf-from') { pager.go(PAGE.shelf); shelf?.setView(to === 'shelf-from' ? 'from' : 'for'); return; }
+  pager.go(PAGE.pocket);
   if (to === 'today') { setTab('today'); todaySheet(app); }
   else if (to === 'us') { setTab('us'); usSheet(app); }
+}
+
+// Games: go to the Games page and slide the game in over it
+function openGame(id) {
+  if (!pager || !stack) return;
+  closeAllSheets();
+  if (pager.index !== PAGE.games) { pager.go(PAGE.games); setTimeout(() => stack.open(id), 180); }
+  else stack.open(id);
+}
+// what waits in each game, for the pills on the Games page (null = nothing)
+function gameStatus(id) {
+  const today = app.today();
+  if (id === 'soil') return S.events.some((e) => e.kind === 'daily' && e.from_slot === S.slot && e.payload?.day === today && e.payload?.part === 'answer') ? null : 'New question';
+  if (id === 'design') { const n = design?.left(); return n ? `${n} left` : null; }
+  if (id === 'house') return house?.waiting() ? 'Your turn' : null;
+  return null;
+}
+// the Design Tinder pile and the house's state come from the server: fetch them when Games shows
+function primeGames() {
+  Promise.allSettled([design?.prime(), house?.reload()]).then(() => { if (pager?.index === PAGE.games && !stack?.current) games.render(); });
 }
 
 // The number on the home-screen icon: what's still waiting for you. Unopened things
@@ -380,6 +411,7 @@ function updateSky() {
   S.sky = sky;
   pocket?.setSky(sky);
   shelf?.setSky(sky);
+  games?.setSky(sky);
   house?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
   paintEdges();
@@ -387,13 +419,17 @@ function updateSky() {
 
 // Safari tints its bars from the page edges: match whatever screen is showing
 function paintEdges() {
-  const i = pager?.index || 0;
+  const i = pager?.index || 0, g = stack?.current;
   // the House paints its own sky when you scrub the time; match that one there
-  const sky = (i === PAGE.house && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
-  document.body.classList.toggle('dark', i === PAGE.design ? false : !!sky.dark);
+  const sky = (g === 'house' && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
+  document.body.classList.toggle('dark', g === 'design' ? false : !!sky.dark);
   // Soil is white on top and green below: the bottom edge is whichever is showing there
-  const soilGreen = () => { const g = document.querySelector('#screen-soil .s-bottom'); return !!g && g.getBoundingClientRect().top < window.innerHeight - 2; };
-  const [top, bottom] = i === 2 ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF'] : i === 1 ? [sky.top, SHELF_BOTTOM] : i === PAGE.design ? [DESIGN_BG, DESIGN_BG] : [sky.top, sky.bottom];
+  const soilGreen = () => { const el = document.querySelector('#screen-soil .s-bottom'); return !!el && el.getBoundingClientRect().top < window.innerHeight - 2; };
+  const [top, bottom] = g === 'soil' ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF']
+    : g === 'design' ? [DESIGN_BG, DESIGN_BG]
+      : g === 'house' ? [sky.top, sky.bottom]
+        : i === PAGE.shelf ? [sky.top, SHELF_BOTTOM]
+          : i === PAGE.games ? [sky.top, GAMES_BOTTOM] : [sky.top, sky.bottom];
   // iPhone home-screen apps (iOS 26) report a page one status bar shorter than the
   // screen and won't draw anything below it, so a strip of the page background
   // shows under the tab bar. Make that strip the color of whatever is at the
@@ -419,8 +455,8 @@ function tuckDock(pos, animate, dots) {
   dots.style.transition = animate ? `${PAGE_EASE}, opacity 0.46s cubic-bezier(.2,.9,.25,1)` : 'none';
   dock.style.transform = k ? `translate3d(0, calc(${k.toFixed(3)} * (100% + 24px)), 0)` : '';
   dots.style.transform = `translate3d(-50%, ${(k * 64).toFixed(1)}px, 0)`;
-  // the House page has its own dock (Back, Ours / Finished, Questions): the dots step aside there
-  const shown = k * (1 - clamp(pos - (PAGE.house - 1), 0, 1));
+  // inside a game the dots step aside (body.in-game): each game has its own Back
+  const shown = k;
   dots.style.opacity = shown.toFixed(3);
   dots.style.pointerEvents = shown > 0.5 ? '' : 'none';
   dock.inert = k > 0.5;
@@ -448,7 +484,7 @@ function buildChrome() {
   // Soil scrolls between its white and green zones: keep the bottom edge in step
   let edgeRaf = 0;
   document.addEventListener('scroll', (e) => {
-    if ((pager?.index || 0) !== 2 || !e.target.closest?.('#screen-soil')) return;
+    if (stack?.current !== 'soil' || !e.target.closest?.('#screen-soil')) return;
     cancelAnimationFrame(edgeRaf); edgeRaf = requestAnimationFrame(paintEdges);
   }, true);
   let sheetsOpen = 0;

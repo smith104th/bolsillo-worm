@@ -1,4 +1,4 @@
-// Design Tinder: the page between Soil and the House. Five iconic chairs, lamps, pieces of
+// Design Tinder: one of the games (opens from the Games page). Five iconic chairs, lamps, pieces of
 // furniture, houses and buildings a day, the same five for both of you. Each one is a little
 // article (photo, name, maker; tap to read the rest). Swipe right to like it, further to love,
 // all the way to adore; left for don't like, dislike, hate. A swipe is a score, -3..3.
@@ -144,7 +144,7 @@ function prefetch(cards) {
 }
 
 // ── the page ────────────────────────────────────────────────
-export function DesignPage(app, root) {
+export function DesignPage(app, root, { onBack } = {}) {
   let deck = null, order = [], byId = new Map();
   let st = store('dsState') || null; // { today, started, mine, theirs, pending } from the server
   const mine = new Map(), theirs = new Map(), pending = new Set(); // mine: id → { score, day }; theirs: id → score
@@ -247,13 +247,14 @@ export function DesignPage(app, root) {
     const pic = h('div.dt-pic', { style: { height: `${picH}px` } }, img(c, '.dt-img'));
     const long = c.name.length > 26;
     const readBtn = h('button.dt-read', { type: 'button' }, 'READ');
+    const backBtn = h('button.dt-back', { type: 'button', onclick: () => onBack?.() }, '← BACK');
     const text = h('div.dt-text',
       h(`h2.dt-name${long ? '.long' : ''}`, c.name),
       h('p.dt-by', c.by),
       more(c));
     const el = h(`div.dt-card${depth ? '.next' : ''}`, { 'data-nopager': '' },
       pic, text,
-      h('div.dt-foot', h('span', '← HATE'), readBtn, h('span', 'ADORE →')));
+      h('div.dt-foot', backBtn, readBtn)); // Manu: Back where Hate was, Read where Adore was
     const flip = (on = !el.classList.contains('open')) => {
       el.classList.toggle('open', on);
       readBtn.textContent = on ? 'CLOSE' : 'READ';
@@ -525,6 +526,9 @@ export function DesignPage(app, root) {
   }
 
   return {
+    // for the Games page: how many are left to swipe (null until the deck and state are in)
+    left: () => (deck && st ? pile().length : null),
+    prime: () => (deck && st ? null : load()),
     show() { visible = true; document.body.classList.add('on-design'); render(); load(); },
     hide() { visible = false; document.body.classList.remove('on-design'); },
     get visible() { return visible; },
