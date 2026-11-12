@@ -967,16 +967,18 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-article .dt-more { display: block; }
 
 /* ── Games: the third page (Manu, Nov 12). Bands like the shelf's; each game slides in over it ── */
-#screen-games { transform: translate3d(200%,0,0); overflow: hidden; background: #B7E0FF; }
+#screen-games { transform: translate3d(200%,0,0); overflow: hidden; background: #FFFFFF; } /* all white, the worms too (Manu) */
 /* level with the shelf: its bands start right under the worm strip, and its header is taller by the
    For you / From you tabs (14px margin + 42px), so the Games strip is that much taller */
 .games-content .roam-wrap { height: calc(176px + 56px); }
 .games-content .bands { margin-top: 0; }
 #screen-games .hd-meta:empty::before { content: '\00a0'; }
+/* black type even mid-swipe from a night shelf (body.dark flips only when the swipe settles) */
+body.dark #screen-games .shelf-head { color: var(--ink); }
 /* white bands with hairlines between them; names in black, the pill a black outline (Manu) */
 .band.game { min-height: 104px; }
 .band.game .band-name { font: 400 52px/0.92 var(--display); letter-spacing: -0.02em; text-transform: none; } /* Manu: a display serif, not all caps */
-.band.game + .band.game { border-top: 1px solid rgba(11,11,12,0.12); }
+.band.game { border-top: 1px solid rgba(11,11,12,0.12); }
 .band.game .band-ready { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
 #screen-soil, #screen-design, #screen-house { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
 body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }
