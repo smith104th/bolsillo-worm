@@ -6,7 +6,7 @@ import { icon, sheet } from './ui.js';
 import { questionsSheet } from './housequestions.js';
 
 const HOUSE = __HOUSE__; // ./house/view.js?v=<hash>, set by build.mjs
-const TOTAL = 105;       // pieces in the model; the first (the ground slab) is there from the start
+export const TOTAL = 105;       // pieces in the model; the first (the ground slab) is there from the start
 
 const I = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const ICONS = {

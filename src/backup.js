@@ -1,14 +1,18 @@
 // "Save everything": one .zip with every note, answer, photo, song and voice note
-// in the pocket, so a server failure can't erase your history.
+// in the pocket, plus the games (Design Tinder swipes, the house and its questions),
+// so a server failure can't erase your history.
 //   pocket.json   everything, as data (the full record)
 //   index.html    a page you can open anywhere, no app needed
 //   photos/ today/ whispers/   the full-size media
 //   README.txt    what's inside
 // Built on the phone (no server change), handed to the share sheet so it lands
 // in Files or iCloud Drive. Sealed letters you haven't opened stay sealed: only
-// their envelopes are in the file.
+// their envelopes are in the file. Their answers to cards and house questions you
+// haven't reached yet stay hidden too, same as in the app.
 import { h, store } from './util.js';
 import { sheet, btn, toast } from './ui.js';
+import { loadDeck, LEVEL } from './design.js';
+import { TOTAL as HOUSE_PIECES } from './housepage.js';
 
 const DAY = 86400000;
 export const lastBackup = () => store('lastBackup') || null;
@@ -65,6 +69,41 @@ function dataUrlBytes(s) {
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'someone';
 
+// The games: what's on the server, as readable as the app shows it. Each part is optional,
+// so a pocket that never opened a game (or an older server) still saves everything else.
+async function gatherGames(backend) {
+  const out = { design: null, house: null };
+  try {
+    const ds = await backend.dsState();
+    let byId = new Map();
+    if (ds?.mine?.length) try { byId = new Map((await loadDeck()).editions.flat().map((c) => [c.id, c])); } catch { /* offline: card ids only */ }
+    const theirs = new Map((ds?.theirs || []).map((t) => [t.item, t.score]));
+    out.design = ds && {
+      started: ds.started,
+      scale: LEVEL,
+      cards: (ds.mine || []).map((s) => {
+        const c = byId.get(s.item), them = theirs.has(s.item) ? theirs.get(s.item) : null;
+        return {
+          item: s.item, day: s.day, name: c?.name ?? null, by: c?.by ?? null, year: c?.year ?? null, kind: c?.kind ?? null, at: c?.at ?? null,
+          you: s.score, them, match: them != null && s.score > 0 && them > 0, photo: c?.source ?? null,
+        };
+      }),
+      waiting_for_you: ds.pending?.length || 0,
+    };
+  } catch { /* no deck yet */ }
+  try {
+    const hq = await backend.hqState();
+    const opt = (q, i) => (i == null ? null : q.options?.[i] ?? null);
+    out.house = hq && {
+      pieces: Math.min(HOUSE_PIECES, 1 + (hq.pieces || 0)), of: HOUSE_PIECES,
+      you_asked: (hq.mine || []).map((q) => ({ question: q.question, kind: q.kind, options: q.options, answer: opt(q, q.answer), they_picked: opt(q, q.picked), right: q.correct ?? null, asked_at: q.created_at, answered_at: q.answered_at ?? null })),
+      they_asked: (hq.theirs || []).map((q) => ({ question: q.question, kind: q.kind, options: q.options, answer: opt(q, q.answer), you_picked: opt(q, q.picked), right: q.correct ?? null, answered_at: q.answered_at })),
+      waiting_for_you: hq.waiting || 0,
+    };
+  } catch { /* no house yet */ }
+  return out;
+}
+
 export async function buildBackup(app, onProgress = () => {}) {
   const { backend, S } = app;
   const me = app.me(), them = app.them(), slot = app.slot();
@@ -74,6 +113,7 @@ export async function buildBackup(app, onProgress = () => {}) {
   let dailies = []; try { dailies = await backend.dailies(100000); } catch { /* none yet */ }
   let planted = []; try { planted = await backend.planted(); } catch { /* none */ }
   dailies = dailies.map((d) => ({ ...d, question: app.questionFor?.(d.day)?.q || null })).sort((a, b) => (a.day < b.day ? -1 : 1));
+  const games = await gatherGames(backend);
 
   // full-size media: photos and whispers from events, both of you from Today
   const jobs = [];
@@ -100,18 +140,22 @@ export async function buildBackup(app, onProgress = () => {}) {
   const exportedAt = new Date().toISOString();
   const hole = S.hole || {};
   const record = {
-    app: 'Bolsillo Worm', format: 1, exported_at: exportedAt, exported_by: me?.name || null,
+    app: 'Bolsillo Worm', format: 2, exported_at: exportedAt, exported_by: me?.name || null,
     pocket: { code: hole.code, created_at: hole.created_at, reunion_on: hole.reunion_on, reunion_note: hole.reunion_note, tunnel_km: hole.tunnel_km, dug_km: hole.dug_km, tunnels_done: hole.tunnels_done, touches: hole.touches },
     worms: S.members.map(({ slot: s, name, worm, place, love, created_at }) => ({ slot: s, name, worm, place, love, created_at, you: s === slot })),
     events: events.map((e) => ({ ...e, from: nameOf(e.from_slot) })),
     today: dailies,
     planted,
-    notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. Media files are in photos/, today/ and whispers/.',
+    design: games.design,
+    house: games.house,
+    notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. So do your person\'s swipes on cards you haven\'t swiped yet, and the house questions waiting for you. Media files are in photos/, today/ and whispers/.',
   };
   const counts = {
     moments: events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket', 'later'].includes(e.kind)).length,
     days: dailies.length, photos: files.filter((f) => !f.name.startsWith('whispers/')).length,
     whispers: files.filter((f) => f.name.startsWith('whispers/')).length, missing,
+    cards: games.design?.cards.length || 0,
+    questions: (games.house?.you_asked.length || 0) + (games.house?.they_asked.length || 0),
   };
   const stamp = exportedAt.slice(0, 10);
   files.unshift(
@@ -132,6 +176,7 @@ function readme(r, c) {
     `Worms: ${names}.`,
     '',
     `${c.moments} things you sent each other, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes.`,
+    r.design || r.house ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}.` : null,
     '',
     'index.html   open it to read your pocket as a page (any phone or computer)',
     'pocket.json  the complete record, as data',
@@ -139,10 +184,12 @@ function readme(r, c) {
     'today/       Today photos, one per person per day',
     'whispers/    voice notes',
     '',
+    'The games are at the end of index.html, and under "design" and "house" in pocket.json.',
+    '',
     'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are in this file.',
     `Your pocket's code: ${r.pocket.code || '?'} (keep it between you two).`,
     '',
-  ].join('\n');
+  ].filter((l) => l !== null).join('\n');
 }
 
 // A static page (no scripts, so it opens in the Files preview too): day by day.
@@ -173,11 +220,47 @@ function page(r, nameOf, slot) {
   }
   const days = [...byDay.keys()].sort().reverse();
   const title = r.worms.map((w) => esc(w.name)).join(' & ');
+  const games = gamesHtml(r, slot);
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bolsillo Worm · ${title}</title>
-<style>body{font:16px/1.45 -apple-system,system-ui,sans-serif;margin:0;padding:28px 20px 60px;max-width:640px;margin:auto;color:#111;background:#fff}h1{font-size:34px;letter-spacing:-.03em;margin:0 0 4px}.sub{color:#666;margin:0 0 28px}h2{font:600 12px/1 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#0F7A4E;margin:34px 0 10px}.ev{padding:12px 0;border-top:1px solid #eee}.who{display:block;font:500 11px/1.4 ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#666}.note{white-space:pre-wrap;font-size:18px}.th{width:110px;height:110px;object-fit:cover;border-radius:14px;margin:6px 8px 0 0}.dim{color:#888}a{color:#1546A8}p{margin:6px 0}</style></head>
-<body><h1>${title}</h1><p class="sub">Bolsillo Worm · saved ${esc(new Date(r.exported_at).toDateString())}</p>
+<style>body{font:16px/1.45 -apple-system,system-ui,sans-serif;margin:0;padding:28px 20px 60px;max-width:640px;margin:auto;color:#111;background:#fff}h1{font-size:34px;letter-spacing:-.03em;margin:0 0 4px}.sub{color:#666;margin:0 0 28px}h2{font:600 12px/1 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#0F7A4E;margin:34px 0 10px}h1.sec{font-size:28px;margin:56px 0 0;padding-top:28px;border-top:2px solid #111}h3{font-size:17px;margin:26px 0 6px}.ok{color:#1546A8}.miss{color:#D90042}.ev{padding:12px 0;border-top:1px solid #eee}.who{display:block;font:500 11px/1.4 ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#666}.note{white-space:pre-wrap;font-size:18px}.th{width:110px;height:110px;object-fit:cover;border-radius:14px;margin:6px 8px 0 0}.dim{color:#888}a{color:#1546A8}p{margin:6px 0}</style></head>
+<body><h1>${title}</h1><p class="sub">Bolsillo Worm · saved ${esc(new Date(r.exported_at).toDateString())}${games ? ' · <a href="#games">The games</a>' : ''}</p>
 ${days.map((day) => `<h2>${esc(new Date(day + 'T12:00:00').toDateString())}</h2>${byDay.get(day).join('')}`).join('\n')}
+${games}
 </body></html>`;
+}
+
+// The games, after the days: every card you swiped (and their swipe, once you've both
+// swiped it), the house, and the questions you asked each other.
+function gamesHtml(r, slot) {
+  const me = esc(r.worms.find((w) => w.slot === slot)?.name || 'You'), them = esc(r.worms.find((w) => w.slot !== slot)?.name || 'Them');
+  const dt = (s) => (s ? esc(new Date(String(s).length === 10 ? `${s}T12:00:00` : s).toDateString()) : '');
+  const out = [];
+  const d = r.design;
+  if (d?.cards.length) {
+    const both = d.cards.filter((c) => c.them != null), agree = both.filter((c) => Math.sign(c.you) === Math.sign(c.them)).length;
+    const lvl = (v) => esc(d.scale?.[v] ?? v);
+    const yr = (y) => (y == null ? '' : y < 0 ? ` · ${-y} BC` : ` · ${y}`);
+    out.push(`<h2>Design Tinder</h2><p class="sub">${d.cards.length} cards swiped since ${dt(d.started)}.${both.length ? ` You landed on the same side for ${agree} of the ${both.length} you've both swiped.` : ''}</p>`);
+    for (const c of [...d.cards].reverse()) {
+      const title = c.name ? `<b>${esc(c.name)}</b>${c.by ? ` · ${esc(c.by)}` : ''}` : `<b>${esc(c.item)}</b>`;
+      const theirs = c.them != null ? ` · ${them}: ${lvl(c.them)}` : '';
+      out.push(`<div class="ev"><span class="who">${dt(c.day)}${c.kind ? ` · ${esc(c.kind)}` : ''}${yr(c.year)}</span><p>${title}${c.photo ? ` · <a href="${esc(c.photo)}">photo</a>` : ''}</p><p>${me}: ${lvl(c.you)}${theirs}${c.match ? ' · <b class="ok">a match</b>' : ''}</p></div>`);
+    }
+  }
+  const ho = r.house;
+  if (ho && (ho.you_asked.length || ho.they_asked.length || ho.pieces > 1)) {
+    const res = (who, pick, right) => (pick == null ? `<span class="dim">${who} hasn't answered yet</span>` : `${who} picked “${esc(pick)}” <b class="${right ? 'ok' : 'miss'}">${right ? 'right' : 'wrong'}</b>`);
+    out.push(`<h2>Garden &amp; House</h2><p class="sub">The house is at ${ho.pieces} of ${ho.of} pieces. Every right answer adds one.</p>`);
+    if (ho.you_asked.length) {
+      out.push(`<h3>${me} asked ${them}</h3>`);
+      for (const q of ho.you_asked) out.push(`<div class="ev"><span class="who">${dt(q.asked_at)}</span><p><b>${esc(q.question)}</b></p><p>The answer: “${esc(q.answer)}” · ${res(them, q.they_picked, q.right)}</p></div>`);
+    }
+    if (ho.they_asked.length) {
+      out.push(`<h3>${them} asked ${me}</h3>`);
+      for (const q of ho.they_asked) out.push(`<div class="ev"><span class="who">${dt(q.answered_at)}</span><p><b>${esc(q.question)}</b></p><p>The answer: “${esc(q.answer)}” · ${res(me, q.you_picked, q.right)}</p></div>`);
+    }
+  }
+  return out.length ? `<h1 class="sec" id="games">The games</h1>\n${out.join('\n')}` : '';
 }
 
 // ── the sheet: get it ready, then hand it to the share sheet (needs a fresh tap)
@@ -189,7 +272,7 @@ export function backupSheet(app) {
     try {
       built = await buildBackup(app, (msg) => { status.textContent = msg; });
       const c = built.counts, mb = (built.size / 1048576).toFixed(built.size > 10485760 ? 0 : 1);
-      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
+      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
       go.hidden = true; saveBtn.hidden = false;
     } catch (err) {
       status.textContent = `Couldn't gather everything: ${String(err?.message || err).slice(0, 80)}. Try again.`;
@@ -212,7 +295,7 @@ export function backupSheet(app) {
   }, 'primary');
   saveBtn.hidden = true;
   sheet('Save everything', [
-    h('p.lede', 'One file with every note, answer, photo, song and voice note from your pocket, plus a page you can open anywhere. Save it to Files or iCloud Drive, once a month.'),
+    h('p.lede', 'One file with every note, answer, photo, song and voice note from your pocket, and the games, plus a page you can open anywhere. Save it to Files or iCloud Drive, once a month.'),
     status, go, saveBtn,
     h('p.small.muted', 'Sealed letters you haven\'t opened stay sealed: only their envelopes are saved.'),
   ]);
