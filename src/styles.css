@@ -897,7 +897,8 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-scale i.yes { background: #1546A8; }
 .dt-scale i.no { background: #D90042; }
 
-.dt-empty { position: absolute; inset: 0; display: grid; place-items: center; }
+.dt-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.dt-empty .dt-exit { margin-top: 26px; }
 .dt-empty p { margin: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 
 /* when today's five are done */
@@ -916,6 +917,7 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-mini-row .dt-scale i:nth-child(4) { margin-left: 3px; }
 .dt-wide { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin-top: 26px; background: var(--ink); color: #fff; font: 600 16px/1 var(--sans); letter-spacing: -0.01em; }
 .dt-wide:active { transform: scale(0.98); }
+.dt-wide.dt-exit { margin-top: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
 
 /* both of you liked it (Soil's pink and red) */
 .dt-match { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(255,255,255,0); opacity: 0; transition: opacity 0.25s, background 0.25s; }

@@ -217,7 +217,7 @@ export function DesignPage(app, root, { onBack } = {}) {
     const m = bothLike(); count.textContent = m ? String(m) : '';
     if (failed === 'deck' || (!deck && !st)) {
       meta.textContent = '\u00a0';
-      stage.replaceChildren(h('div.dt-empty', h('p', failed === 'deck' ? 'The deck needs a signal the first time.' : 'Shuffling the deck…')));
+      stage.replaceChildren(h('div.dt-empty', h('p', failed === 'deck' ? 'The deck needs a signal the first time.' : 'Shuffling the deck…'), exitBtn()));
       return;
     }
     if (!deck) return;
@@ -424,10 +424,12 @@ export function DesignPage(app, root, { onBack } = {}) {
   }
 
   // ── when today's are done ──
+  // with no card left there's no BACK in a card's foot, so the panel has its own way out (Manu)
+  const exitBtn = () => h('button.dt-wide.dt-exit', { type: 'button', onclick: () => onBack?.() }, 'Exit the game');
   function donePanel(today) {
     if (!today.length) {
       return h('div.dt-done', h('h2.dt-done-title', 'That\'s the whole deck.'), h('p.dt-lede', 'New cards are on the way.'),
-        h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'));
+        h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'), exitBtn());
     }
     const n = them();
     const waiting = today.filter((x) => !theirs.has(x.c.id)).length;
@@ -438,7 +440,8 @@ export function DesignPage(app, root, { onBack } = {}) {
         h('div.dt-mini-pic', h('img', { crossOrigin: 'anonymous', src: x.c.img, alt: '' })),
         h('div.dt-mini-row', h('span', 'You'), scaleEl(mine.get(x.c.id)?.score || 0)),
         h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0))))),
-      h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'));
+      h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'),
+      exitBtn());
   }
 
   // ── matches ──
