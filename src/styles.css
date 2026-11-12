@@ -971,9 +971,9 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .games-content .roam-wrap { height: calc(176px + 56px); }
 .games-content .bands { margin-top: 0; }
 #screen-games .hd-meta:empty::before { content: '\00a0'; }
-/* white bands with hairlines between them; each name in its game's color, the pill filled with it */
+/* white bands with hairlines between them; names in black, the pill a black outline (Manu) */
 .band.game { min-height: 104px; }
 .band.game + .band.game { border-top: 1px solid rgba(11,11,12,0.12); }
-.band.game .band-ready { background: var(--fg); color: #FFFFFF; }
+.band.game .band-ready { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
 #screen-soil, #screen-design, #screen-house { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
 body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }

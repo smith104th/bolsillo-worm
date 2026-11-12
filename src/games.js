@@ -3,7 +3,7 @@
 // over this page; Back (or a swipe to the right) slides it away again, and from here you swipe
 // on to the shelf and the pocket as before.
 // Laid out like the shelf (Manu): the header, both worms wandering together in a strip of sky,
-// then the bands, white with hairlines between them and the names in each game's color. The
+// then the bands, white with hairlines between them, names in black, pills outlined in black. The
 // sky follows the time of day like every other page, and the bands start level with the shelf's.
 import { h } from './util.js';
 import { makeSky, SKY } from './draw.js';
@@ -11,10 +11,11 @@ import { buzz } from './feel.js';
 import { roam } from './shelf.js';
 
 export const GAMES_BOTTOM = '#FFFFFF';
+// Design Tinder last (Manu)
 export const GAMES = [
-  { id: 'soil', name: 'Soil', fg: '#0F7A4E' },
-  { id: 'design', name: 'Design Tinder', fg: '#D90042' },
-  { id: 'house', name: 'Garden & House', fg: '#1546A8' },
+  { id: 'soil', name: 'Soil' },
+  { id: 'house', name: 'Garden & House' },
+  { id: 'design', name: 'Design Tinder' },
 ];
 
 // status(id) → short text for the band's pill when something waits there, else null
@@ -53,7 +54,7 @@ export function GamesPage(app, root, { open, status }) {
     meta.textContent = waiting ? `${waiting} WAITING FOR YOU` : 'GAMES FOR TWO';
     bands.replaceChildren(...GAMES.map((g) => {
       const s = status(g.id);
-      return h('button.band.game', { type: 'button', style: { '--bg': '#FFFFFF', '--fg': g.fg }, onclick: () => { buzz(8); open(g.id); } },
+      return h('button.band.game', { type: 'button', style: { '--bg': '#FFFFFF', '--fg': '#0B0B0C' }, onclick: () => { buzz(8); open(g.id); } },
         h('span.band-name', g.name),
         h('span.band-side', s ? h('span.band-ready', s) : null));
     }));
