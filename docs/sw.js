@@ -1,10 +1,10 @@
 // Bolsillo Worm service worker: keeps the pocket working offline and delivers buzzes.
-const VERSION = 'e5c0fbc9';
+const VERSION = 'b027fd0c';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
-  './icons/icon-192.png', './icons/badge-96.png', './design/deck.json?v=c01607b7',
+  './icons/icon-192.png', './icons/badge-96.png', './design/deck.json?v=14d9fc1e',
 ];
 // Design Tinder photos (Wikimedia), kept across versions; the newest 150 stay
 const DESIGN = 'bw-design';
