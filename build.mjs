@@ -51,6 +51,9 @@ writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replac
 writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL));
 copyFileSync('src/manifest.webmanifest', `${OUT}/manifest.webmanifest`);
 writeFileSync(`${OUT}/.nojekyll`, '');
+// /deck/: a page to look through every Design Tinder card (reads design/deck.json, same photos as the app).
+mkdirSync(`${OUT}/deck`, { recursive: true });
+writeFileSync(`${OUT}/deck/index.html`, readFileSync('src/deck/index.html', 'utf8'));
 
 const fonts = {
   'geist.woff2': '@fontsource-variable/geist/files/geist-latin-wght-normal.woff2',

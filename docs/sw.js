@@ -55,6 +55,9 @@ self.addEventListener('fetch', (e) => {
   if (req.method === 'GET' && url.hostname === 'upload.wikimedia.org') { e.respondWith(designPhoto(req)); return; }
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   if (req.mode === 'navigate') {
+    // Only the app's own page is kept for offline; other pages on the site (/house/, /deck/) load normally.
+    const scope = new URL(self.registration.scope).pathname;
+    if (url.pathname !== scope && url.pathname !== `${scope}index.html`) return;
     e.respondWith(fetch(req, { cache: 'no-cache' }).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('./index.html', copy)); return r; }).catch(() => caches.match('./index.html')));
     return;
   }

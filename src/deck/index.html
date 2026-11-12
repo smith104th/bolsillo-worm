@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design Tinder · the deck</title>
+<meta name="robots" content="noindex"><meta name="referrer" content="no-referrer">
+<style>
+@font-face{font-family:'Geist';src:url('../fonts/geist.woff2') format('woff2');font-weight:100 900;font-display:swap}@font-face{font-family:'Geist Mono';src:url('../fonts/geist-mono.woff2') format('woff2');font-weight:100 900;font-display:swap}
+:root{--ink:#0B0B0C;--gray:#6E6E73;--line:#E5E5EA;--soft:#F2F2F7;--red:#D90042;--blue:#1546A8}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:16px/1.4 Geist,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 20px 80px}
+.meta{font:500 12px/1 'Geist Mono',monospace;letter-spacing:.08em;color:var(--red);text-transform:uppercase}
+h1{font:600 46px/1 Geist,sans-serif;letter-spacing:-.035em;margin:10px 0 6px}
+.lede{color:var(--gray);margin:0 0 22px;max-width:640px}
+.bar{position:sticky;top:0;z-index:5;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:10px 0 12px;border-bottom:1px solid var(--line);margin:0 -20px 18px;padding-left:20px;padding-right:20px}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.chip{border:1px solid var(--ink);background:#fff;color:var(--ink);font:500 12px/1 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:8px 10px;cursor:pointer}
+.chip.on{background:var(--ink);color:#fff}.chip .n{opacity:.55;margin-left:4px}
+input[type=search]{flex:1;min-width:160px;border:1px solid var(--line);background:var(--soft);font:15px Geist,sans-serif;padding:9px 12px;outline:none}
+.count{font:500 12px 'Geist Mono',monospace;color:var(--gray);letter-spacing:.06em;text-transform:uppercase;margin-left:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:22px 14px}
+.card{cursor:pointer;position:relative}
+.pic{aspect-ratio:4/5;background:var(--soft);overflow:hidden}.pic img{width:100%;height:100%;object-fit:cover;display:block}
+.name{font:600 16px/1.2 Geist,sans-serif;margin:8px 0 2px;letter-spacing:-.01em}
+.by{color:var(--gray);font-size:13px;line-height:1.3}
+.yr{font:400 11px/1.4 'Geist Mono',monospace;color:var(--gray);letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
+.flag{position:absolute;top:6px;right:6px;width:28px;height:28px;border:none;background:rgba(255,255,255,.9);color:var(--ink);font:600 14px/28px Geist;cursor:pointer;padding:0}
+.card.flagged .pic{outline:3px solid var(--red);outline-offset:-3px}.card.flagged .flag{background:var(--red);color:#fff}
+.new{position:absolute;top:6px;left:6px;background:var(--ink);color:#fff;font:500 10px/1 'Geist Mono',monospace;letter-spacing:.06em;padding:5px 6px}
+.flagbox{display:none;gap:8px;align-items:center;margin-top:8px}.flagbox.on{display:flex}
+.flagbox span{font:500 12px 'Geist Mono',monospace;color:var(--red);letter-spacing:.06em;text-transform:uppercase}
+.btn{border:none;background:var(--ink);color:#fff;font:500 12px/1 'Geist Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:9px 12px;cursor:pointer}
+.btn.ghost{background:#fff;color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.ov{position:fixed;inset:0;background:#fff;z-index:20;overflow:auto;display:none}.ov.on{display:block}
+.ov .in{max-width:720px;margin:0 auto;padding:18px 20px 60px}
+.ov .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ov img{width:100%;display:block;background:var(--soft)}
+.ov h2{font:600 34px/1.05 Geist,sans-serif;letter-spacing:-.03em;margin:16px 0 4px}
+.ov .note{font-size:18px;line-height:1.45;margin:14px 0 18px}
+dl{display:grid;grid-template-columns:120px 1fr;margin:0;border-top:1px solid var(--line)}
+dt,dd{margin:0;padding:10px 0;border-bottom:1px solid var(--line)}dt{font:500 11px/1.6 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--gray)}
+.credit{display:block;margin-top:12px;font:400 12px 'Geist Mono',monospace;color:var(--gray)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 14px;font-size:14px;z-index:30;display:none}
+@media (max-width:520px){h1{font-size:38px}.grid{grid-template-columns:repeat(2,1fr);gap:18px 10px}}
+</style></head><body>
+<div class="wrap">
+<div class="meta" id="meta"></div>
+<h1>Design Tinder</h1>
+<p class="lede">Every card in the deck, in the order of the file (the app shuffles them for your pocket), with the same photos the app shows. Tap one to read it. Tap the flag on any photo you want replaced, then copy the list and send it to Claude.</p>
+<div class="bar">
+  <div class="row" id="kinds"></div>
+  <div class="row" id="eds"></div>
+  <div class="row"><input type="search" id="q" placeholder="Search name, maker, country, style"><span class="count" id="count"></span></div>
+  <div class="flagbox" id="flagbox"><span id="fcount"></span><button class="btn" id="copy">Copy flagged list</button><button class="btn ghost" id="onlyf">Show flagged</button><button class="btn ghost" id="clearf">Clear</button></div>
+</div>
+<div class="grid" id="grid"></div>
+</div>
+<div class="ov" id="ov"><div class="in" id="ovin"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+let CARDS = [];
+const KINDS = [['all','All'],['chair','Chairs'],['lamp','Lamps'],['furniture','Furniture'],['house','Houses'],['building','Buildings']];
+const EDS = [['all','Both batches'],['1','Batch 1'],['2','Batch 2 · new']];
+let kind = 'all', ed = 'all', q = '', onlyFlagged = false;
+let flags = new Set(); try { flags = new Set(JSON.parse(localStorage.getItem('dt-flags') || '[]')); } catch {}
+const save = () => { try { localStorage.setItem('dt-flags', JSON.stringify([...flags])); } catch {} };
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
+const placeLine = (c) => (c.kind === 'house' || c.kind === 'building') ? `${c.at}, ${c.country}` : c.country;
+function chips(el, list, get, set) {
+  el.innerHTML = list.map(([k, label]) => {
+    const n = CARDS.filter((c) => (el.id === 'kinds' ? (k === 'all' || c.kind === k) && (ed === 'all' || String(c.ed) === ed) : (k === 'all' || String(c.ed) === k) && (kind === 'all' || c.kind === kind))).length;
+    return `<button class="chip${get() === k ? ' on' : ''}" data-k="${k}">${label}<span class="n">${n}</span></button>`;
+  }).join('');
+  el.onclick = (e) => { const b = e.target.closest('.chip'); if (!b) return; set(b.dataset.k); render(); };
+}
+function list() {
+  const s = q.trim().toLowerCase();
+  return CARDS.filter((c) => (kind === 'all' || c.kind === kind) && (ed === 'all' || String(c.ed) === ed) && (!onlyFlagged || flags.has(c.id))
+    && (!s || [c.name, c.by, c.country, c.at, c.style, String(c.year)].join(' ').toLowerCase().includes(s)));
+}
+function render() {
+  chips($('#kinds'), KINDS, () => kind, (k) => { kind = k; });
+  chips($('#eds'), EDS, () => ed, (k) => { ed = k; });
+  const L = list();
+  $('#meta').textContent = `${CARDS.length} cards · ${CARDS.filter((c) => c.ed === 2).length} new`;
+  $('#count').textContent = `${L.length} shown`;
+  $('#grid').innerHTML = L.map((c) => `<div class="card${flags.has(c.id) ? ' flagged' : ''}" data-id="${c.id}">
+    <div class="pic"><img loading="lazy" referrerpolicy="no-referrer" src="${esc(c.img)}" data-fb="${esc(c.fallback || '')}" alt=""></div>
+    ${c.ed === 2 ? '<span class="new">NEW</span>' : ''}<button class="flag" title="Flag this photo" data-flag="${c.id}">⚑</button>
+    <div class="name">${esc(c.name)}</div><div class="by">${esc(c.by)}</div><div class="yr">${esc(yearText(c))} · ${esc(c.country)}</div></div>`).join('');
+  $('#flagbox').classList.toggle('on', flags.size > 0 || onlyFlagged);
+  $('#fcount').textContent = `${flags.size} flagged`;
+  $('#onlyf').textContent = onlyFlagged ? 'Show all' : 'Show flagged';
+}
+$('#grid').onclick = (e) => {
+  const f = e.target.closest('[data-flag]');
+  if (f) { e.stopPropagation(); const id = f.dataset.flag; flags.has(id) ? flags.delete(id) : flags.add(id); save(); render(); return; }
+  const card = e.target.closest('.card'); if (card) open(card.dataset.id);
+};
+function open(id) {
+  const c = CARDS.find((x) => x.id === id);
+  const rows = [['Year', yearText(c)], [c.kind === 'house' || c.kind === 'building' ? 'Where' : 'From', placeLine(c)], ['Made by', c.kind === 'house' || c.kind === 'building' ? '' : c.at], ['Style', c.style], ['Materials', c.materials.join(', ')], ['Batch', c.ed === 2 ? '2 (new)' : '1'], ['Card id', c.id]].filter((r) => r[1]);
+  $('#ovin').innerHTML = `<div class="top"><button class="btn ghost" id="close">← Back</button><button class="btn${flags.has(c.id) ? '' : ' ghost'}" id="ovflag">${flags.has(c.id) ? 'Flagged' : 'Flag photo'}</button></div>
+    <img referrerpolicy="no-referrer" src="${esc(c.img)}" data-fb="${esc(c.fallback || '')}" alt=""><h2>${esc(c.name)}</h2><div class="by" style="font-size:17px">${esc(c.by)}</div>
+    <p class="note">${esc(c.note)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    ${c.source ? `<a class="credit" href="${esc(c.source)}">Photo: ${esc(c.credit || 'Wikimedia Commons')}</a>` : ''}`;
+  $('#ov').classList.add('on'); $('#ov').scrollTop = 0;
+  $('#close').onclick = () => $('#ov').classList.remove('on');
+  $('#ovflag').onclick = () => { flags.has(c.id) ? flags.delete(c.id) : flags.add(c.id); save(); render(); open(c.id); };
+}
+document.addEventListener('error', (e) => { const i = e.target; if (i.tagName === 'IMG' && i.dataset.fb && i.src !== i.dataset.fb) { i.src = i.dataset.fb; } }, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#ov').classList.remove('on'); });
+$('#q').oninput = (e) => { q = e.target.value; render(); };
+$('#onlyf').onclick = () => { onlyFlagged = !onlyFlagged; render(); };
+$('#clearf').onclick = () => { flags.clear(); onlyFlagged = false; save(); render(); };
+function toast(t) { const el = $('#toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => { el.style.display = 'none'; }, 2200); }
+$('#copy').onclick = async () => {
+  const text = 'Replace these Design Tinder photos: ' + [...flags].map((id) => { const c = CARDS.find((x) => x.id === id); return c ? `${c.name} (${id})` : id; }).join(', ');
+  try { await navigator.clipboard.writeText(text); toast('Copied. Paste it to Claude.'); }
+  catch { $('#ovin').innerHTML = `<div class="top"><button class="btn ghost" id="close">← Back</button></div><p class="note">Copy this and paste it to Claude:</p><textarea style="width:100%;height:200px;font:14px Geist">${esc(text)}</textarea>`; $('#ov').classList.add('on'); $('#close').onclick = () => $('#ov').classList.remove('on'); }
+};
+fetch('../design/deck.json', { cache: 'no-cache' }).then((r) => r.json()).then((d) => {
+  CARDS = d.editions.flatMap((ed, k) => ed.map((c) => ({ ...c, ed: k + 1, materials: c.materials || [] })));
+  render();
+}).catch(() => { $('#grid').textContent = 'Could not load the deck.'; });
+</script></body></html>
