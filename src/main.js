@@ -25,7 +25,7 @@ import { cache, offlineError } from './cache.js';
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
 const PAGE = { pocket: 0, shelf: 1, soil: 2, design: 3, house: 4 };
-const DESIGN_BG = '#FFD84A';
+const DESIGN_BG = '#FFFFFF';
 const COMPOST_H = 72; // opened things settle into the soil after three days
 let backend, pocket, shelf, soil, design, house, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us

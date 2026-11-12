@@ -2,10 +2,11 @@
 // furniture, houses and buildings a day, the same five for both of you. Swipe right to love,
 // left to pass. Their swipe on a card stays hidden until you've swiped it yourself (the server
 // only hands it over then, see wh_ds_state). Missed days carry over for a week, so you both
-// end up judging the same things, which is what the agreement numbers and profiles run on.
+// end up judging the same things, which is what the agreement numbers and the stats run on.
 // The deck: src/design/deck.txt (tags for the stats), photos from Wikimedia (photos.txt).
+// Look (Manu, Nov 12): white page, every corner square, color-blocked cards with ruled cells.
 import { h, store, hash, seeded, dayNumber, clamp } from './util.js';
-import { sheet, toast, icon } from './ui.js';
+import { sheet, toast } from './ui.js';
 import { buzz, sfx } from './feel.js';
 import { offlineError } from './cache.js';
 
@@ -13,17 +14,24 @@ const DECK = __DECK__;   // ./design/deck.json?v=<hash>, set by build.mjs
 const PER_DAY = 5;       // cards dealt a day
 const CATCH_UP = 6;      // days a missed card stays in your pile
 const PILE_MAX = 15;
-const PROFILE_AT = 50;   // swipes each before taste profiles make sense
 
 const KIND = { chair: 'Chair', lamp: 'Lamp', furniture: 'Furniture', house: 'House', building: 'Building' };
+const KINDS = { chair: 'Chairs', lamp: 'Lamps', furniture: 'Furniture', house: 'Houses', building: 'Buildings' };
+// each kind gets its own color block (bold palette + The Gund orange for lamps)
+const COLORS = {
+  chair: ['#FFD84A', '#0B0B0C'], lamp: ['#FF5B36', '#0B0B0C'], furniture: ['#A3E6EC', '#1546A8'],
+  house: ['#FFC8D7', '#D90042'], building: ['#0F7A4E', '#FFD84A'],
+};
 const GROUP = { chair: 'chair', lamp: 'object', furniture: 'object', house: 'house', building: 'building' };
-const svg = (d, w = 24) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const svg = (d, w = 24, sw = 2.2) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="square" stroke-linejoin="miter">${d}</svg>`;
+const HEART = (w) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}"><path fill="currentColor" d="M12 21 3.6 12.6A5 5 0 0 1 12 6.3a5 5 0 0 1 8.4 6.3Z"/></svg>`;
 const ICONS = {
-  nope: svg('<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>', 26),
-  love: '<svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12 20.6s-7.6-4.7-7.6-10.6A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.6 2.6c0 5.9-7.6 10.6-7.6 10.6Z"/></svg>',
-  undo: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>', 20),
-  info: '<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="7.3" r="1.5" fill="currentColor"/><path d="M12 11v6.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
-  matches: '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9 18.5s-6-3.7-6-8.3A3.3 3.3 0 0 1 9 8.2a3.3 3.3 0 0 1 6 2c0 4.6-6 8.3-6 8.3Z" opacity=".55"/><path fill="currentColor" d="M15 17s-6-3.7-6-8.3A3.3 3.3 0 0 1 15 6.7a3.3 3.3 0 0 1 6 2c0 4.6-6 8.3-6 8.3Z"/></svg>',
+  nope: svg('<path d="M6 6l12 12M18 6 6 18"/>', 22, 2.6),
+  love: HEART(22),
+  undo: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>', 22, 2.2),
+  info: svg('<path d="M12 5v14M5 12h14"/>', 18, 2.4),
+  close: svg('<path d="M6 6l12 12M18 6 6 18"/>', 18, 2.4),
+  matches: `<svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" opacity=".5" d="M8.5 19.5 2.7 13.7A3.6 3.6 0 0 1 8.5 9.2a3.6 3.6 0 0 1 5.8 4.5Z"/><path fill="currentColor" d="M15.5 17.5 9.7 11.7a3.6 3.6 0 0 1 5.8-4.5 3.6 3.6 0 0 1 5.8 4.5Z"/></svg>`,
 };
 const svgEl = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstChild; };
 
@@ -58,43 +66,73 @@ export function dealOrder(deck, seed) {
 
 export const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
 const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
-const weekday = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+const weekday = (day, opt = 'long') => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: opt, timeZone: 'UTC' });
+const shortDate = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+const colorVars = (c) => ({ '--bg': COLORS[c.kind][0], '--fg': COLORS[c.kind][1] });
 
-// who made it, when, where: one line under the name
-function facts(c) {
-  const place = c.kind === 'house' || c.kind === 'building' ? [c.at, c.country].filter(Boolean).join(', ') : c.country;
-  return [yearText(c), place].filter(Boolean).join(' · ');
+// ── what the stats group cards by ──
+export const eraOf = (y) => (y < 1850 ? 'Before 1850' : y < 1918 ? 'Turn of the century' : y < 1945 ? 'Interwar' : y < 1976 ? 'Mid-century' : y < 2000 ? 'Late 20th century' : 'Contemporary');
+const MATS = [
+  ['Cane and rattan', /cane|rattan|paper cord|webbing/], ['Paper', /paper|washi|cardboard/], ['Wood', /wood|oak|teak|walnut|beech|birch|ash\b|maple|ply|jacaranda|huanghuali|timber|rosewood|hickory/],
+  ['Glass', /glass/], ['Plastic', /plastic|poly|fiberglass|acrylic|pvc|abs|methacrylate|resin/], ['Leather', /leather/],
+  ['Fabric', /fabric|wool|cotton|foam|rope|aramid|bead/], ['Concrete', /concrete/], ['Stone', /stone|marble|limestone|sandstone|quartzite|onyx|travertine|rock/],
+  ['Brick and clay', /brick|clay|terracotta|mud|tile|ceramic|porcelain/], ['Plaster', /stucco|plaster|harl/],
+  ['Steel', /steel|chrome|iron|galvan/], ['Aluminum', /alumin/], ['Brass and copper', /brass|copper|bronze|gilded|gold/], ['Metal', /zinc|titanium|metal|nickel/],
+];
+export const matsOf = (c) => [...new Set(c.materials.map((m) => (MATS.find(([, re]) => re.test(m.toLowerCase())) || [])[0]).filter(Boolean))];
+
+// one person's taste over a list of { c, me, them }: who = 'me' | 'them'
+export function taste(list, who) {
+  const loved = list.filter((x) => x[who]).map((x) => x.c);
+  const top = (vals) => {
+    const n = new Map();
+    for (const v of vals.flat()) n.set(v, (n.get(v) || 0) + 1);
+    let best = null; for (const [v, k] of n) if (!best || k > best[1]) best = [v, k];
+    return best;
+  };
+  const side = (key, a, b) => {
+    if (!loved.length) return null;
+    const k = loved.filter((c) => c[key] === a).length / loved.length;
+    return k >= 0.5 ? [cap(a), k] : [cap(b), 1 - k];
+  };
+  return {
+    n: list.length, loved: loved.length,
+    rate: list.length ? loved.length / list.length : null,
+    kind: top(loved.map((c) => KINDS[c.kind])),
+    era: top(loved.map((c) => eraOf(c.year))),
+    style: top(loved.map((c) => c.style)),
+    material: top(loved.map(matsOf)),
+    country: top(loved.map((c) => c.country)),
+    form: side('form', 'organic', 'geometric'),
+    palette: side('palette', 'color', 'neutral'),
+    feel: side('feel', 'minimal', 'expressive'),
+  };
 }
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const pct = (k) => `${Math.round(k * 100)}%`;
 
-function infoBody(c) {
-  const tags = [KIND[c.kind], c.style, ...c.materials].filter(Boolean);
-  const maker = c.kind !== 'house' && c.kind !== 'building' && c.at ? `Made by ${c.at}` : null;
-  return [
+function infoBack(c) {
+  const place = c.kind === 'house' || c.kind === 'building' ? [c.at, c.country].filter(Boolean).join(', ') : c.country;
+  const maker = c.kind !== 'house' && c.kind !== 'building' && c.at ? c.at : null;
+  return h('div.dt-back',
     h('h2.dt-name', c.name),
     h('p.dt-by', c.by),
-    h('p.dt-facts', facts(c)),
+    h('dl.dt-facts',
+      h('dt', 'Year'), h('dd', yearText(c)),
+      h('dt', c.kind === 'house' || c.kind === 'building' ? 'Where' : 'From'), h('dd', place),
+      maker ? [h('dt', 'Made by'), h('dd', maker)] : null,
+      h('dt', 'Style'), h('dd', c.style),
+      h('dt', 'Materials'), h('dd', c.materials.join(', '))),
     h('p.dt-note', c.note),
-    maker ? h('p.dt-maker', maker) : null,
-    h('div.dt-tags', tags.map((t) => h('span', t))),
-    h('a.dt-credit', { href: c.source, target: '_blank', rel: 'noopener' }, `Photo: ${c.credit || 'Wikimedia Commons'}`),
-  ].filter(Boolean);
+    h('a.dt-credit', { href: c.source, target: '_blank', rel: 'noopener' }, `Photo: ${c.credit || 'Wikimedia Commons'}`));
 }
 
-// a photo that fills its frame when the shapes are close, else sits whole on a blurred copy of itself
-function photo(c, frameAspect) {
-  const a = c.w / c.h;
-  const fit = frameAspect && a / frameAspect > 0.8 && a / frameAspect < 1.25 ? 'cover' : 'contain';
-  const img = h('img.dt-img', { alt: '', draggable: false, decoding: 'async' });
-  img.crossOrigin = 'anonymous';
-  img.src = c.img;
-  img.style.objectFit = fit;
-  if (fit === 'cover') return h('div.dt-photo', img);
-  const blur = h('img.dt-blur', { alt: '', draggable: false, decoding: 'async' });
-  blur.crossOrigin = 'anonymous';
-  blur.src = c.img;
-  return h('div.dt-photo', blur, img);
+function img(c, cls = '') {
+  const i = h(`img${cls}`, { alt: '', draggable: false, decoding: 'async' });
+  i.crossOrigin = 'anonymous';
+  i.src = c.img;
+  return i;
 }
-
 function prefetch(cards) {
   for (const c of cards) { const i = new Image(); i.crossOrigin = 'anonymous'; i.decoding = 'async'; i.src = c.img; }
 }
@@ -111,14 +149,20 @@ export function DesignPage(app, root) {
   const them = () => app.them()?.name || 'Them';
   const seed = () => app.S.hole?.id || 'bw';
 
-  const meta = h('div.dt-meta');
-  const matchesBtn = h('button.dt-round', { type: 'button', 'aria-label': 'Matches', onclick: () => matchesSheet() }, svgEl(ICONS.matches));
+  const count = h('span.dt-count');
+  const matchesBtn = h('button.dt-matches', { type: 'button', 'aria-label': 'Matches', onclick: () => matchesSheet() }, svgEl(ICONS.matches), count);
+  const crumb = h('span.dt-crumb');
+  const meta = h('span.dt-meta');
   const stage = h('div.dt-stage');
-  const nope = h('button.dt-act.nope', { type: 'button', 'aria-label': 'Pass', onclick: () => swipeTop(false) }, svgEl(ICONS.nope));
-  const undoBtn = h('button.dt-act.undo', { type: 'button', 'aria-label': 'Take it back', onclick: () => undo() }, svgEl(ICONS.undo));
-  const love = h('button.dt-act.love', { type: 'button', 'aria-label': 'Love', onclick: () => swipeTop(true) }, svgEl(ICONS.love));
+  const cell = (cls, label, icon, fn) => h(`button.dt-act.${cls}`, { type: 'button', 'aria-label': label, onclick: fn }, svgEl(icon), h('span', cls === 'undo' ? 'UNDO LAST' : label.toUpperCase()));
+  const nope = cell('nope', 'Pass', ICONS.nope, () => swipeTop(false));
+  const undoBtn = cell('undo', 'Take it back', ICONS.undo, () => undo());
+  const love = cell('love', 'Love', ICONS.love, () => swipeTop(true));
   const actions = h('div.dt-actions', nope, undoBtn, love);
-  root.replaceChildren(h('header.dt-head', h('div', meta, h('h1.dt-title', 'Design Tinder')), matchesBtn), stage, actions);
+  root.replaceChildren(
+    h('header.dt-head', h('h1.dt-title', 'Design', h('br'), 'Tinder'), matchesBtn),
+    h('div.dt-rule', crumb, meta),
+    stage, actions);
 
   function applyState(s) {
     st = s;
@@ -154,7 +198,7 @@ export function DesignPage(app, root) {
   // ── dealing ──
   const started = () => String(st?.started || app.today()).slice(0, 10);
   const dayIndex = () => Math.max(0, dayNumber(app.today()) - dayNumber(started()));
-  const dealtOn = (i) => order.slice(i * PER_DAY, (i + 1) * PER_DAY).map((c) => ({ c, i, day: addDays(started(), i) }));
+  const dealtOn = (i) => order.slice(i * PER_DAY, (i + 1) * PER_DAY).map((c, k) => ({ c, i, k, day: addDays(started(), i) }));
   function pile() {
     const i = dayIndex();
     const out = dealtOn(i).filter((x) => !mine.has(x.c.id));
@@ -165,12 +209,15 @@ export function DesignPage(app, root) {
     }
     return out.slice(0, PILE_MAX);
   }
+  const loves = () => [...theirs].filter(([id, t]) => t && mine.get(id)?.liked).length;
 
   // ── drawing ──
   function render() {
     undoBtn.disabled = !history.length;
+    crumb.textContent = `No. ${String(dayIndex() + 1).padStart(2, '0')} · ${shortDate(app.today()).toUpperCase()}`;
+    const m = loves(); count.textContent = m ? String(m) : '';
     if (failed === 'deck' || (!deck && !st)) {
-      meta.textContent = 'TODAY\'S FIVE';
+      meta.textContent = '';
       stage.replaceChildren(h('div.dt-empty', h('p', failed === 'deck' ? 'The deck needs a signal the first time.' : 'Shuffling the deck…')));
       nope.disabled = love.disabled = true;
       return;
@@ -180,33 +227,50 @@ export function DesignPage(app, root) {
     const p = pile();
     const left = p.filter((x) => x.i === dayIndex()).length;
     const earlier = p.length - left;
-    meta.textContent = !today.length ? 'THE WHOLE DECK, DONE'
-      : left ? `${left} LEFT TODAY${earlier ? ` · ${earlier} FROM EARLIER` : ''}`
-      : earlier ? `${earlier} FROM EARLIER` : 'TODAY\'S FIVE, DONE';
+    meta.textContent = !today.length ? 'DECK DONE'
+      : left ? `${left} LEFT${earlier ? ` + ${earlier} EARLIER` : ''}`
+      : earlier ? `${earlier} FROM EARLIER` : 'ALL FIVE DONE';
     nope.disabled = love.disabled = !p.length;
     actions.classList.toggle('done', !p.length);
     if (!p.length) { stage.replaceChildren(donePanel(today)); return; }
     const W = stage.clientWidth || window.innerWidth - 32, H = stage.clientHeight || window.innerHeight * 0.6;
-    const cards = p.slice(0, 2).map((x, k) => cardEl(x, W / H, k));
+    const cards = p.slice(0, 2).map((x, k) => cardEl(x, W, H, k));
     if (rising) cards[0].classList.add('rise');
     rising = false;
     stage.replaceChildren(...cards.reverse());
     prefetch(p.slice(2, 7).map((x) => x.c));
   }
 
-  function cardEl(x, aspect, depth) {
+  // A card: a colored block with a ruled header bar, the kind in big type, and a white frame
+  // holding the photo (full width, its own shape, never padded with blur) and the text under it.
+  // The context line shows; who made it, when and where open with + (the text grows, the photo shrinks).
+  function cardEl(x, W, H, depth) {
     const c = x.c;
-    const chips = [];
-    if (x.i < dayIndex()) chips.push(h('span.dt-chip', `FROM ${weekday(x.day).toUpperCase()}`));
-    if (pending.has(c.id)) chips.push(h('span.dt-chip.them', `${them().toUpperCase()} SWIPED`));
-    const info = h('div.dt-info', infoBody(c));
-    const iBtn = h('button.dt-i', { type: 'button', 'aria-label': 'About this one' }, svgEl(ICONS.info));
-    const el = h(`div.dt-card${depth ? '.next' : ''}`, { 'data-nopager': '' },
-      photo(c, aspect),
-      h('div.dt-chips', chips),
-      h('span.dt-stamp.love', 'LOVE'), h('span.dt-stamp.nope', 'NOPE'),
-      info, iBtn);
-    iBtn.addEventListener('click', () => { const on = !el.classList.contains('open'); el.classList.toggle('open', on); iBtn.classList.toggle('on', on); if (on) info.scrollTop = 0; });
+    const today = x.i === dayIndex();
+    const label = today ? 'TODAY\'S FIVE' : `FROM ${weekday(x.day).toUpperCase()}`;
+    const tags = [];
+    if (pending.has(c.id)) tags.push(h('span.dt-tag.them', `${them().toUpperCase()} SWIPED`));
+    const toggle = h('button.dt-cell.dt-plus', { type: 'button', 'aria-label': 'About this one' }, svgEl(ICONS.info));
+    // photo height: its natural shape across the frame, leaving room for the bars and the text
+    const frameW = W - 8 - 2 * 14 - 6;
+    const room = H - 8 - 46 - 64 - 14 - 8 - 112;
+    const picH = Math.round(clamp(frameW * (c.h / c.w), Math.min(150, room), room));
+    const pic = h('div.dt-pic', { style: { height: `${picH}px` } }, img(c, '.dt-img'),
+      h('span.dt-stamp.love', 'LOVE'), h('span.dt-stamp.nope', 'NOPE'));
+    const about = h('div.dt-about', h('div.dt-front', h('span.dt-label', 'About this one:'), h('p', c.note)), infoBack(c));
+    const el = h(`div.dt-card${depth ? '.next' : ''}`, { 'data-nopager': '', style: colorVars(c) },
+      h('div.dt-cbar', h('span.dt-cbar-label', label), h('span.dt-cell.dt-num', `${x.k + 1}/5`), toggle),
+      h('div.dt-chead', h('h2.dt-kind', KIND[c.kind]), h('div.dt-tags', tags)),
+      h('div.dt-frame', pic, about));
+    const flip = () => {
+      const on = !el.classList.contains('open');
+      el.classList.toggle('open', on);
+      toggle.replaceChildren(svgEl(on ? ICONS.close : ICONS.info));
+      pic.style.height = on ? `${Math.round(Math.min(picH, room * 0.36))}px` : `${picH}px`;
+      about.scrollTop = 0;
+    };
+    toggle.addEventListener('click', flip);
+    about.addEventListener('click', (e) => { if (!el.classList.contains('open') && !e.target.closest('a')) flip(); });
     if (!depth) drag(el, x);
     return el;
   }
@@ -219,7 +283,7 @@ export function DesignPage(app, root) {
       el.querySelector('.dt-stamp.nope').style.opacity = clamp(-dx / 90, 0, 1);
     };
     el.addEventListener('pointerdown', (e) => {
-      if (busy || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button, a, .dt-info')) return;
+      if (busy || (e.pointerType === 'mouse' && e.button !== 0) || e.target.closest('button, a') || (el.classList.contains('open') && e.target.closest('.dt-about'))) return;
       s = { id: e.pointerId, x: e.clientX, y: e.clientY, hist: [{ x: e.clientX, t: performance.now() }], moved: false };
       try { el.setPointerCapture(e.pointerId); } catch { /* */ }
       el.style.transition = 'none';
@@ -229,7 +293,7 @@ export function DesignPage(app, root) {
       const dx = e.clientX - s.x, dy = e.clientY - s.y;
       if (!s.moved && Math.hypot(dx, dy) < 4) return;
       s.moved = true;
-      el.style.transform = `translate3d(${dx}px, ${dy * 0.3}px, 0) rotate(${(dx / W()) * 16}deg)`;
+      el.style.transform = `translate3d(${dx}px, ${dy * 0.3}px, 0) rotate(${(dx / W()) * 14}deg)`;
       stamp(dx);
       s.hist.push({ x: e.clientX, t: performance.now() }); if (s.hist.length > 6) s.hist.shift();
     });
@@ -238,12 +302,14 @@ export function DesignPage(app, root) {
       const dx = e.clientX - s.x, dy = e.clientY - s.y;
       const a = s.hist[0], z = s.hist[s.hist.length - 1];
       const v = (z.x - a.x) / Math.max(16, z.t - a.t);
+      const moved = s.moved;
       s = null;
       if (dx > W() * 0.3 || (v > 0.55 && dx > 30)) return commit(x, true, el, dy);
       if (dx < -W() * 0.3 || (v < -0.55 && dx < -30)) return commit(x, false, el, dy);
       el.style.transition = 'transform 0.42s cubic-bezier(.2,1.4,.4,1)';
       el.style.transform = '';
       stamp(0);
+      if (!moved) el.style.transition = '';
     };
     el.addEventListener('pointerup', end);
     el.addEventListener('pointercancel', end);
@@ -266,16 +332,16 @@ export function DesignPage(app, root) {
     buzz(8);
     if (el) {
       const W = el.offsetWidth || window.innerWidth;
-      el.style.transition = 'transform 0.36s cubic-bezier(.3,.6,.5,1), opacity 0.36s';
-      el.style.transform = `translate3d(${liked ? W * 1.5 : -W * 1.5}px, ${dy * 0.3 + 40}px, 0) rotate(${liked ? 26 : -26}deg)`;
-      el.style.opacity = '0.6';
+      el.style.transition = 'transform 0.34s cubic-bezier(.3,.6,.5,1)';
+      el.style.transform = `translate3d(${liked ? W * 1.5 : -W * 1.5}px, ${dy * 0.3 + 30}px, 0) rotate(${liked ? 22 : -22}deg)`;
     }
-    setTimeout(() => { busy = false; rising = true; render(); }, el ? 260 : 0);
+    setTimeout(() => { busy = false; rising = true; render(); }, el ? 250 : 0);
     try {
       const r = await app.backend.dsSwipe(id, x.day, liked);
       pending.delete(id);
       if (r?.theirs != null) { theirs.set(id, r.theirs); reveal(x.c, liked, r.theirs); }
       saveCopy();
+      count.textContent = loves() ? String(loves()) : '';
     } catch (e) {
       if (offlineError(e)) { queueOut({ item: id, day: x.day, liked }); return; }
       console.warn('swipe', e);
@@ -296,8 +362,8 @@ export function DesignPage(app, root) {
     const el = stage.querySelector('.dt-card:not(.next)');
     if (el) {
       el.style.transition = 'none';
-      el.style.transform = 'translate3d(0, -40px, 0) scale(0.92)'; el.style.opacity = '0';
-      requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform 0.4s cubic-bezier(.2,1.3,.4,1), opacity 0.25s'; el.style.transform = ''; el.style.opacity = ''; }));
+      el.style.transform = 'translate3d(0, -30px, 0)'; el.style.opacity = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform 0.36s cubic-bezier(.2,1.3,.4,1), opacity 0.2s'; el.style.transform = ''; el.style.opacity = ''; }));
     }
     try { await app.backend.dsUndo(id); saveCopy(); } catch (e) { if (offlineError(e)) queueOut({ item: id, undo: true }); }
   }
@@ -312,10 +378,11 @@ export function DesignPage(app, root) {
     sfx.chime(); buzz([14, 70, 14]);
     const box = h('div.dt-match', { role: 'status' },
       h('div.dt-match-card',
-        h('div.dt-match-pic', photo(c, 1)),
-        h('div.dt-match-label', 'IT\'S A MATCH'),
-        h('p', `You and ${them()} both love ${c.name}.`)));
-    const close = () => { box.classList.remove('in'); setTimeout(() => box.remove(), 320); };
+        h('div.dt-match-bar', h('span', 'IT\'S A MATCH'), svgEl(HEART(16))),
+        h('div.dt-match-pic', img(c)),
+        h('h2', c.name),
+        h('p', `You and ${them()} both love it.`)));
+    const close = () => { box.classList.remove('in'); setTimeout(() => box.remove(), 300); };
     box.addEventListener('click', close);
     document.body.append(box);
     requestAnimationFrame(() => requestAnimationFrame(() => box.classList.add('in')));
@@ -346,22 +413,24 @@ export function DesignPage(app, root) {
     });
   }
 
+  const mark = (v) => (v == null ? h('i.wait', '–') : v ? h('i.yes', svgEl(HEART(13))) : h('i.no', svgEl(svg('<path d="M6 6l12 12M18 6 6 18"/>', 13, 3))));
+
   // ── when today's are done ──
   function donePanel(today) {
     if (!today.length) {
-      return h('div.dt-empty', h('h2', 'That\'s the whole deck.'), h('p', 'New cards are on the way.'), h('button.btn.dt-btn', { type: 'button', onclick: () => matchesSheet() }, 'See matches'));
+      return h('div.dt-done', h('h2', 'That\'s the', h('br'), 'whole deck.'), h('p.dt-done-sub', 'NEW CARDS ARE ON THE WAY'),
+        h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'SEE MATCHES', svgEl(HEART(16))));
     }
     const n = them();
     const waiting = today.filter((x) => !theirs.has(x.c.id)).length;
-    const mark = (v) => (v == null ? h('i.wait', '·') : v ? h('i.yes', svgEl(ICONS.love)) : h('i.no', svgEl(ICONS.nope)));
     return h('div.dt-done',
-      h('h2', 'Done for today.'),
-      h('div.dt-five', today.map((x) => h('button.dt-mini', { type: 'button', onclick: () => cardSheet(x.c) },
+      h('h2', 'Done for', h('br'), 'today.'),
+      h('p.dt-done-sub', waiting ? `${n.toUpperCase()} HASN'T SWIPED ${waiting === today.length ? 'YET' : `${waiting} YET`} · NEW FIVE TOMORROW` : 'NEW FIVE TOMORROW'),
+      h('div.dt-five', today.map((x) => h('button.dt-mini', { type: 'button', style: colorVars(x.c), onclick: () => cardSheet(x.c) },
         h('div.dt-mini-pic', h('img', { crossOrigin: 'anonymous', src: x.c.img, alt: '' })),
         h('div.dt-mini-row', h('span', 'You'), mark(mine.get(x.c.id)?.liked)),
         h('div.dt-mini-row', h('span', n), mark(theirs.get(x.c.id)))))),
-      h('p', waiting ? `${n} hasn't swiped ${waiting === today.length ? 'today\'s yet' : `${waiting} of them yet`}. New five tomorrow.` : 'New five tomorrow.'),
-      h('button.btn.dt-btn', { type: 'button', onclick: () => matchesSheet() }, 'See matches'));
+      h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'SEE MATCHES', svgEl(HEART(16))));
   }
 
   // ── matches ──
@@ -374,43 +443,76 @@ export function DesignPage(app, root) {
     const n = them();
     const list = both();
     const agree = list.filter((x) => x.me === x.them).length;
-    const pct = list.length ? Math.round((agree / list.length) * 100) : null;
-    const grid = (items, tag) => h('div.dt-grid', items.map((x) => h('button.dt-tile', { type: 'button', onclick: () => cardSheet(x.c) },
-      h('div.dt-tile-pic', h('img', { crossOrigin: 'anonymous', loading: 'lazy', src: x.c.img, alt: '' })),
-      h('b', x.c.name), tag ? h('span', tag(x)) : null)));
-    const section = (label, cls, items, tag, empty) => h(`section.dt-sec.${cls}`,
-      h('div.dt-sec-head', h('span', label), h('b', String(items.length))),
-      items.length ? grid(items, tag) : h('p.dt-sec-empty', empty));
     const loved = list.filter((x) => x.me && x.them), split = list.filter((x) => x.me !== x.them), passed = list.filter((x) => !x.me && !x.them);
-    const theirCount = theirs.size + pending.size;
+    const grid = (items, tag) => h('div.dt-grid', items.map((x) => h('button.dt-tile', { type: 'button', style: colorVars(x.c), onclick: () => cardSheet(x.c) },
+      h('div.dt-tile-pic', h('img', { crossOrigin: 'anonymous', loading: 'lazy', src: x.c.img, alt: '' })),
+      h('b', x.c.name), h('span', tag ? tag(x) : KIND[x.c.kind].toUpperCase()))));
+    const section = (label, items, tag, empty) => h('section.dt-sec',
+      h('div.dt-sec-bar', h('span', label), h('b', String(items.length))),
+      items.length ? grid(items, tag) : h('p.dt-sec-empty', empty));
     sheet('Matches', [
-      h('div.dt-agree',
-        h('span.dt-agree-label', 'YOU AGREE ON'),
-        h('div.dt-agree-num', pct == null ? '…' : `${pct}%`),
+      h('div.dt-hero',
+        h('div.dt-hero-bar', h('span', 'YOU AGREE ON'), h('span', `${list.length} SHARED`)),
+        h('div.dt-hero-num', list.length ? `${Math.round((agree / list.length) * 100)}%` : '0%'),
         h('p', list.length ? `${agree} of the ${list.length} cards you've both swiped.` : `Once you and ${n} have both swiped a card, it lands here.`)),
-      section('BOTH LOVE', 'love', loved, null, 'Nothing yet. Keep swiping.'),
-      section('SPLIT', 'split', split, (x) => (x.me ? 'You loved it' : `${n} loved it`), 'No disagreements yet.'),
-      section('BOTH PASS', 'pass', passed, null, 'Nothing you both passed on yet.'),
-      h('div.dt-soon',
-        h('span.dt-agree-label', 'TASTE PROFILES'),
-        h('p', `Charts of what each of you leans toward: mid-century or contemporary, wood or concrete, minimal or loud. They start once you've each swiped ${PROFILE_AT}.`),
-        h('div.dt-soon-row', h('span', `You ${Math.min(mine.size, PROFILE_AT)} / ${PROFILE_AT}`), h('span', `${n} ${Math.min(theirCount, PROFILE_AT)} / ${PROFILE_AT}`))),
+      statsTable(list),
+      section('BOTH LOVE', loved, null, 'Nothing yet. Keep swiping.'),
+      section('SPLIT', split, (x) => (x.me ? 'YOU LOVED IT' : `${n.toUpperCase()} LOVED IT`), 'No disagreements yet.'),
+      section('BOTH PASS', passed, null, 'Nothing you both passed on yet.'),
     ], { tall: true, quiet: true, className: 'dt-sheet' });
+  }
+
+  // Taste profiles as a table of stats, over the cards you've both swiped (so it's a fair comparison)
+  function statsTable(list) {
+    const n = them();
+    const head = h('div.dt-sec-bar', h('span', 'TASTE PROFILES'), h('b', String(list.length)));
+    if (!list.length) return h('section.dt-sec', head, h('p.dt-sec-empty', 'Stats start with the first card you\'ve both swiped.'));
+    const a = taste(list, 'me'), b = taste(list, 'them');
+    const top = (t) => (t ? t[0] : '–');
+    const side = (t) => (t ? `${t[0]} ${pct(t[1])}` : '–');
+    const words = (t) => [t.era, t.form, t.material].map((x) => x?.[0]).filter(Boolean).join(' · ') || 'Nothing loved yet';
+    // where you agree and split, by kind (2 shared cards or more)
+    const byKind = new Map();
+    for (const x of list) { const k = byKind.get(x.c.kind) || [0, 0]; k[0]++; if (x.me === x.them) k[1]++; byKind.set(x.c.kind, k); }
+    const kinds = [...byKind].filter(([, k]) => k[0] >= 2).map(([kind, k]) => [KINDS[kind], k[1] / k[0]]).sort((p, q) => q[1] - p[1]);
+    const rows = [
+      ['Love rate', a.rate == null ? '–' : pct(a.rate), b.rate == null ? '–' : pct(b.rate)],
+      ['Loves', String(a.loved), String(b.loved)],
+      ['Kind', top(a.kind), top(b.kind)],
+      ['Era', top(a.era), top(b.era)],
+      ['Style', top(a.style), top(b.style)],
+      ['Shapes', side(a.form), side(b.form)],
+      ['Color', side(a.palette), side(b.palette)],
+      ['Feel', side(a.feel), side(b.feel)],
+      ['Material', top(a.material), top(b.material)],
+      ['Country', top(a.country), top(b.country)],
+    ];
+    return h('section.dt-sec',
+      head,
+      h('div.dt-prof',
+        h('div', h('span', 'YOU'), h('b', words(a))),
+        h('div', h('span', n.toUpperCase()), h('b', words(b)))),
+      h('table.dt-stats',
+        h('thead', h('tr', h('th', ''), h('th', 'You'), h('th', n))),
+        h('tbody', rows.map(([k, x, y]) => h('tr', h('th', k), h('td', x), h('td', y))))),
+      kinds.length ? h('table.dt-stats.two', h('tbody',
+        h('tr', h('th', 'Agree most on'), h('td', `${kinds[0][0]} ${pct(kinds[0][1])}`)),
+        kinds.length > 1 ? h('tr', h('th', 'Split most on'), h('td', `${kinds[kinds.length - 1][0]} ${pct(kinds[kinds.length - 1][1])}`)) : null)) : null,
+      h('p.dt-small', `Over the ${list.length} card${list.length === 1 ? '' : 's'} you've both swiped. Gets sharper every day.`));
   }
 
   function cardSheet(c) {
     const me = mine.get(c.id)?.liked, they = theirs.get(c.id);
-    const verdict = (who, v) => h(`div.dt-verdict${v == null ? '' : v ? '.yes' : '.no'}`, h('span', who), h('b', v == null ? (who === 'You' ? 'Not yet' : 'Hidden till you swipe') : v ? 'Love' : 'Pass'));
-    sheet(c.name, [
-      h('div.dt-sheet-pic', photo(c, 4 / 3)),
-      h('div.dt-verdicts', verdict('You', me), verdict(them(), me == null ? null : they)),
-      h('div.dt-info.flat', infoBody(c).slice(1)),
-    ], { quiet: true, className: 'dt-card-sheet' });
+    const verdict = (who, v, hidden) => h(`div.dt-verdict${v == null ? '' : v ? '.yes' : '.no'}`, h('span', who.toUpperCase()), h('b', v == null ? (hidden ? 'Hidden till you swipe' : 'Not yet') : v ? 'Love' : 'Pass'));
+    sheet(KIND[c.kind], [
+      h('div.dt-sheet-card', { style: colorVars(c) }, h('div.dt-sheet-pic', img(c)), h('div.dt-about.flat', infoBack(c))),
+      h('div.dt-verdicts', verdict('You', me), verdict(them(), me == null ? null : they, me == null)),
+    ], { quiet: true, className: 'dt-sheet' });
   }
 
   return {
-    show() { visible = true; render(); load(); },
-    hide() { visible = false; },
+    show() { visible = true; document.body.classList.add('on-design'); render(); load(); },
+    hide() { visible = false; document.body.classList.remove('on-design'); },
     get visible() { return visible; },
     matches: () => matchesSheet(),
   };
