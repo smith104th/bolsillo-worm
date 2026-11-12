@@ -20,7 +20,7 @@ import { Shelf, SHELF_BOTTOM } from './shelf.js';
 import { SoilPage, SOIL_BG } from './soil.js';
 import { HousePage } from './housepage.js';
 import { DesignPage } from './design.js';
-import { GamesPage, GameStack, GAMES_BOTTOM } from './games.js';
+import { GamesPage, GameStack, GAMES_BOTTOM, GAMES_SKY } from './games.js';
 import { cache, offlineError } from './cache.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
@@ -184,12 +184,12 @@ function enterPocket(data, { fromCache = false } = {}) {
   house = HousePage(app, $('#screen-house'), { onEdge: (e) => stack?.begin(e), onBack: () => stack?.close(), onSky: () => paintEdges() });
   house.setSky(S.sky);
   games = GamesPage(app, $('#screen-games'), { open: (id) => openGame(id), status: gameStatus });
-  games.setSky(S.sky);
   const GAME = { soil, design, house };
   stack = GameStack({ soil: $('#screen-soil'), design: $('#screen-design'), house: $('#screen-house') }, {
     onChange: (id, was) => {
       if (was) GAME[was].hide();
-      if (id) GAME[id].show(); else games.render();
+      // the worms on Games rest while a game is open over them
+      if (id) { GAME[id].show(); games.hide(); } else if (pager?.index === PAGE.games) games.show();
       paintEdges();
     },
   });
@@ -200,7 +200,7 @@ function enterPocket(data, { fromCache = false } = {}) {
     onMove: tuckDock,
     onChange: (i) => {
       if (i === PAGE.shelf) { shelf.show(); markShelfSeen(); } else shelf.hide();
-      if (i === PAGE.games) { games.show(); primeGames(); } else { games.hide(); stack.close({ animate: false }); }
+      if (i === PAGE.games) { games.show(); primeGames(); } else { stack.close({ animate: false }); games.hide(); }
       if (i === PAGE.pocket) pocket?.start(); else pocket?.stop();
       paintEdges();
     },
@@ -411,7 +411,6 @@ function updateSky() {
   S.sky = sky;
   pocket?.setSky(sky);
   shelf?.setSky(sky);
-  games?.setSky(sky);
   house?.setSky(sky);
   document.body.classList.toggle('dark', sky.dark);
   paintEdges();
@@ -422,14 +421,15 @@ function paintEdges() {
   const i = pager?.index || 0, g = stack?.current;
   // the House paints its own sky when you scrub the time; match that one there
   const sky = (g === 'house' && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
-  document.body.classList.toggle('dark', g === 'design' ? false : !!sky.dark);
+  // Design Tinder is white and Games is always the daytime sky: never dark there
+  document.body.classList.toggle('dark', g === 'design' || (i === PAGE.games && !g) ? false : !!sky.dark);
   // Soil is white on top and green below: the bottom edge is whichever is showing there
   const soilGreen = () => { const el = document.querySelector('#screen-soil .s-bottom'); return !!el && el.getBoundingClientRect().top < window.innerHeight - 2; };
   const [top, bottom] = g === 'soil' ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF']
     : g === 'design' ? [DESIGN_BG, DESIGN_BG]
       : g === 'house' ? [sky.top, sky.bottom]
         : i === PAGE.shelf ? [sky.top, SHELF_BOTTOM]
-          : i === PAGE.games ? [sky.top, GAMES_BOTTOM] : [sky.top, sky.bottom];
+          : i === PAGE.games ? [GAMES_SKY.top, GAMES_BOTTOM] : [sky.top, sky.bottom];
   // iPhone home-screen apps (iOS 26) report a page one status bar shorter than the
   // screen and won't draw anything below it, so a strip of the page background
   // shows under the tab bar. Make that strip the color of whatever is at the

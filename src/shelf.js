@@ -3,7 +3,7 @@
 import { h, ago, prettyDay, seeded } from './util.js';
 import { sheet, btn, toast, segmented, icon } from './ui.js';
 import { makeSky, SKY, PAPERS, TRINKETS, renderStrokes } from './draw.js';
-import { Worm } from './worm.js';
+import { Worm, heart } from './worm.js';
 import { openItem, reactRow, theirReactions } from './compose.js';
 import { photoFromFile, pickImage } from './media.js';
 import { sfx, buzz } from './feel.js';
@@ -102,7 +102,7 @@ export function Shelf(app, root) {
   // their worm, loose in the open sky above the shelves
   function decor() {
     if (roamer) roamer.worm.setDesign(app.them()?.worm || {});
-    else requestAnimationFrame(() => { if (!roamer && roamCv.isConnected) roamer = roam(roamCv, app.them()?.worm); });
+    else requestAnimationFrame(() => { if (!roamer && roamCv.isConnected) roamer = roam(roamCv, [app.them()?.worm]); });
     return roamWrap;
   }
 
@@ -113,8 +113,10 @@ export function Shelf(app, root) {
   };
 }
 
-// a worm wandering freely: same body and brain as in the pocket, just slower and calmer
-function roam(canvas, design) {
+// Worms wandering freely: same body and brain as in the pocket, just slower and calmer.
+// One on the shelf (theirs), both on the Games page. Two of them bump instead of overlapping,
+// steer around each other, and every so often meet for a quiet kiss (hearts, no sound).
+export function roam(canvas, designs) {
   const x = canvas.getContext('2d');
   const dpr = Math.min(devicePixelRatio || 1, 2);
   let W = 0, H = 0, bounds = null;
@@ -125,26 +127,102 @@ function roam(canvas, design) {
   };
   size();
   const R = 13;
-  const w = new Worm(design || {}, { x: W * 0.62, y: H * 0.55, R, segs: 16, angle: Math.PI * 0.9 });
-  w.speedBase = R * 2.8;
-  for (let i = 0; i < 30; i++) w.update(1 / 60, { bounds, gx: 0, gy: 0 });
+  const list = designs.length > 1 ? [[0.28, 0.1], [0.72, Math.PI * 0.9]] : [[0.62, Math.PI * 0.9]];
+  const worms = designs.map((d, i) => {
+    const w = new Worm(d || {}, { x: W * list[i][0], y: H * 0.55, R, segs: 16, angle: list[i][1] });
+    w.speedBase = R * 2.8;
+    return w;
+  });
+  for (let i = 0; i < 30; i++) for (const w of worms) w.update(1 / 60, { bounds, gx: 0, gy: 0 });
+  const hearts = [];
+  let kissT = 0, kissCool = 6 + Math.random() * 6;
+
+  // the two worms: never through each other, around each other, and now and then a kiss
+  function meet(a, b, dt) {
+    kissCool = Math.max(0, kissCool - dt);
+    const A = a.pts, B = b.pts;
+    for (let i = 0; i < A.length; i++) {
+      const p = A[i], ra = a.radius(i);
+      for (let j = 0; j < B.length; j++) {
+        const q = B[j], rs = (ra + b.radius(j)) * 0.92;
+        let dx = q.x - p.x, dy = q.y - p.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 >= rs * rs) continue;
+        const d = Math.sqrt(d2) || 0.01;
+        const k = (rs - d) / d * 0.5, ox = dx * k, oy = dy * k;
+        p.x -= ox; p.y -= oy; p.px -= ox; p.py -= oy;
+        q.x += ox; q.y += oy; q.px += ox; q.py += oy;
+      }
+    }
+    const ha = a.head(), hb = b.head();
+    const dh = Math.hypot(hb.x - ha.x, hb.y - ha.y), kd = a.radius(0) + b.radius(0);
+    if (kissT > 0) {
+      kissT -= dt;
+      if (dh > kd * 0.95) {
+        const k = Math.min(1, dt * 6) * 0.5 * (dh - kd * 0.95) / dh;
+        ha.x += (hb.x - ha.x) * k; ha.y += (hb.y - ha.y) * k;
+        hb.x -= (hb.x - ha.x) * k; hb.y -= (hb.y - ha.y) * k;
+      }
+      a.gaze = { x: hb.x, y: hb.y }; b.gaze = { x: ha.x, y: ha.y };
+      if (kissT <= 0) {
+        for (const [w, o] of [[a, b], [b, a]]) {
+          w.gaze = null;
+          const h1 = w.head(), h2 = o.head(), ex = h1.x - h2.x, ey = h1.y - h2.y, e = Math.hypot(ex, ey) || 1, m = R * 3;
+          w.wp = { x: Math.min(bounds.r - m, Math.max(bounds.l + m, h1.x + (ex / e) * R * 8)), y: Math.min(bounds.b - m, Math.max(bounds.t + m, h1.y + (ey / e) * R * 4)) };
+          w.wpT = 3; w.rest = 0;
+        }
+      }
+      return;
+    }
+    if (kissCool <= 0 && dh < kd * 1.3) {
+      kissT = 1.6; kissCool = 14;
+      for (const [w, o] of [[a, b], [b, a]]) {
+        w.seek = false; w.pucker = 1.8; w.love = Math.max(w.love, 2.4); w.happy = Math.max(w.happy, 2); w.blush = Math.min(1, w.blush + 0.2);
+        w.rest = 1.8; w.wp = null;
+        w.heading = Math.atan2(o.head().y - w.head().y, o.head().x - w.head().x);
+      }
+      const mx = (ha.x + hb.x) / 2, my = (ha.y + hb.y) / 2;
+      for (let i = 0; i < 4; i++) hearts.push({ x: mx + (Math.random() - 0.5) * R * 2, y: my - R * 0.4, vy: -18 - Math.random() * 14, life: 1.3 + Math.random() * 0.5, t: 0, s: R * (0.6 + Math.random() * 0.3) });
+      return;
+    }
+    for (const [w, o] of [[a, b], [b, a]]) {
+      w.avoidT = Math.max(0, (w.avoidT || 0) - dt);
+      if (w.mode !== 'wander' || w.seek || w.avoidT > 0) continue;
+      const hh = w.head();
+      let near = null, best = (R * 2.1) ** 2;
+      for (let j = 4; j < o.pts.length; j++) { const q = o.pts[j], d2 = (q.x - hh.x) ** 2 + (q.y - hh.y) ** 2; if (d2 < best) { best = d2; near = q; } }
+      if (!near) continue;
+      const dx = hh.x - near.x, dy = hh.y - near.y, d = Math.hypot(dx, dy) || 1, m = R * 3;
+      w.wp = { x: Math.min(bounds.r - m, Math.max(bounds.l + m, hh.x + (dx / d) * R * 6)), y: Math.min(bounds.b - m, Math.max(bounds.t + m, hh.y + (dy / d) * R * 6)) };
+      w.wpT = 2.5; w.rest = 0; w.avoidT = 1.2;
+    }
+    // every so often one goes looking for the other
+    if (kissCool <= 0 && !a.seek && Math.random() < dt / 10) { a.seek = true; a.wpT = 7; a.rest = 0; }
+    if (a.seek) { if (a.wpT <= 0) a.seek = false; else a.wp = { x: hb.x, y: hb.y }; }
+  }
+
   let run = false, last = 0;
   const loop = (now) => {
     if (!run) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (canvas.clientWidth && Math.abs(canvas.clientWidth - W) > 1) size();
-    w.update(dt, { bounds, gx: 0, gy: 0 });
+    for (const w of worms) w.update(dt, { bounds, gx: 0, gy: 0 });
+    if (worms.length > 1) meet(worms[0], worms[1], dt);
     x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
-    w.draw(x);
+    for (const w of worms) w.draw(x);
+    for (const p of hearts) { p.t += dt; p.y += p.vy * dt; x.globalAlpha = Math.max(0, 1 - p.t / p.life); heart(x, p.x, p.y, p.s, '#FF2D55'); }
+    x.globalAlpha = 1;
+    for (let i = hearts.length - 1; i >= 0; i--) if (hearts[i].t >= hearts[i].life) hearts.splice(i, 1);
     requestAnimationFrame(loop);
   };
   canvas.addEventListener('click', (e) => {
     const r = canvas.getBoundingClientRect();
-    if (w.hit(e.clientX - r.left, e.clientY - r.top, 2) < 0) return;
+    const w = worms.find((v) => v.hit(e.clientX - r.left, e.clientY - r.top, 2) >= 0);
+    if (!w) return;
     w.happy = 2.4; w.squish = 1; w.dance = 0.6; w.danceAmp = R * 0.5; w.blush = Math.min(1, w.blush + 0.15);
     sfx.boop(); buzz(10);
   });
-  const api = { worm: w, start() { if (!run) { run = true; last = performance.now(); requestAnimationFrame(loop); } }, stop() { run = false; } };
+  const api = { worms, worm: worms[0], start() { if (!run) { run = true; last = performance.now(); requestAnimationFrame(loop); } }, stop() { run = false; } };
   api.start();
   return api;
 }

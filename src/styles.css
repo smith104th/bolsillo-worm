@@ -967,6 +967,9 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 /* ── Games: the third page (Manu, Nov 12). Bands like the shelf's; each game slides in over it ── */
 #screen-games { transform: translate3d(200%,0,0); overflow: hidden; background: #B7E0FF; }
 .games-content .bands { margin-top: 30px; }
-.games-content .band { min-height: 120px; }
+/* white bands with hairlines between them; each name in its game's color, the pill filled with it */
+.band.game { min-height: 104px; }
+.band.game + .band.game { border-top: 1px solid rgba(11,11,12,0.12); }
+.band.game .band-ready { background: var(--fg); color: #FFFFFF; }
 #screen-soil, #screen-design, #screen-house { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
 body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }

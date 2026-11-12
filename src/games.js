@@ -2,33 +2,51 @@
 // you swiped through; now they live here as bands, like the shelf's. Tapping one slides it in
 // over this page; Back (or a swipe to the right) slides it away again, and from here you swipe
 // on to the shelf and the pocket as before.
+// Laid out like the shelf (Manu): the header, both worms wandering together in a strip of sky,
+// then the bands, white with hairlines between them and the names in each game's color. The
+// sky here is always the daytime blue, whatever time it is where they are.
 import { h } from './util.js';
 import { makeSky, SKY } from './draw.js';
 import { buzz } from './feel.js';
+import { roam } from './shelf.js';
 
-export const GAMES_BOTTOM = '#A3E6EC';
+export const GAMES_SKY = SKY;
+export const GAMES_BOTTOM = '#FFFFFF';
 export const GAMES = [
-  { id: 'soil', name: 'Soil', bg: '#0F7A4E', fg: '#FFD84A' },
-  { id: 'design', name: 'Design Tinder', bg: '#FFC8D7', fg: '#D90042' },
-  { id: 'house', name: 'Garden & House', bg: GAMES_BOTTOM, fg: '#1546A8' },
+  { id: 'soil', name: 'Soil', fg: '#0F7A4E' },
+  { id: 'design', name: 'Design Tinder', fg: '#D90042' },
+  { id: 'house', name: 'Garden & House', fg: '#1546A8' },
 ];
 
 // status(id) → short text for the band's pill when something waits there, else null
 export function GamesPage(app, root, { open, status }) {
-  let W = 0, H = 0, skyKey = null;
+  let W = 0, H = 0, roamer = null;
   const bg = h('canvas.shelf-sky');
   const meta = h('div.hd-meta');
+  const roamCv = h('canvas.roamer', { 'aria-label': 'Your two worms, wandering' });
+  const roamWrap = h('div.roam-wrap', roamCv);
   const bands = h('div.bands', { style: { '--last': GAMES_BOTTOM } });
-  const scroll = h('div.shelf-scroll', h('header.shelf-head', meta, h('div.hd-name', 'Games')), h('div.shelf-content.games-content', bands));
+  const scroll = h('div.shelf-scroll', h('header.shelf-head', meta, h('div.hd-name', 'Games')), h('div.shelf-content.games-content', roamWrap, bands));
   root.replaceChildren(bg, scroll);
 
-  function setSky(sky) {
+  // always the daytime gradient (Manu), only redrawn when the screen size changes
+  function setSky() {
     const w = window.innerWidth, hh = window.innerHeight;
-    if (skyKey === sky?.key && W === w && H === hh) return;
-    W = w; H = hh; skyKey = sky?.key;
+    if (W === w && H === hh) return;
+    W = w; H = hh;
     const dpr = Math.min(devicePixelRatio || 1, 2);
-    const c = makeSky(w, hh, dpr, sky || SKY);
+    const c = makeSky(w, hh, dpr, GAMES_SKY);
     bg.width = c.width; bg.height = c.height; bg.getContext('2d').drawImage(c, 0, 0);
+  }
+
+  // both worms, loose in the sky above the games
+  function worms() {
+    const designs = [app.me()?.worm, app.them()?.worm].filter(Boolean);
+    if (roamer && roamer.worms.length === designs.length) roamer.worms.forEach((w, i) => w.setDesign(designs[i] || {}));
+    else if (!roamer || roamer.worms.length !== designs.length) {
+      roamer?.stop(); roamer = null;
+      requestAnimationFrame(() => { if (!roamer && roamCv.isConnected) roamer = roam(roamCv, designs.length ? designs : [{}]); });
+    }
   }
 
   function render() {
@@ -36,13 +54,17 @@ export function GamesPage(app, root, { open, status }) {
     meta.textContent = waiting ? `${waiting} WAITING FOR YOU` : 'GAMES FOR TWO';
     bands.replaceChildren(...GAMES.map((g) => {
       const s = status(g.id);
-      return h('button.band', { type: 'button', style: { '--bg': g.bg, '--fg': g.fg }, onclick: () => { buzz(8); open(g.id); } },
+      return h('button.band.game', { type: 'button', style: { '--bg': '#FFFFFF', '--fg': g.fg }, onclick: () => { buzz(8); open(g.id); } },
         h('span.band-name', g.name),
         h('span.band-side', s ? h('span.band-ready', s) : null));
     }));
   }
 
-  return { render, setSky, show() { render(); }, hide() {} };
+  return {
+    render, setSky,
+    show() { setSky(); render(); worms(); roamer?.start(); },
+    hide() { roamer?.stop(); },
+  };
 }
 
 // The games slide in over the Games page, one at a time. Swipe right to send one back.
