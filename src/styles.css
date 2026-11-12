@@ -753,7 +753,7 @@ svg .spin { animation: recordspin 6s linear infinite; }
 .toasts { z-index: 60; }
 
 /* ── the house (last page) ───────────────────── */
-#screen-house { transform: translate3d(300%,0,0); overflow: hidden; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); color: var(--ink); }
+#screen-house { transform: translate3d(400%,0,0); overflow: hidden; background: linear-gradient(#6FBEFF, #B7E0FF 55%, #EEF6FF); color: var(--ink); }
 .hp-stage { position: absolute; inset: 0; }
 .hp-head { position: absolute; z-index: 2; top: calc(var(--safe-t) + 16px); left: 22px; right: 22px; pointer-events: none; }
 .hp-title { font: 600 40px/0.98 var(--sans); letter-spacing: -0.05em; margin: 0; color: var(--ink); }
@@ -830,3 +830,98 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .hs-slider::-moz-range-track { height: 4px; border-radius: 4px; background: linear-gradient(90deg, #1b2547, #f0a37c 25%, #7fb7f0 40%, #7fb7f0 60%, #f0a37c 75%, #1b2547); }
 .hs-now { flex: none; padding: 12px 18px; border-radius: 999px; font: 600 15px/1 var(--sans); background: #FFFFFF; color: var(--ink); }
 .hs-now.on { background: var(--ink); color: #fff; }
+
+/* ── Design Tinder: the page between Soil and the House, yellow with black type ── */
+#screen-design { transform: translate3d(300%,0,0); overflow: hidden; background: #FFD84A; color: var(--ink); display: flex; flex-direction: column; }
+.dt-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: calc(var(--safe-t) + 16px) 22px 0; }
+.dt-meta { font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.dt-title { font: 600 46px/0.98 var(--sans); letter-spacing: -0.05em; margin: 10px 0 0; color: var(--ink); }
+.dt-round { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: #FF2D55; }
+.dt-stage { position: relative; flex: 1; min-height: 0; margin: 18px 16px 0; }
+.dt-card { position: absolute; inset: 0; border-radius: 28px; overflow: hidden; background: #fff; box-shadow: 0 18px 40px rgba(90,60,0,0.25); touch-action: none; -webkit-user-select: none; user-select: none; will-change: transform; }
+.dt-card.next { transform: translateY(10px) scale(0.95); box-shadow: 0 10px 24px rgba(90,60,0,0.18); }
+.dt-card.rise { animation: dt-rise 0.28s cubic-bezier(.2,.9,.25,1); }
+@keyframes dt-rise { from { transform: translateY(10px) scale(0.95); } to { transform: none; } }
+.dt-photo { position: absolute; inset: 0; overflow: hidden; background: #F2F2F7; }
+.dt-img { position: absolute; inset: 0; width: 100%; height: 100%; -webkit-user-drag: none; pointer-events: none; }
+.dt-blur { position: absolute; left: -40px; top: -40px; width: calc(100% + 80px); height: calc(100% + 80px); object-fit: cover; filter: blur(28px) saturate(1.15); opacity: 0.85; pointer-events: none; }
+.dt-chips { position: absolute; z-index: 1; top: 14px; left: 14px; right: 14px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.dt-chip { font: 600 11px/1 var(--mono); letter-spacing: 0.06em; padding: 8px 11px; border-radius: 999px; background: #fff; color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.dt-chip.them { background: #FF2D55; color: #fff; }
+.dt-stamp { position: absolute; z-index: 1; top: 44px; padding: 6px 12px 3px; border: 5px solid currentColor; border-radius: 12px; background: rgba(255,255,255,0.92); font: 800 40px/1 var(--sans); letter-spacing: 0.02em; opacity: 0; pointer-events: none; }
+.dt-stamp.love { left: 20px; color: #FF2D55; transform: rotate(-14deg); }
+.dt-stamp.nope { right: 20px; color: var(--ink); transform: rotate(14deg); }
+.dt-i { position: absolute; z-index: 3; right: 14px; bottom: 14px; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,0.94); color: var(--ink); box-shadow: 0 2px 10px rgba(0,0,0,0.2); transition: background 0.2s, color 0.2s; }
+.dt-i.on { background: var(--ink); color: #fff; }
+.dt-info { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; max-height: 76%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; padding: 22px 22px 70px; border-radius: 24px 24px 0 0; background: #fff; color: var(--ink); transform: translateY(102%); transition: transform 0.38s cubic-bezier(.2,.9,.25,1); -webkit-user-select: text; user-select: text; }
+.dt-card.open .dt-info { transform: none; }
+.dt-name { font: 700 28px/1.04 var(--sans); letter-spacing: -0.035em; margin: 0; color: var(--ink); }
+.dt-card .dt-name { margin-right: 36px; }
+.dt-by { margin: 8px 0 0; font: 500 16px/1.3 var(--sans); color: var(--ink); }
+.dt-facts { margin: 6px 0 0; font: 500 12px/1.35 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-2); }
+.dt-note { margin: 14px 0 0; font: 400 17px/1.42 var(--sans); color: var(--ink); }
+.dt-maker { margin: 10px 0 0; font: 400 14px/1.3 var(--sans); color: var(--ink-2); }
+.dt-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.dt-tags span { font: 500 13px/1 var(--sans); padding: 7px 10px; border-radius: 999px; background: #F2F2F7; color: var(--ink); }
+.dt-credit { display: block; margin-top: 16px; font: 400 12px/1.35 var(--sans); color: var(--ink-2); text-decoration: none; overflow-wrap: anywhere; }
+.dt-actions { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 16px 0 calc(var(--safe-b) + 50px); }
+.dt-act { width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 8px 20px rgba(90,60,0,0.2); transition: transform 0.12s, opacity 0.2s; }
+.dt-act:active { transform: scale(0.9); }
+.dt-act.nope { background: var(--ink); color: #fff; }
+.dt-act.love { background: #FF2D55; color: #fff; }
+.dt-act.undo { width: 46px; height: 46px; background: #fff; color: var(--ink); }
+.dt-act:disabled { opacity: 0.3; pointer-events: none; box-shadow: none; }
+.dt-actions.done .nope, .dt-actions.done .love { visibility: hidden; }
+.dt-actions.done .undo:disabled { visibility: hidden; }
+.dt-empty, .dt-done { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; color: var(--ink); padding: 0 6px; }
+.dt-empty h2, .dt-done h2 { margin: 0; font: 700 36px/1 var(--sans); letter-spacing: -0.045em; }
+.dt-empty p, .dt-done p { margin: 0; font: 400 17px/1.4 var(--sans); max-width: 300px; }
+.dt-empty p:only-child { font: 600 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.dt-five { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; width: 100%; margin: 10px 0 4px; }
+.dt-mini { display: flex; flex-direction: column; justify-content: flex-start; padding: 4px 4px 7px; border-radius: 16px; background: #fff; text-align: left; box-shadow: 0 6px 14px rgba(90,60,0,0.14); }
+.dt-mini-pic { aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #F2F2F7; }
+.dt-mini-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dt-mini-row { display: flex; align-items: center; justify-content: space-between; gap: 2px; padding: 5px 3px 0; font: 600 9px/1 var(--mono); letter-spacing: 0.02em; text-transform: uppercase; color: var(--ink); }
+.dt-mini-row span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dt-mini-row i { flex: none; display: grid; place-items: center; width: 14px; height: 14px; font-style: normal; font-size: 14px; line-height: 1; }
+.dt-mini-row i svg { width: 13px; height: 13px; }
+.dt-mini-row i.yes { color: #FF2D55; }
+.dt-mini-row i.no { color: var(--ink); }
+.btn.dt-btn { margin-top: 6px; background: var(--ink); color: #fff; }
+/* both of you swiped right */
+.dt-match { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(255,200,215,0); transition: background 0.3s, opacity 0.3s; opacity: 0; }
+.dt-match.in { opacity: 1; background: rgba(255,200,215,0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dt-match-card { width: min(78vw, 320px); padding: 14px 14px 22px; border-radius: 32px; background: #FFC8D7; text-align: center; box-shadow: 0 24px 60px rgba(217,0,66,0.28); transform: scale(0.8) rotate(-4deg); transition: transform 0.5s cubic-bezier(.2,1.5,.4,1); }
+.dt-match.in .dt-match-card { transform: none; }
+.dt-match-pic { position: relative; aspect-ratio: 1; border-radius: 22px; overflow: hidden; }
+.dt-match-label { margin-top: 16px; font: 800 36px/0.95 var(--sans); letter-spacing: -0.035em; color: #D90042; }
+.dt-match-card p { margin: 8px 6px 0; font: 500 16px/1.3 var(--sans); color: #D90042; }
+/* matches: white tiles on grouped gray */
+.dt-sheet, .dt-sheet .grabber, .dt-sheet .sheet-head { background: #F2F2F7; }
+.dt-agree { padding: 22px; border-radius: 28px; background: #FFC8D7; color: #D90042; }
+.dt-agree-label { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.dt-agree-num { margin-top: 12px; font: 800 66px/0.9 var(--sans); letter-spacing: -0.05em; }
+.dt-agree p, .dt-soon p { margin: 10px 0 0; font: 400 16px/1.4 var(--sans); }
+.dt-sec { margin-top: 24px; }
+.dt-sec-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; color: var(--ink); }
+.dt-sec-head span { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; }
+.dt-sec-head b { font: 600 18px/1 var(--sans); }
+.dt-sec-empty { margin: 10px 4px 0; font: 400 15px/1.4 var(--sans); color: var(--ink); }
+.dt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.dt-tile { display: flex; flex-direction: column; justify-content: flex-start; padding: 6px 6px 10px; border-radius: 18px; background: #fff; text-align: left; transition: transform 0.15s; }
+.dt-tile:active { transform: scale(0.97); }
+.dt-tile-pic { aspect-ratio: 1; border-radius: 13px; overflow: hidden; background: #F2F2F7; }
+.dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dt-tile b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 8px 4px 0; font: 600 13px/1.2 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+.dt-tile span { display: block; margin: 3px 4px 0; font: 400 12px/1.2 var(--sans); color: var(--ink-2); }
+.dt-soon { margin-top: 26px; padding: 22px; border-radius: 28px; background: #A3E6EC; color: #1546A8; }
+.dt-soon-row { display: flex; gap: 18px; margin-top: 14px; font: 600 12px/1 var(--mono); letter-spacing: 0.04em; text-transform: uppercase; }
+/* one card, from the done panel or the matches */
+.dt-sheet-pic { position: relative; aspect-ratio: 4 / 3; border-radius: 22px; overflow: hidden; }
+.dt-verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.dt-verdict { padding: 12px 14px; border-radius: 18px; background: #F2F2F7; color: var(--ink); }
+.dt-verdict span { display: block; font: 500 11px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.dt-verdict b { display: block; margin-top: 6px; font: 600 17px/1.15 var(--sans); }
+.dt-verdict.yes { background: #FFC8D7; color: #D90042; }
+.dt-verdict.no { background: var(--ink); color: #fff; }
+.dt-info.flat { position: static; transform: none; max-height: none; overflow: visible; padding: 18px 2px 0; border-radius: 0; background: none; }

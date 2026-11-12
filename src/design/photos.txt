@@ -1,0 +1,270 @@
+# Photo for each card: id | Wikimedia file name | width | height | where (c = Commons, e = English Wikipedia; t = 960px thumbnail, o = original) | photographer | license
+# Resolved and checked by eye on Nov 12, 2026. The build turns each file name into an image URL (md5 path).
+red-blue|Gerrit thomas rietveld, red-blue chair, 1946-56 ca.jpg|960|1136|ct|Sailko|CC BY 3.0
+zig-zag|Gerrit rietveld, sedia zig-zag, 1938 ca.jpg|960|1350|ct|Sailko|CC BY 3.0
+wassily|Bauhaus Chair Breuer.png|960|901|co||Public domain
+cesca|Breuer chair 2008.jpg|960|1251|co|Holger.Ellgaard|CC BY-SA 3.0
+barcelona|Ngv design, ludwig mies van der rohe & co, barcelona chair.JPG|960|1045|ct|sailko|CC BY 2.5
+stool-60|Alvar Aalto. Stool 60.jpg|960|1120|ct|Gotogo|CC0
+lcw|LCW (Lounge Chair Wood) Chair by Charles and Ray Eames, Honolulu Museum of Art 4410.1.JPG|960|1264|ct|Hiart|CC0
+ant|Design Museum Danmark - Ant chair.jpg|960|1280|ct|lglazier618|CC BY 2.0
+swan|Ngv design, arne jacobsen, swan chair, 1958.JPG|960|1069|ct|sailko|CC BY 2.5
+ball|Ngv design, eero aarnio, globe chair 1963-65 01.JPG|960|1127|ct|sailko|CC BY 2.5
+bubble|Bubble Chair Eero Aarnio.jpg|960|720|ct|Hans B.|CC BY-SA 3.0
+panton|Esemplare in fibra di vetro anni 60'.png|960|486|ct|Robogate|CC BY-SA 4.0
+djinn|Stanley Kubrick The Exhibition - LACMA - 2001 A Space Odyssey - Olivier Mourge Djinn chair and sofa (8998536189).jpg|960|539|ct|Matthew J. Cotter|CC BY-SA 2.0
+aeron|Aeron chair Brooklyn Museum.jpg|960|1280|ct|Brooklyn Museum|CC BY 3.0
+adirondack|Typical Adirondack chair in eastern Ohio.jpg|960|1280|ct|Greg Hume|CC BY-SA 3.0
+monobloc|White Monobloc chair.jpg|960|1236|ct|Seniju|CC BY 2.0
+tiffany|Clara Wolcott Driscoll (American, 1861-1944), Tiffany Studios (American, 1902-1932) - Peacock Table Lamp - 2018.281 - Cleveland Museum of Art.jpg|960|1256|ct|Cleveland Museum of Art|CC0
+tansu|Ryobiraki tansu.jpg|960|685|co|Ty & Kiyoko Heineken|CC BY-SA 3.0
+fallingwater|Fallingwater3.jpg|960|630|ct|lachrimae72|CC0
+farnsworth|Farnsworth House by Mies Van Der Rohe - exterior-8.jpg|960|640|ct|Victor Grigas|CC BY-SA 3.0
+eames-house|Eames House.jpg|960|720|ct|Ilpo's Sojourn|CC BY 2.0
+stahl|Case Study House No. 22.JPG|960|697|ct|Ovs|Public domain
+kaufmann-desert|Kaufman Desert Home.jpg|960|636|ct|Pmeulbroek|CC BY-SA 4.0
+schroder|Rietveld Schröderhuis HayKranen-20.JPG|960|640|ct|Husky|CC BY 3.0
+tugendhat|Vila Tugendhat exterior Dvorak2.JPG|960|638|ct|Petr1987|CC BY-SA 4.0
+mairea|4Y1A7841 Alvar Aalto, Finland (26710745140).jpg|960|476|ct|Ninara|CC BY 2.0
+casa-barragan|Luis Barragán House and Studio-115242.jpg|960|1280|ct|Francesco Bandarin|CC BY-SA 3.0 igo
+katsura|Katsura Rikyu (3264799678).jpg|960|478|ct|KimonBerlin|CC BY-SA 2.0
+batllo|Casa Batllo Overview Barcelona Spain cut.jpg|960|1183|ct|ChristianSchd|CC BY-SA 3.0
+gamble|Gamble House 2016-1.jpg|960|605|ct|Cullen328|CC BY-SA 3.0
+robie|Frederick C. Robie House.JPG|960|720|ct|Teemu08|CC BY-SA 3.0
+gehry-house|Gehry House - Image01.jpg|960|720|ct|IK's World Trip|CC BY 2.0
+vanna|VVenturi House Highsmith.jpeg|960|563|ct|Carol M. Highsmith|Public domain
+sheats|USA CA Sheats-Goldstein 08.jpg|960|720|ct|Grueslayer|CC BY-SA 4.0
+chemosphere|Chemosphere 2012.jpg|960|640|ct|CDernbach|CC BY-SA 3.0
+futuro|Futuro WeeGee Espoo.jpg|960|640|ct|J-P Kärnä|CC BY-SA 3.0
+muller|Villa-Mueller-Prag-3.jpg|960|781|ct|Hpschaefer|CC BY 3.0
+melnikov|Melnikov House, May 2021.jpg|960|1280|ct|Paulkuz|CC BY-SA 4.0
+seidler|RoseSeidlerHouse.jpg|960|640|ct|Rory Hyde|CC BY-SA 2.0
+shodhan|Shodhan Villa2.jpg|960|640|ct|gabriel florimon|CC BY-SA 2.0
+malaparte|Villa Malaparte view from above.jpg|960|1280|ct|FriedrichFrisch|CC BY-SA 4.0
+pyramid|Great Pyramid of Giza - Pyramid of Khufu.jpg|960|540|ct|Douwe C. van der Zee|CC BY-SA 4.0
+pantheon|Pantheon (Rome) - Right side and front.jpg|960|773|ct|NikonZ7II|CC BY-SA 4.0
+petra|Al khazneh.jpg|960|641|ct|Susanahajer|CC BY-SA 3.0
+hagia-sophia|Hagia Sophia (228968325).jpeg|960|580|ct|Adli Wahid|CC BY-SA 3.0
+angkor|Angkor Wat.jpg|960|652|ct|Bjørn Christian Tørrissen|CC BY-SA 4.0
+sainte-chapelle|Sainte Chapelle - Upper level 1.jpg|960|1903|ct|Didier B|CC BY-SA 2.5
+alhambra|Dawn Charles V Palace Alhambra Granada Andalusia Spain.jpg|960|639|ct|Jebulon|CC0
+forbidden-city|The Forbidden City - View from Coal Hill.jpg|960|480|ct|Pixelflake|CC BY-SA 3.0
+florence-dome|Cattedrale di Santa Maria del Fiore – Il Duomo di Firenze.jpg|960|643|ct|Gary Campbell-Hall|CC BY 2.0
+st-basils|Saint Basil's Cathedral in Moscow.jpg|960|1065|ct|Tsy1980|CC BY-SA 4.0
+himeji|Himeji castle in may 2015.jpg|960|640|ct|Nikos Kitsakis|CC BY-SA 4.0
+lotfollah|Sheikh Lotfallah Esfahan.JPG|960|720|ct|Nicolas Hadjisavvas|CC BY 2.5
+taj-mahal|Taj Mahal (Edited).jpeg|960|631|ct|Yann|CC BY-SA 4.0
+djenne|Djenne great mud mosque.jpg|960|638|ct|Ruud Zwart|CC BY-SA 3.0
+eiffel|Tour Eiffel Wikimedia Commons (cropped).jpg|960|1599|ct|Benh LIEU SONG|Public domain
+sagrada|SF maig 2 cropped.jpg|960|1397|ct|Canaan|CC BY-SA 4.0
+secession|Secession 2016, Vienna.jpg|960|640|ct|Thomas Ledl|CC BY-SA 4.0
+casa-mila|Casa Milà, general view.jpg|960|748|ct|Thomas Ledl|CC BY-SA 4.0
+einstein|Potsdam Telegrafenberg asv2023-09 img4.jpg|960|960|ct|A.Savin|FAL
+goetheanum|Goetheanum Dornach2.jpg|960|691|ct|Wladyslaw|CC BY-SA 3.0
+bauhaus|Dessau Bauhaus-Gebäude asv2024-06 img1.jpg|960|600|ct|A.Savin|FAL
+stockholm-library|AsplundGunnarBibliotheque.jpg|960|698|ct|En Dum En|CC BY-SA 2.0
+van-nelle|Rotterdam van nelle fabriek.jpg|960|615|ct|F.Eveleens|CC BY 3.0
+paimio-sanatorium|Paimio Sanatorium2.jpg|960|639|ct|Leon Liao|CC BY 2.0
+barcelona-pavilion|The Barcelona Pavilion, Barcelona, 2010.jpg|960|642|ct|Ashley Pomeroy|CC BY 3.0
+grundtvig|Grundtvig’s Church 02 (level and colour adjust).jpg|960|642|ct|Haydn Blackey|CC BY-SA 2.0
+shukhov|Shukhov Tower photo by Maxim Fedorov. Night.jpg|960|1439|co|Maxim Fedorov|CC BY-SA 3.0
+dhaka|National Assembly of Bangladesh (10).jpg|960|595|ct|Saiful Aopu & Nahid Sultan|CC BY-SA 3.0
+salk|Salk Institute 2.jpg|960|720|ct|Codera23|CC BY-SA 4.0
+seagram|Seagram Building (35098307116).jpg|960|960|ct|Ken OHYAMA|CC BY-SA 2.0
+guggenheim-ny|Solomon R. Guggenheim Museum (48059131351).jpg|960|540|ct|Ajay Suresh|CC BY 2.0
+twa|Ehemaliges TWA-Terminal am John F. Kennedy International Airport in New York.JPG|960|362|ct|Roland Arhelger|CC BY-SA 4.0
+gateway-arch|St Louis night expblend cropped.jpg|960|934|ct|Daniel Schwen|CC BY-SA 3.0
+biosphere|17-08-islcanus-RalfR-DSC 3883.jpg|960|960|ct|Ralf Roletschek|GFDL 1.2
+habitat-67|Habitat 67 2019 dllu 01.jpg|960|788|ct|Dllu|CC BY-SA 4.0
+sydney-opera|Sydney Opera House 2026.jpg|960|720|ct|BAVhah|CC BY-SA 4.0
+brasilia-cathedral|Catedral Metropolitana de Brasilia.jpg|960|896|ct|Tissiana de A. de Souza|CC BY-SA 4.0
+congress-brazil|National Congress of Brazil.jpg|960|720|ct|Marcelo Jorge Vieira|CC BY-SA 2.0
+bn-argentina|Biblioteca Nacional BA.jpg|960|1440|ct|Gobierno de la Ciudad de Buenos Aires|CC BY 2.5 ar
+unam-library|Central Library UNAM 2022.jpg|960|720|ct|Dead.rabbit|CC BY-SA 4.0
+satelite|Torres de Satélite - 2.jpg|960|1211|ct|ProtoplasmaKid|CC BY-SA 4.0
+soumaya|Museo Soumaya, Ciudad de México, México, 2015-07-18, DD 12.JPG|960|876|ct|Diego Delso|CC BY-SA 4.0
+nakagin|Nakagin.jpg|960|1439|ct|Jordy Meow|CC BY-SA 3.0
+yoyogi|Kokuritsu Yoyogi Kyōgijō 1.jpg|960|640|ct|Arne Müseler|CC BY-SA 3.0 de
+church-light|Ibaraki Kasugaoka Church light cross.jpg|960|720|ct|Bergmann|CC BY-SA 3.0
+kanazawa|21st Century Museum of Contemporary Art, Kanazawa011.jpg|960|640|ct|Kanazawa City|CC BY 2.1 jp
+teshima|Teshima Art Museum exterior view 201310.jpg|960|640|ct|Kentaro Ohno|CC BY 2.0
+rolex|Rolex Learning center.jpg|960|640|ct|Mikado1201|CC BY-SA 3.0
+lotus-temple|LotusDelhi.jpg|960|593|ct|Vandelizer|CC BY 2.0
+marina-bay|Marina Bay Sands (I).jpg|960|640|ct|Supanut Arunoprayo|CC BY 4.0
+interlace|The Interlace Singapore.jpg|960|649|ct|kallerna|CC BY-SA 4.0
+ningbo|South Gate of Ningbo Museum.jpg|960|640|ct|Siyuwj|CC BY-SA 3.0
+birds-nest|Beijing China Beijing-National-Stadium-01.jpg|960|434|ct|CEphoto, Uwe Aranas|CC BY-SA 3.0
+cctv|China Central Television HQ, from China World Trade Centre (Cropped).jpg|960|930|ct|Dayton12345|CC BY-SA 4.0
+ddp|Dongdaemun Design Plaza at night, Seoul, Korea.jpg|960|320|ct|Eugene Lim|CC BY 2.0
+burj-khalifa|Burj Khalifa (worlds tallest building) and the Dubai skyline (25781049892).jpg|960|641|ct|imran shahabuddin|CC BY 2.0
+zeitz|Zeitz Museum of Contemporary Art Africa, Cape Town ( 1050775).jpg|960|1200|ct|Matti Blume|CC BY-SA 4.0
+hallgrimskirkja|Hallgrimskirkja mai 2026.jpg|960|843|ct|Steinninn|CC BY 4.0
+oslo-opera|Oslo Opera House - 2025.jpg|960|381|ct|Pierre Blaché|CC0
+copenhill|Amager Bakke Copenhagen 1.jpg|960|677|ct|kallerna|CC BY-SA 4.0
+atomium|The Atomium during civil twilight (DSCF1135).jpg|960|1210|ct|Trougnouf (Benoit Brummer)|CC BY 4.0
+dancing-house|Tanzendes Haus 2023.jpg|960|960|ct|Danny Alexander Lettkemann|CC BY-SA 4.0
+hundertwasser|Wien - Hundertwasserhaus (03).JPG|960|1117|ct|C.Stadler/Bwag|CC BY-SA 4.0
+brion|31 Tomba Brion - San Vito d'Altivole, Treviso, Italy - Carlo Scarpa-FPPL3028.jpg|960|1280|ct|Filippo Poli|CC BY-SA 4.0
+nervi|Le Palazzetto dello Sport en vue aérienne.png|960|540|ct|HerRobin|CC BY-SA 4.0
+philharmonie|Berlin Philharmonie asv2018-05 img2.jpg|960|480|ct|A.Savin|FAL
+elbphilharmonie|Elbphilharmonie 2025.jpg|960|640|ct|Evgenii Salganik|CC BY 4.0
+bilbao|Museo Guggenheim, Bilbao (31273245344).jpg|960|640|ct|Naotake Murayama|CC BY 2.0
+gherkin|30 St Mary Axe, 'Gherkin'.JPG|960|1280|ct|Paste|Public domain
+barbican|Barbican towers.jpg|960|788|ct|Riodamascus|CC BY-SA 3.0
+trellick|Trellick Tower front view (colour brightness adjust).jpg|960|1294|ct|Ethan Nunn|CC BY-SA 4.0
+boston-city-hall|Boston City Hall (54958978424).jpg|960|540|ct|Ajay Suresh|CC BY 4.0
+geisel|Geisel Library, UCSD.jpg|960|720|ct|belisario|CC BY-SA 2.0
+marina-city|Marina City, Chicago, Illinois, Estados Unidos, 2012-10-20, DD 01.jpg|960|1307|ct|Diego Delso|CC BY-SA 3.0
+thorncrown|Thorncrown Chapel.jpg|960|1474|ct|Clinton Steeds|CC BY 2.0
+muralla-roja|Muralla Roja, Calp.JPG|960|656|ct|Joanbanjo|CC BY-SA 4.0
+bank-georgia|Bank-of-georgia-hq.jpg|960|817|ct|TheadoreTwombly|CC BY-SA 4.0
+genex|Genex Tower 18.jpg|960|1385|ct|kallerna|CC BY-SA 4.0
+windsor|Wallace Nutting Windsors - correct Windsor furniture. (1918) (14592391377) retouched.jpg|960|1381|ct|Wallace Nutting|Public domain
+art-schools|Loomis school music.jpg|960|1444|ct|DuendeThumb|CC BY-SA 3.0
+calvet|Gaudi's chair for Casa Calvet - Casa Milà - Barcelona 2014.JPG|960|1440|ct|José Luiz|CC BY-SA 3.0
+navy|Emeco 1006 chair chained to a pipe.jpg|960|1568|ct|Banalities|CC BY 2.0
+lc2|Fauteuil Grand Confort, petit modèle, LC2.jpg|960|1280|ct|1904.CC|CC BY 4.0
+hill-house-chair|High-backed chair by Charles Rennie Mackintosh, V&A London.jpg|960|1738|ct|14GTR|CC0
+dsw|Charles and Ray Eames - Plastic Chair 1950-53.jpg|960|1104|ct||CC BY 3.0
+diamond|Ngv design, harry bertoia, diamond chair, 1951.JPG|960|995|ct|sailko|CC BY 2.5
+the-chair|Chair JH503.png|960|720|co|JoeNomi 1961|CC BY-SA 3.0
+papa-bear|Hans J. Wegner's Papa Bear Chair.jpg|960|1255|co||Public domain
+shell-ch07|Shell chair (Hans J. Wegner).jpg|960|1439|ct|janneth.|CC BY 2.0
+hanging-egg|Hanging Egg Chair .jpg|960|1099|co|Laylahipo|CC BY-SA 4.0
+cone|Verner Panton - Cone Chair.jpg|960|1280|ct|Thad Zajdowicz|CC0
+pastil|Pastilli Chair by Eero Aarnio.JPG|960|1286|ct|Tokumeigakarinoaoshima|CC0
+mezzadro|Achille e pier giacomo castiglioni per zanotta spa., sgabello mezzadro, 1954-57.jpg|960|1073|ct|Sailko|CC BY 3.0
+sacco|" 12 - ITALY - Pouf Tuffet Sacco di Zanotta red armchair Triennale Design Museum.jpg|960|1280|ct|Pava|CC BY-SA 3.0 it
+up5|Gaetano Pesce Up chair and ottoman (1969).jpg|960|540|ct|Paul Lowry|CC BY 2.0
+polyprop|Polypropylene stacking chairs in original colours (charcoal, light grey and flame red), Robin Day, Hille, 1964.jpg|960|776|ct|Robin & Lucienne Day Foundation|CC BY-SA 4.0
+joe|' 12 - ITALY - Joe - Poltronova - armchair.JPG|960|720|ct|Pava|CC BY-SA 3.0 it
+ribbon|Ribbon Chair by Pierre Paulin.JPG|960|1280|ct|Tokumeigakarinoaoshima|CC0
+first|Ngv design, michele de lucchi, first chair, 1983.JPG|960|1234|ct|sailko|CC BY 2.5
+proust|Alessandro Mendini Poltrona di Proust Studio Alchimia 1979 Musée des arts décoratifs Paris.jpg|960|635|ct|THOR|CC BY 2.0
+miss-blanche|Miss Blanche, Shirō Kuramata.jpg|960|1278|ct|Jl FilpoC|CC BY-SA 4.0
+how-high-moon|Shiro kuramata, poltrona how high the moon, 1986-87.JPG|960|797|ct|Sailko|CC BY 3.0
+well-tempered|Maxistuhl Well Tempered Chair von Ron Arad in Weil am Rhein-Altweil, Lörracher Str. 4.jpg|960|829|ct|Andreas Schwarzkopf|CC BY-SA 3.0
+knotted|Marcel wanders per cappellini, knotted chair, 1997 (cappellini).jpg|960|1411|ct|Sailko|CC BY-SA 4.0
+vermelha|Ferdinando e umberto campana per edra, poltrona vermelha, 1998.jpg|960|923|ct|Sailko|CC BY-SA 4.0
+vegetal|Silla vegetal, Ronan y Erwan Bouroullec.jpg|960|1278|ct|Jl FilpoC|CC BY-SA 4.0
+air-chair|Air chair-edit-1-2018.jpg|960|1439|co|IBOSIO|CC BY-SA 4.0
+spun|Spun magis red wiki.jpg|960|919|ct|IBOSIO|CC BY-SA 4.0
+shaker|Shaker ladder chairs.jpg|960|684|co|Doug Coldwell|CC BY-SA 4.0
+butaque|CPD2-610 Imagen del Archivo Clara Porset, CIDI FA UNAM.jpg|960|883|ct|Archivo Clara Porset, CIDI FA, UNAM|CC BY-SA 4.0
+standard|Chair by Jean Prouvé for Vitra.jpeg|960|1280|ct|Mishimishimishi|Public domain
+gras|Lampe ajustable Gras, éclairage localisé.png|960|525|ct||Public domain
+chandigarh|Pierre Jeanneret Chair PJ-SI-28-B.jpg|960|960|ct|Phadzim|CC BY 4.0
+ming|Horseshoe back armchair, 1 of 2, China, late Ming dynasty, early 1600s AD, wood, cane - Portland Art Museum - Portland, Oregon - DSC08444.jpg|960|1313|ct|Daderot|Public domain
+pipistrello|Gae aulenti per martinelli luce, lampada da tavolo popistrello, 1967.jpg|960|1158|ct|Sailko|CC BY-SA 4.0
+eclisse|Eclisse Magistretti.jpg|960|960|ct|Camillo Frigeni|CC BY-SA 4.0
+nesso|Artemide Nesso 02.jpg|960|777|ct|Manuelarosi|CC BY-SA 4.0
+atollo|" 11 - ITALY - Atollo - Oluce - Vico Magistretti 1977.jpg|960|1305|ct|Pava|CC BY-SA 3.0 it
+flowerpot|Flowerpot VP9 lamps, by Verner Panton for &TRADITION, polycarbonate and steel, at sale at The Edit shop (Strada Icoanei no. 20), Bucharest, Romania.jpg|960|710|ct|Neoclassicism Enthusiast|CC BY-SA 4.0
+ashoka|Ettore sottsass per memphis srl., lampada da tavolo ashoka, 1981.jpg|960|1042|ct|Sailko|CC BY 3.0
+tolomeo|Artemide Tolomeo (5950584089).jpg|960|950|ct|Christian Aleksander|CC BY 2.0
+lucellino|Lamps with wings by Ingo Maurer, 2015.jpg|960|1280|ct|Selena N. B. H.|CC BY 2.0
+bourgie|Bourgie lamp, by Ferruccio Laviani for Kartell, 2004, polycarbonate, sold at Kartell Milano on Via Carlo Porta in Milan.jpg|960|1638|ct|Neoclassicism Enthusiast|CC0
+eames-esu|Eames storage unit ESU 421-C, V&A London 02.jpg|960|1243|ct|14GTR|CC0
+boby|Joe cesare colombo per bieffeplast spa., trolley boby, 1970 ca.jpg|960|1202|ct|Sailko|CC BY 3.0
+togo|Ligne Roset TOGO .jpg|960|718|ct|Ligne Roset Deutschland|CC BY-SA 4.0
+string|Stringhylla.jpg|960|625|ct|Entheta|CC BY-SA 3.0
+camaleonda|Camaleonda-modular-sofa 10068.jpg|960|960|co|Alexgni|CC BY-SA 4.0
+componibili|Kartell Componibili (weiß).jpg|960|1280|ct|Mediatrotter|CC BY 4.0
+vitsoe-606|606-Universal-Shelving-System.jpg|960|704|ct|Vitsoe|CC BY-SA 3.0
+carlton|Carlton Bookcase, by Ettore Sottsass, 1981, wood veneer and plastic laminate, Inv. FNAC 1980, Musée des Arts Décoratifs, Paris (01).png|960|1041|ct|Neoclassicism Enthusiast|CC BY-SA 4.0
+tea-trolley|Tea trolley by Alvar Aalto.jpg|960|924|ct|Gotogo|CC0
+e1027-table|E1027 table by Eileen Gray, Manchester Art Gallery 01.jpg|960|1183|ct|14GTR|CC0
+conoid|Conoid Chair by George Nakashima, 1988.jpg|960|1280|co|jimcchou|CC BY 2.0
+chesterfield|Chesterfield Buckingham sofa.jpg|960|539|ct|Booby05|CC BY-SA 4.0
+polder|In Vitra museum with Hella Jongerius' new Polder sofa in the foreground, 2006.jpg|960|720|ct|Lian Chang|CC BY 2.0
+bookworm|Bookworm Shelving (cropped).JPG|960|1148|ct||CC BY-SA 3.0
+house-na|House NA.jpg|960|960|ct|Nicolás Boullosa|CC BY 2.0
+arroyo|Casa del Puente 2012.JPG|960|730|ct|DagosNavy|CC BY-SA 3.0
+azuma|Azuma house.JPG|960|1281|ct|Oiuysdfg|CC BY-SA 3.0
+fabrica|Fabrica 2022.jpg|960|720|ct|Boubloub|CC BY-SA 4.0
+palace-assembly|Palace of Assembly Chandigarh.jpg|960|768|ct|UnpetitproleX|CC BY-SA 4.0
+rivera-kahlo|Casa Estudio de Diego Rivera y Frida Kahlo.jpg|960|720|ct|Marqturo|CC BY-SA 4.0
+gando|Primary School Gando.jpg|960|640|ct|Schulbausteine|CC BY-SA 3.0
+cristo-obrero|Iglesia Atlántida Dieste 2.jpg|960|638|ct|Nicolas Barriola|CC BY-SA 3.0
+banco-londres|Banco Hipotecario (ex Bco de Londres) 1.jpg|960|720|ct|Rodseide|CC BY-SA 4.0
+lc4|LC4 Chair by Le Corbusier and Perriand 1927-28.jpg|960|623|ct|SiefkinDR|CC BY-SA 4.0
+sitzmaschine|Josef hoffmann, sitzmaschine model n. 670, 1908 (1914).jpg|960|1346|ct|Sailko|CC BY 3.0
+tolix|Tolix A, France.jpeg|960|1280|ct|Mishimishimishi|Public domain
+womb|Eero saarinen per knoll international inc., sedia womb (ventre, modello 70), new york 1947-48 (1959 ca.).jpg|960|1085|ct|Sailko|CC BY 3.0
+series-7|Model 3107 Chair red.jpg|960|1443|ct|Robert Scarth|CC BY-SA 2.0
+coconut|George nelson per herman miller inc., coconut chair, zeeland MI 1955.jpg|960|846|ct|Sailko|CC BY 3.0
+landi|MAKK Hans Coray Stuhl "Landi".jpg|960|1280|ct||GFDL
+tulip|Saarinen Tulpanstolen.jpg|960|1276|ct|Holger Ellgaard|CC BY-SA 3.0
+wishbone|Hans J Wegner Wishbone Chair.jpg|960|1248|ct||CC BY 4.0
+pk24|PK24 chaise longue.jpg|960|643|ct|THOR|CC BY 2.0
+plia|Ngv design, giancarlo piretti, plia folding chair, 1969 02.JPG|960|1352|ct|sailko|CC BY 2.5
+spanish|Børge Mogensen - Spannish chair.jpg|960|720|ct|Ramblersen|CC BY-SA 3.0
+chieftain|Finn Juhl - Chieftain chair.jpg|960|720|ct|Hyeon Kim|CC BY-SA 2.0
+karuselli|Karuselli chair by Yrjo Kukkapuro.jpg|960|1027|ct|Kotivalo|CC BY-SA 3.0
+louis-ghost|Chaise Louis Ghost.png|960|1280|ct|LucieStarck|CC0
+chair-one|Konstantin grcic per magis spa., sedia chair one, 2004.jpg|960|1305|ct|Sailko|CC BY 3.0
+lockheed|Lockheed Lounge.jpg|960|720|ct|Sheila Thomson|CC BY 2.0
+wiggle|Wiggle Side Chair, designed by Frank Gehry, manufactured by Easy Edges and Vitra, 1972, corrugated cardboard - Design Museum, Kensington - London - DSC01592.jpg|960|1440|ct|Daderot|CC0
+butterfly-stool|Tabouret Butterfly (4958243953).jpg|960|720|ct|tomislav medak|CC BY 2.0
+acapulco|Tradicional (Acapulco 2) (Unsplash).jpg|960|1440|ct|Lionel Gustave|CC0
+wagenfeld|Wilhelm-Wagenfeld-Leuchte.jpg|960|1438|ct|Vorderdeck|Copyrighted free use
+tizio|Lampe Tizio von Richard Sapper.jpg|960|950|ct||CC BY 3.0
+akari|Akari light sculpture model 10A by Isamu Noguchi.jpg|960|1225|ct|Jean-Pierre Dalbéra|CC BY 2.0
+usm|USM Haller.jpg|960|1174|ct|Geheimnisträgerin|Public domain
+glass-house|Glass House 2006.jpg|960|687|ct|Carol M. Highsmith|Public domain
+casa-vidro|Escadaria da Casa de Vidro de Lina Bo Bardi.jpg|960|640|ct|Igor Marotti|CC BY-SA 4.0
+cuadra|Cuadra San Cristobal, Mexico City.jpg|960|640|ct|Anna Bertho|CC BY-SA 4.0
+red-house|The Red House, Bexleyheath - geograph.org.uk - 7781544.jpg|960|720|ct|Marathon|CC BY-SA 2.0
+hill-house|HillHouse.jpg|960|666|co||CC BY-SA 2.5
+chrysler|Chrysler Building NYC-20090519-RM-094845.jpg|960|1364|ct|Ermell|CC BY-SA 4.0
+sesc-pompeia|Sesc Pompeia.jpg|960|640|ct|Clarissa Sá|CC BY-SA 4.0
+unite|Unité d'habitation Marseille, France.jpg|960|720|et||CC BY-SA
+bordeaux|MAISON À BORDEAUX.jpg|960|720|ct|Ann Chou|CC BY-SA 2.0
+manantiales|Restaurante Los Manantiales 07.jpg|960|720|ct|Dge|CC BY-SA 3.0
+leca|Piscina das Marés - Leça da Palmeira - Portugal (29911852990).jpg|960|640|ct|Vitor Oliveira|CC BY-SA 2.0
+torres-parque|Bogotá Torres del Parque A & B.JPG|960|1280|ct|Felipe Restrepo Acosta|CC BY-SA 3.0
+brno|Tugenhat brno chairs.png|960|724|co|Timothy Brown|CC BY 2.0
+arco|- ITALY - Lampada Arco di Achille Castiglioni per Flos ( 1962 ).svg|960|960|ct|Andrea Pavanello|CC BY-SA 3.0 it
+artichoke|PH Artichoke lamp.jpg|960|1280|ct|Kri|CC BY-SA 3.0
+paimio|Paimio armchair by Alvar Aalto 01.jpg|960|955|ct|14GTR|CC0
+la-chaise|Charles e ray eamer, chaise longue la chiase, 1948 (col. lorenza branzi).jpg|960|662|ct|Sailko|CC BY 3.0
+superleggera|Gio Ponti, Chaise Superleggera, 1955.jpg|960|1280|ct|Cyril5555|Public domain
+marshmallow|Marshmallow Love Seat (1956-1965) by Herman Miiller, Inc., designed by George Nelson, Irving Harper. (Object ID 89.177.59) - Fully Furnished - Historic Furniture Exhibit - Henry Ford Museum (2016-07-26 15.43.05 by Michael Steeber).jpg|960|720|ct|Michael Steeber|CC BY-SA 2.0
+kandalama|Heritance Kandalama Exterior View.JPG|960|720|ct|Adheesha88|CC BY-SA 3.0
+petronas|Petronas Twin Towers byD.jpg|960|2018|ct|Alexander Vonbun|CC BY-SA 2.5
+vals|Therme Vals facade, Vals, Graubünden, Switzerland - 20090809.jpg|960|640|ct|Micha L. Rieser|Attribution
+jewish-museum|Berlin- Jewish Museum - 3089.jpg|960|610|ct|Jorge Royan|CC BY-SA 3.0
+pompidou|Lüftungsrohre Place George Pompidou Paris.jpg|960|639|ct|Stefan Drößler|CC BY 4.0
+masp|Museu de Arte de São Paulo Assis Chateaubriand - MASP.jpg|960|640|ct|Marcelo N Valente|CC BY-SA 4.0
+caracas|Aula Magna-Calder-UCV.JPG|960|720|co|Caracas1830|CC BY 3.0
+egg|Egg chair - Arne Jacobsen (1958).jpg|960|1230|ct|Nasjonalmuseet|CC BY-SA 4.0
+bkf|Sedia butterfly M198, design jorge ferrari-hardoy, antonio bonet e juan kurchan, 1938-40, realizzata 1959.JPG|960|963|ct|sailko|CC BY-SA 3.0
+anglepoise|Anglepoise 1227.jpg|960|1304|ct|renaissance chambara|CC BY 2.0
+thonet-14|Thonet Chair No. 14.JPG|960|1445|ct|Henry Townsend|FAL
+morris|Reclining Morris Chair MET 235723.jpg|960|1086|ct|Metropolitan Museum of Art|CC0
+noguchi-table|Noguchi Coffee Table (2599969608).jpg|960|720|ct|philosophygeek|CC BY-SA 2.0
+curutchet|Casa Curutchet 17.jpg|960|842|ct|Roberto Fiadone|CC BY-SA 4.0
+lloyds|Lloyd's Building surrounded.jpg|960|1440|ct|Choinowski|CC BY-SA 4.0
+kicc|Kenyatta International Convention Centre.jpg|960|640|ct|Francis Akuka|CC0
+palais-bulles|Palais-bulle-gil-zetbase.jpg|960|641|ct|Gil Zetbase|CC BY-SA 4.0
+ph5|Louis Poulsen ph5 pendant lamp.jpg|960|640|ct|Islander61|CC BY-SA 4.0
+e-1027|E1027 2013 01.jpg|960|710|ct|Badovici|CC BY-SA 3.0
+rotonda|Vicenza Villa Rotonda La Capra 09.jpg|960|626|ct|Zairon|CC BY-SA 4.0
+majorelle|Blue villa in Majorelle garden (2845770484).jpg|960|720|ct|mwanasimba|CC BY-SA 2.0
+tube-chair|" 12 - ITALY - Tube Chair Flexform - brown bicolor armchair Triennale Design Museum - Joe Colombo.JPG|960|812|ct|Pava|CC BY-SA 3.0 it
+taccia|Castiglioni brothers - Lampada Taccia.jpg|960|1355|ct||CC BY 3.0
+parentesi|Lampada Parentesi - Triennale design museum - Milano.JPG|960|1280|ct|Pava|CC0
+kaiser-idell|KAISER idell 6556 (1930er).jpg|960|1761|ct|Michael Musto|CC BY-SA 4.0
+jielde|Jieldé.JPG|960|640|ct|Michelaurel|CC BY-SA 3.0
+porca|Porca Miseria!, Ingo Maurer GmbH.jpg|960|1436|ct|Jl FilpoC|CC BY-SA 4.0
+chandelier-85|Ngv design, rodi graumans, chandelier 85 lamps, 1993.JPG|960|1240|ct|sailko|CC BY 2.5
+savoye|VillaSavoye.jpg|960|720|eo|Valueyou|CC BY-SA 3.0
+ronchamp|RonchampCorbu.jpg|960|720|eo|Valueyou|CC BY-SA 3.0
+maison-verre|Maison de Verre2.JPG|960|581|eo|Valueyou|CC BY-SA 3.0
+louvre-pyramid|Louvre Pyramid.jpg|960|640|et|Hteink.min|CC BY-SA 3.0
+heydar-aliyev|Heydar Aliyev Cultural Center.jpg|960|566|et||Public domain
+velasca|Milano Italy Torre-Velasca-from-Duomo-01.jpg|960|640|et|CEphoto, Uwe Aranas|CC BY-SA 3.0
+bosco|Bosco Verticale Milano.jpg|960|1280|et|Darsheni|CC BY-SA 3.0
+louvre-abu-dhabi|LouvreAD exterior.jpg|960|689|et|Boubloub|CC BY-SA 4.0
+hassan-ii|Hassan II mosque, Casablanca 2.jpg|960|998|et|Petar Milošević|CC BY-SA 4.0
+doha-mia|Museum of Islamic Art in Doha, Qatar (32673171432).jpg|960|636|et|Ralf Steinberger|CC BY 2.0

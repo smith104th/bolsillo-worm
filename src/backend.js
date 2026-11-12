@@ -147,6 +147,10 @@ export function supabaseBackend(cfg) {
     hqAdd: (kind, question, options, answer) => rpc('wh_hq_add', { p_kind: kind, p_question: question, p_options: options, p_answer: answer }),
     hqAnswer: (id, pick) => rpc('wh_hq_answer', { p_id: id, p_pick: pick }),
     hqDelete: (id) => rpc('wh_hq_delete', { p_id: id }),
+    // Design Tinder: the deck's start day for this pocket and who swiped what (theirs only once you have)
+    dsState: () => rpc('wh_ds_state'),
+    dsSwipe: (item, day, liked) => rpc('wh_ds_swipe', { p_item: item, p_day: day, p_liked: liked }),
+    dsUndo: (item) => rpc('wh_ds_undo', { p_item: item }),
     // the shelf: everything left for later, plus what either of you kept
     async shelf() {
       const { data, error } = await sb.from('events').select(EVENT_COLS).or('kind.eq.later,kept.eq.true').order('created_at', { ascending: false }).limit(300);

@@ -296,3 +296,38 @@ console.log('all schema tests passed');
   await fails(U.C, 'select wh_hq_state()', [], /no_hole/);
   console.log('house questions ok');
 }
+
+// ── Design Tinder: the deck starts once per pocket; their swipe is hidden until you swipe that card
+{
+  const A = '00000000-0000-0000-0000-0000000000f1', B = '00000000-0000-0000-0000-0000000000f2', C = '00000000-0000-0000-0000-0000000000f3';
+  for (const id of [A, B, C]) await db.query('insert into auth.users values ($1)', [id]);
+  const [{ wh_create: hc }] = await as(A, 'select wh_create($1,$2,$3)', ['Manu', worm('Fideo'), BA]);
+  await as(B, 'select wh_join($1,$2,$3,$4)', [hc.code, 'Vio', worm('Pickle'), MAD]);
+  await fails(B, 'select * from design_swipes', [], /permission denied/);
+  await fails(B, 'select * from design_decks', [], /permission denied/);
+  let [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
+  assert.equal(sa.started, sa.today); assert.deepEqual(sa.mine, []); assert.deepEqual(sa.theirs, []); assert.deepEqual(sa.pending, []);
+  const swipe = (u, item, liked, day = sa.today) => as(u, 'select wh_ds_swipe($1,$2,$3) r', [item, day, liked]);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['Bad Item!', sa.today, true], /bad_item/);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', '2030-01-01', true], /bad_day/);
+  await fails(A, 'select wh_ds_swipe($1,$2,$3)', ['egg', sa.today, null], /bad_swipe/);
+  let [{ r }] = await swipe(A, 'egg', true);
+  assert.equal(r.theirs, null);
+  await swipe(A, 'pantheon', false);
+  // B sees that A swiped two cards, not which way
+  let [{ wh_ds_state: sb }] = await as(B, 'select wh_ds_state()');
+  assert.equal(sb.started, sa.started); assert.deepEqual(sb.pending, ['egg', 'pantheon']); assert.deepEqual(sb.theirs, []);
+  [{ r }] = await swipe(B, 'egg', true);
+  assert.equal(r.theirs, true); // a match
+  [{ wh_ds_state: sb }] = await as(B, 'select wh_ds_state()');
+  assert.deepEqual(sb.pending, ['pantheon']); assert.equal(sb.theirs.length, 1); assert.equal(sb.theirs[0].liked, true);
+  // changing your mind keeps one row; undo removes yours only
+  await swipe(A, 'pantheon', true);
+  [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
+  assert.equal(sa.mine.length, 2); assert.equal(sa.mine.find((x) => x.item === 'pantheon').liked, true);
+  await as(B, 'select wh_ds_undo($1)', ['egg']);
+  [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
+  assert.equal(sa.mine.length, 2); assert.deepEqual(sa.theirs, []);
+  await fails(C, 'select wh_ds_state()', [], /no_hole/);
+  console.log('design tinder ok');
+}

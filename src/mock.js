@@ -1,5 +1,6 @@
 // Demo mode (?demo): a pretend partner so you can play without pairing.
-import { rand, pick, dayIn } from './util.js';
+import { rand, pick, dayIn, hash } from './util.js';
+import { loadDeck, dealOrder } from './design.js';
 
 export function mockBackend() {
   const now = () => new Date().toISOString();
@@ -13,6 +14,7 @@ export function mockBackend() {
   const sealed = new Map();
   const hq = [];
   const media = new Map();
+  const ds = { started: null, swipes: [new Map(), new Map()] }; // Design Tinder: your swipes, Luz's
   let on = {};
   let present = true;
   const theirSlot = () => 1;
@@ -125,6 +127,22 @@ export function mockBackend() {
       on.live?.(touching ? { t: 'f', x: 0.5 + Math.cos(a) * 0.25, y: 0.45 + Math.sin(a * 1.3) * 0.2, d: 1 } : { t: 'f', d: 0 });
     }, 70);
     setInterval(() => { present = Math.random() < 0.7; on.presence?.(present ? { 0: [{ slot: 0 }], 1: [{ slot: 1 }] } : { 0: [{ slot: 0 }] }); }, 30000);
+  }
+
+  // Design Tinder in the demo: the deck started two days ago. You swiped the first day; Luz has
+  // swiped both earlier days and three of today's, so there's a pile to catch up on and matches to find.
+  async function seedDesign() {
+    if (ds.started) return;
+    const tz = mine()?.place?.tz || 'UTC';
+    const day = (n) => dayIn(tz, new Date(Date.now() + n * 86400000));
+    ds.started = day(-2);
+    try {
+      const order = dealOrder(await loadDeck(), hole.id);
+      const likes = (id, salt) => hash(id + salt) % 100 < 60;
+      order.slice(0, 5).forEach((c) => { ds.swipes[0].set(c.id, { liked: likes(c.id, 'm'), day: day(-2) }); ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(-2) }); });
+      order.slice(5, 10).forEach((c) => ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(-1) }));
+      order.slice(10, 13).forEach((c) => ds.swipes[1].set(c.id, { liked: likes(c.id, 'l'), day: day(0) }));
+    } catch (e) { console.warn('demo deck', e); }
   }
 
   return {
@@ -257,6 +275,18 @@ export function mockBackend() {
       Object.assign(q, { answered_at: now(), answered_day: today, picked: pickI, correct: pickI === q.answer });
       return { correct: q.correct, answer: q.answer, picked: pickI, pieces: hq.filter((x) => x.correct).length };
     },
+    async dsState() {
+      await seedDesign();
+      const [m, t] = ds.swipes;
+      return {
+        today: dayIn(mine()?.place?.tz || 'UTC'), started: ds.started,
+        mine: [...m].map(([item, v]) => ({ item, ...v })),
+        theirs: [...t].filter(([k]) => m.has(k)).map(([item, v]) => ({ item, ...v })),
+        pending: [...t.keys()].filter((k) => !m.has(k)),
+      };
+    },
+    async dsSwipe(item, day, liked) { ds.swipes[0].set(item, { liked, day }); const t = ds.swipes[1].get(item); return { item, liked, theirs: t ? t.liked : null }; },
+    async dsUndo(item) { ds.swipes[0].delete(item); },
     async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },
     async nudge() {},
     connect(holeId, slot, handlers) { on = handlers; setTimeout(() => { on.status?.('SUBSCRIBED'); on.presence?.({ 0: [{ slot: 0 }], 1: [{ slot: 1 }] }); }, 300); },

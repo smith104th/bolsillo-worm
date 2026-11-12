@@ -4,8 +4,10 @@ const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
-  './icons/icon-192.png', './icons/badge-96.png',
+  './icons/icon-192.png', './icons/badge-96.png', '__DECK__',
 ];
+// Design Tinder photos (Wikimedia), kept across versions; the newest 150 stay
+const DESIGN = 'bw-design';
 
 // A little state shared with the page (src/badge.js): the home-screen badge count,
 // their name, and running counts for pushes that group into one notification.
@@ -42,7 +44,7 @@ self.addEventListener('install', (e) => {
 
 self.addEventListener('activate', (e) => {
   e.waitUntil((async () => {
-    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE && k !== 'bw-media') await caches.delete(k);
+    for (const k of await caches.keys()) if (k !== CACHE && k !== STATE && k !== 'bw-media' && k !== DESIGN) await caches.delete(k);
     await self.clients.claim();
   })());
 });
@@ -50,6 +52,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
+  if (req.method === 'GET' && url.hostname === 'upload.wikimedia.org') { e.respondWith(designPhoto(req)); return; }
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req, { cache: 'no-cache' }).then((r) => { const copy = r.clone(); caches.open(CACHE).then((c) => c.put('./index.html', copy)); return r; }).catch(() => caches.match('./index.html')));
@@ -60,6 +63,18 @@ self.addEventListener('fetch', (e) => {
     return r;
   })));
 });
+
+async function designPhoto(req) {
+  const c = await caches.open(DESIGN);
+  const hit = await c.match(req.url);
+  if (hit) return hit;
+  const r = await fetch(req);
+  if (r.ok || r.type === 'opaque') {
+    await c.put(req.url, r.clone()).catch(() => {});
+    c.keys().then((keys) => Promise.all(keys.slice(0, Math.max(0, keys.length - 150)).map((k) => c.delete(k)))).catch(() => {});
+  }
+  return r;
+}
 
 self.addEventListener('push', (e) => {
   let data = {};

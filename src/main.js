@@ -19,12 +19,15 @@ import { Pager } from './pager.js';
 import { Shelf, SHELF_BOTTOM } from './shelf.js';
 import { SoilPage, SOIL_BG } from './soil.js';
 import { HousePage } from './housepage.js';
+import { DesignPage } from './design.js';
 import { cache, offlineError } from './cache.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
+const PAGE = { pocket: 0, shelf: 1, soil: 2, design: 3, house: 4 };
+const DESIGN_BG = '#FFD84A';
 const COMPOST_H = 72; // opened things settle into the soil after three days
-let backend, pocket, shelf, soil, house, pager;
+let backend, pocket, shelf, soil, design, house, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
@@ -174,21 +177,25 @@ function enterPocket(data, { fromCache = false } = {}) {
   buildChrome();
   shelf = Shelf(app, $('#screen-shelf'));
   soil = SoilPage(app, $('#screen-soil'));
-  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(2), onSky: () => paintEdges() });
+  design = DesignPage(app, $('#screen-design'));
+  // the House is the last page; its Back goes to the page before it (Design Tinder since Nov 12)
+  house = HousePage(app, $('#screen-house'), { onEdge: (e) => pager?.begin(e), onBack: () => pager?.go(PAGE.design), onSky: () => paintEdges() });
   house.setSky(S.sky);
-  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-house')], {
-    labels: ['Pocket', 'Shelf', 'Soil', 'House'],
+  pager = Pager([$('#screen-pocket'), $('#screen-shelf'), $('#screen-soil'), $('#screen-design'), $('#screen-house')], {
+    labels: ['Pocket', 'Shelf', 'Soil', 'Design Tinder', 'House'],
     onMove: tuckDock,
     onChange: (i) => {
       if (i === 1) { shelf.show(); markShelfSeen(); } else shelf.hide();
       if (i === 2) soil.show(); else soil.hide();
-      if (i === 3) house.show(); else house.hide();
+      if (i === PAGE.design) design.show(); else design.hide();
+      if (i === PAGE.house) house.show(); else house.hide();
       if (i === 0) pocket?.start(); else pocket?.stop();
       paintEdges();
     },
   });
   pager.watch($('#screen-shelf'));
   pager.watch($('#screen-soil'));
+  pager.watch($('#screen-design'));
   pocket = new Pocket($('#pocket'), {
     insets: () => {
       const top = $('#label').getBoundingClientRect().bottom + 14;
@@ -242,7 +249,8 @@ function openTarget(to) {
   closeAllSheets();
   if (to === 'shelf' || to === 'shelf-from') { pager.go(1); shelf?.setView(to === 'shelf-from' ? 'from' : 'for'); return; }
   if (to === 'soil') { pager.go(2); return; }
-  if (to === 'house') { pager.go(3); house?.openQuestions(); return; }
+  if (to === 'house') { pager.go(PAGE.house); house?.openQuestions(); return; }
+  if (to === 'design') { pager.go(PAGE.design); return; }
   pager.go(0);
   if (to === 'today') { setTab('today'); todaySheet(app); }
   else if (to === 'us') { setTab('us'); usSheet(app); }
@@ -381,11 +389,11 @@ function updateSky() {
 function paintEdges() {
   const i = pager?.index || 0;
   // the House paints its own sky when you scrub the time; match that one there
-  const sky = (i === 3 && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
-  document.body.classList.toggle('dark', !!sky.dark);
+  const sky = (i === PAGE.house && house?.sky()) || S.sky || { top: '#6FBEFF', bottom: '#EEF6FF' };
+  document.body.classList.toggle('dark', i === PAGE.design ? false : !!sky.dark);
   // Soil is white on top and green below: the bottom edge is whichever is showing there
   const soilGreen = () => { const g = document.querySelector('#screen-soil .s-bottom'); return !!g && g.getBoundingClientRect().top < window.innerHeight - 2; };
-  const [top, bottom] = i === 2 ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF'] : i === 1 ? [sky.top, SHELF_BOTTOM] : [sky.top, sky.bottom];
+  const [top, bottom] = i === 2 ? ['#FFFFFF', soilGreen() ? SOIL_BG : '#FFFFFF'] : i === 1 ? [sky.top, SHELF_BOTTOM] : i === PAGE.design ? [DESIGN_BG, DESIGN_BG] : [sky.top, sky.bottom];
   // iPhone home-screen apps (iOS 26) report a page one status bar shorter than the
   // screen and won't draw anything below it, so a strip of the page background
   // shows under the tab bar. Make that strip the color of whatever is at the
@@ -412,7 +420,7 @@ function tuckDock(pos, animate, dots) {
   dock.style.transform = k ? `translate3d(0, calc(${k.toFixed(3)} * (100% + 24px)), 0)` : '';
   dots.style.transform = `translate3d(-50%, ${(k * 64).toFixed(1)}px, 0)`;
   // the House page has its own dock (Back, Ours / Finished, Questions): the dots step aside there
-  const shown = k * (1 - clamp(pos - 2, 0, 1));
+  const shown = k * (1 - clamp(pos - (PAGE.house - 1), 0, 1));
   dots.style.opacity = shown.toFixed(3);
   dots.style.pointerEvents = shown > 0.5 ? '' : 'none';
   dock.inert = k > 0.5;

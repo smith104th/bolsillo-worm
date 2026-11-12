@@ -3,6 +3,7 @@ import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+import { compileDeck } from './src/design/compile.mjs';
 
 const cfg = existsSync('config.json') ? JSON.parse(readFileSync('config.json', 'utf8')) : {};
 const OUT = 'docs';
@@ -21,6 +22,14 @@ writeFileSync(`${OUT}/house/dev.js`, hDev);
 writeFileSync(`${OUT}/house/index.html`, readFileSync('src/house/index.html', 'utf8').replaceAll('__HVERSION__', createHash('sha1').update(hDev).digest('hex').slice(0, 8)));
 console.log(`built ${OUT}/house/ · v${HOUSE_V} · view.js ${(hView.length / 1024).toFixed(0)}KB`);
 
+// Design Tinder: the deck (src/design/deck.txt + photos.txt) as one JSON file the page fetches
+mkdirSync(`${OUT}/design`, { recursive: true });
+const deckJson = JSON.stringify(compileDeck());
+const DECK_V = createHash('sha1').update(deckJson).digest('hex').slice(0, 8);
+const DECK_URL = `./design/deck.json?v=${DECK_V}`;
+writeFileSync(`${OUT}/design/deck.json`, deckJson);
+console.log(`built ${OUT}/design/ · v${DECK_V} · deck.json ${(deckJson.length / 1024).toFixed(0)}KB`);
+
 const res = await build({
   entryPoints: ['src/main.js'], bundle: true, format: 'esm', minify: true, sourcemap: false, write: false,
   target: ['es2020', 'safari15'],
@@ -30,15 +39,16 @@ const res = await build({
     __VAPID_PUBLIC__: JSON.stringify(cfg.vapidPublicKey || ''),
     __VERSION__: '"dev"',
     __HOUSE__: JSON.stringify(`./house/view.js?v=${HOUSE_V}`),
+    __DECK__: JSON.stringify(DECK_URL),
   },
 });
 const js = res.outputFiles[0].text;
 const css = readFileSync('src/styles.css', 'utf8');
-const version = createHash('sha1').update(js + css).digest('hex').slice(0, 8);
+const version = createHash('sha1').update(js + css + DECK_V).digest('hex').slice(0, 8);
 writeFileSync(`${OUT}/app.js`, js.replace('"dev"', JSON.stringify(version)));
 writeFileSync(`${OUT}/styles.css`, css);
 writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replaceAll('__VERSION__', version));
-writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version));
+writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL));
 copyFileSync('src/manifest.webmanifest', `${OUT}/manifest.webmanifest`);
 writeFileSync(`${OUT}/.nojekyll`, '');
 
