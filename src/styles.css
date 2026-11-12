@@ -879,16 +879,17 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-rate { position: absolute; z-index: 3; top: 50%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 150px; padding: 16px 20px 15px; background: #fff; opacity: 0; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.14s cubic-bezier(.2,1.4,.4,1); }
 .dt-rate b { font: 600 28px/1 var(--sans); letter-spacing: -0.04em; white-space: nowrap; color: var(--ink); }
 .dt-rate b:empty { display: none; }
-.dt-rate.yes b { color: var(--pink); }
+.dt-rate.yes b { color: #1546A8; }
+.dt-rate.no b { color: #D90042; }
 .dt-rate .dt-scale { gap: 4px; }
 .dt-rate .dt-scale i { width: 12px; height: 12px; }
 .dt-rate .dt-scale i:nth-child(4) { margin-left: 8px; }
-/* six squares: dislike levels on the left, like levels on the right */
+/* six squares: dislike levels on the left in red, like levels on the right in blue (Manu) */
 .dt-scale { flex: none; display: inline-flex; align-items: center; gap: 2px; }
 .dt-scale i { width: 6px; height: 6px; background: var(--line); }
 .dt-scale i:nth-child(4) { margin-left: 4px; }
-.dt-scale i.yes { background: var(--pink); }
-.dt-scale i.no { background: var(--ink); }
+.dt-scale i.yes { background: #1546A8; }
+.dt-scale i.no { background: #D90042; }
 
 .dt-empty { position: absolute; inset: 0; display: grid; place-items: center; }
 .dt-empty p { margin: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
