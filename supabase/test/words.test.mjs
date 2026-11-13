@@ -1,5 +1,5 @@
 // Integration test for supabase/functions/words: the real function under Deno, Postgres via
-// PGlite's wire-protocol server, and a fake auth + fake NYT server in this process.
+// PGlite's wire-protocol server, and a fake auth + fake NYT + fake public answer list in this process.
 // npm run test:words  (needs deno on PATH, or DENO=/path/to/deno)
 import { PGlite } from '@electric-sql/pglite';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
@@ -33,7 +33,11 @@ await pgServer.start();
 // fake Supabase auth + a fake NYT that knows two dates (and can be switched off)
 const users = { tokA: A, tokB: B, tokC: C };
 const answers = { [plus(today, -2)]: 'CRANE', [plus(today, -1)]: 'zesty' };
-let nytUp = true, nytHits = [];
+let nytUp = true, nytHits = [], listUp = false;
+// the public list's shape: { WORD: [[puzzle number, "M/D/YY"]] }; puzzle 0 = 2021-06-19
+const puzzle = (day) => Math.round((Date.parse(`${day}T00:00:00Z`) - Date.UTC(2021, 5, 19)) / 86400000);
+const mdy = (day) => { const [y, m, d] = day.split('-').map(Number); return `${m}/${d}/${String(y).slice(2)}`; };
+const listed = { [plus(today, -2)]: 'TRUCE', [plus(today, -1)]: 'GHOST', [plus(today, -9)]: 'OLDER' };
 const http = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   for await (const _ of req) { /* drain */ }
@@ -42,6 +46,14 @@ const http = createServer(async (req, res) => {
     if (!users[tok]) { res.writeHead(401, { 'content-type': 'application/json' }); return res.end('{"msg":"bad jwt"}'); }
     res.writeHead(200, { 'content-type': 'application/json' });
     return res.end(JSON.stringify({ id: users[tok], aud: 'authenticated', role: 'authenticated' }));
+  }
+  if (url.pathname === '/list.json') {
+    if (!listUp) { res.writeHead(500); return res.end('down'); }
+    const out = {};
+    for (const [day, w] of Object.entries(listed)) (out[w] ||= []).push([puzzle(day), mdy(day)]);
+    out.WRONG = [[puzzle(plus(today, -2)) + 1, mdy(plus(today, -2))]]; // a number that doesn't fit its date is ignored
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify(out));
   }
   const m = url.pathname.match(/^\/svc\/wordle\/v2\/(\d{4}-\d{2}-\d{2})\.json$/);
   if (m) {
@@ -56,7 +68,7 @@ const http = createServer(async (req, res) => {
 await new Promise((r) => http.listen(55998, '127.0.0.1', r));
 
 const env = { ...process.env, SUPABASE_URL: 'http://127.0.0.1:55998', SUPABASE_ANON_KEY: 'anon',
-  SUPABASE_DB_URL: 'postgres://postgres:pw@127.0.0.1:55434/postgres', NYT_URL: 'http://127.0.0.1:55998/svc/wordle/v2', PORT: '55801' };
+  SUPABASE_DB_URL: 'postgres://postgres:pw@127.0.0.1:55434/postgres', NYT_URL: 'http://127.0.0.1:55998/svc/wordle/v2', WORDLIST_URL: 'http://127.0.0.1:55998/list.json', PORT: '55801' };
 const fn = spawn(DENO, ['run', '-A', '--no-prompt', '--no-config', '--node-modules-dir=none', `${REPO}/supabase/functions/words/index.ts`], { env, stdio: ['ignore', 'pipe', 'pipe'] });
 let log = ''; fn.stdout.on('data', (d) => (log += d)); fn.stderr.on('data', (d) => (log += d));
 for (let i = 0; i < 300 && !/Listening on/.test(log); i++) await new Promise((r) => setTimeout(r, 200));
@@ -72,7 +84,7 @@ try {
   let r = await call('nope'); ok(r.status === 401, `bad token → ${r.status}`);
   r = await call('tokC'); ok(r.status === 403, `not in a pocket → ${r.status}`);
 
-  // NYT down: nothing stored, the app falls back to its own word
+  // NYT and the list both down: nothing stored, the app falls back to its own word
   nytUp = false;
   r = await call('tokA');
   ok(r.status === 200 && r.body.ready === false && r.body.missing.length === 2, `NYT down → ${JSON.stringify(r.body)}`);
@@ -97,6 +109,18 @@ try {
   answers[plus(today, -2)] = 'cran3'; answers[plus(today, -1)] = 'toolong';
   r = await call('tokA');
   ok(r.body.ready === false && (await db.query('select count(*)::int n from fl_words')).rows[0].n === 0, 'a word that isn\'t five letters is ignored');
+  ok(/nyt no solution/.test(r.body.why?.[plus(today, -2)] || ''), `why says what happened: ${JSON.stringify(r.body.why)}`);
+
+  // NYT turns us away, the public list has them: stored from the list
+  nytUp = false; listUp = true;
+  r = await call('tokA');
+  ok(r.body.ready === true && r.body.got.length === 2, `NYT down, list up → ${JSON.stringify(r.body)}`);
+  const fromList = (await db.query('select day::text, word from fl_words order by day')).rows;
+  ok(JSON.stringify(fromList) === JSON.stringify([{ day: plus(today, -2), word: 'truce' }, { day: plus(today, -1), word: 'ghost' }]), `the list's words, lowercased, by date: ${JSON.stringify(fromList)}`);
+  // both up: NYT's answer wins
+  await db.query('delete from fl_words'); nytUp = true; answers[plus(today, -2)] = 'crane'; answers[plus(today, -1)] = 'zesty';
+  r = await call('tokA');
+  ok((await db.query(`select word from fl_words where day = $1`, [plus(today, -2)])).rows[0]?.word === 'crane', 'NYT and the list both answer: NYT wins');
 } finally {
   fn.kill(); http.close(); await pgServer.stop();
   if (fails) console.log(log.slice(-3000));

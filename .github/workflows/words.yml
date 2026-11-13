@@ -1,9 +1,11 @@
 name: Words
-# Five Letters: twice a day, put the NYT's recent Wordle answers in the database (supabase/words.sh).
-# The game plays the answer from two days before, so a missed run or two doesn't matter.
+# Five Letters: twice a day, put the recent Wordle answers in the database (supabase/words.sh), from
+# github.com/eithan/wordlelist, a public list of every NYT answer updated once a day.
+# The game plays the answer from two days before, so a missed run doesn't matter.
 # Repo secret: SUPABASE_DB_PASSWORD (same as the other jobs).
 on:
-  schedule: [{ cron: '17 2 * * *' }, { cron: '17 14 * * *' }]   # 23:17 and 11:17 in Buenos Aires
+  # the list updates around 16:00 UTC: one run soon after, one before midnight in Buenos Aires
+  schedule: [{ cron: '17 17 * * *' }, { cron: '17 2 * * *' }]   # 14:17 and 23:17 in Buenos Aires
   workflow_dispatch:
   push: { branches: [main], paths: ['.github/workflows/words.yml', 'supabase/words.sh'] }
 permissions: { contents: read, actions: write }
@@ -30,7 +32,7 @@ jobs:
           echo "DB_URL=$url" >> "$GITHUB_ENV"
       - name: Install psql
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null && psql --version
-      - name: Fetch the answers
+      - name: Add the answers
         run: bash supabase/words.sh
       - name: Keep this schedule switched on
         # GitHub turns off schedules in public repos after 60 days without commits

@@ -1,7 +1,9 @@
 # Five Letters word lists
 
-The day's word comes from the New York Times (its Wordle answer from two days before, fetched by
-`supabase/functions/words`). These two lists live in the app:
+The day's word is the New York Times' Wordle answer from two days before. It reaches the database from
+github.com/eithan/wordlelist (a public list of every NYT answer, updated daily) through the twice-daily
+job in `supabase/words.sh`, or on demand through `supabase/functions/words`, which asks the NYT first.
+These two lists live in the app:
 
 - `guesses.txt`: every five-letter word the game accepts as a guess (12,675). The union of the
   five-letter words in SCOWL up to size 70 (all English variants, via the `wordlist-english` npm
