@@ -440,7 +440,9 @@ function paintEdges() {
   // so with the bottom color there the shelf's yellow showed at the top (Manu, Nov 12: "Remove
   // yellow"). The color is the top's now. The root background image is three screens tall, centered
   // on the page: the top color above it, the page's gradient on it, and the bottom color (or the open
-  // sheet's) below it, for wherever iOS paints the strip under the page from the image.
+  // sheet's) below it, for wherever iOS paints the strip under the page from the image. The strip
+  // under the page actually follows #edge-bottom (a fixed bar iOS samples, see styles.css), or the
+  // page color when iOS doesn't pick it up.
   const root = document.documentElement.style;
   root.backgroundColor = top;
   root.backgroundImage = `linear-gradient(${top} 33.333%, ${bottom} 66.667%, ${under} 66.667%)`;

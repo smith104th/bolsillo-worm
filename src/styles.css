@@ -504,7 +504,12 @@ body.dark .zz { color: #fff; }
 /* Safari tints its bars from what touches the top and bottom edges; keep them the sky's colors */
 .edge { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none; background-color: #6FBEFF; }
 #edge-top { top: 0; } /* a 10px version didn't change the iPhone app's status bar tint (Nov 12) */
-#edge-bottom { bottom: 0; background-color: #EEF6FF; }
+/* iOS 26 colors the strip under the iPhone app's page from a fixed element touching the bottom edge,
+   but only one at least 3px tall (2px didn't count, so it fell back to the page background color,
+   which is the TOP color since a3c5d61: navy under the shelf, Manu Nov 12). 12px, 8 of them off
+   screen. Above the dock (z 6, also fixed at the bottom, transparent) and the games (z 3), below
+   sheets (z 25), so an open sheet colors the strip itself. Hit-testable in case iOS samples by hit test. */
+#edge-bottom { bottom: -8px; height: 12px; z-index: 7; pointer-events: auto; background-color: #EEF6FF; }
 
 /* call them in: only when they're away */
 .callin { display: inline-flex; align-items: center; gap: 7px; margin-top: 12px; height: 36px; padding: 0 14px 0 11px; border-radius: 999px; font: 500 14px/1 var(--sans); letter-spacing: -0.01em; color: var(--ink); cursor: pointer; transition: transform 0.15s, opacity 0.2s; }
