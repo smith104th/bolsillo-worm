@@ -544,13 +544,22 @@ export function DesignPage(app, root, { onBack } = {}) {
   function cardSheet(c) {
     const me = mine.get(c.id)?.score, they = theirs.get(c.id);
     const row = (who, s, hidden) => h('div.dt-verdict', h('span', who), scaleEl(s || 0), h('b', s ? LEVEL[s] : hidden ? 'Hidden till you swipe' : 'Not yet'));
+    // the photo's box has its shape from the start, and the sheet waits for the photo to decode before
+    // it slides up, so nothing flashes or jumps on the way (Manu)
+    const pic = img(c);
+    pic.decoding = 'sync';
+    if (!pic.complete) {
+      pic.style.opacity = '0';
+      pic.addEventListener('load', () => { pic.style.transition = 'opacity 0.25s'; pic.style.opacity = '1'; }, { once: true });
+    }
+    const ready = pic.decode ? pic.decode().catch(() => {}) : null;
     sheet('', [
-      h('div.dt-sheet-pic', img(c)),
+      h('div.dt-sheet-pic', { style: { height: `min(calc(min(100vw, 560px) * ${(c.h / c.w).toFixed(4)}), 58vh)` } }, pic), // the sheet's width (max 560) at the photo's shape, capped
       h('h2.dt-name', c.name),
       h('p.dt-by', c.by),
       h('div.dt-verdicts', row('You', me), row(them(), me == null ? null : they, me == null)),
       more(c),
-    ], { quiet: true, className: 'dt-sheet dt-article' });
+    ], { quiet: true, className: 'dt-sheet dt-article', ready });
   }
 
   return {

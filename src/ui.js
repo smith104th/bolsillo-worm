@@ -77,7 +77,9 @@ function nextToast() {
 const stack = [];
 let sheetListener = null;
 export const onSheets = (fn) => { sheetListener = fn; };
-export function sheet(title, body, { onClose, wide = false, tall = false, className = '', quiet = false } = {}) {
+// ready: a promise to wait for (at most 350 ms) before the card slides up, e.g. its photo decoding,
+// so the photo is there for the whole slide instead of flashing in partway
+export function sheet(title, body, { onClose, wide = false, tall = false, className = '', quiet = false, ready = null } = {}) {
   const close = () => {
     if (!el.isConnected || el.dataset.closing) return;
     el.dataset.closing = '1';
@@ -100,7 +102,9 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   const end = () => { if (y0 == null) return; y0 = null; card.classList.remove('dragging'); if (dy > 110) close(); else card.style.transform = ''; };
   for (const t of [grab, head]) { t.addEventListener('pointerdown', start); t.addEventListener('pointermove', move); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end); }
   document.body.append(el);
-  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+  const slideIn = () => requestAnimationFrame(() => requestAnimationFrame(() => { if (!el.dataset.closing) el.classList.add('in'); }));
+  if (ready) Promise.race([Promise.resolve(ready).catch(() => {}), new Promise((r) => setTimeout(r, 350))]).then(slideIn);
+  else slideIn();
   const api = { el, card, close, body: card.querySelector('.sheet-body') };
   stack.push(api);
   sheetListener?.(stack.length);
