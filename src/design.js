@@ -439,13 +439,14 @@ export function DesignPage(app, root, { onBack } = {}) {
   }
 
   // ── when today's are done ──
-  // Manu: no "Done for today." (the meta says NEW 5 TOMORROW); today's five as small cards in the
-  // middle of the page, See matches and Exit the game at the bottom. With no card left there's no
-  // BACK in a card's foot, so Exit the game is the way out.
-  const exitBtn = () => h('button.dt-wide.dt-exit', { type: 'button', onclick: () => onBack?.() }, 'Exit the game');
+  // Manu: no "Done for today." (the meta says NEW 5 TOMORROW); "Today's results" over a row of
+  // today's cards in the middle of the page, Exit game and See stats at the bottom. With no card left
+  // there's no BACK in a card's foot, so Exit game is the way out.
+  const exitBtn = () => h('button.dt-wide.dt-exit', { type: 'button', onclick: () => onBack?.() }, 'Exit game'); // Manu: "Exit game"
+  // Manu: Exit game on the left, See stats (it opens the Matches sheet) on the right
   const doneFoot = () => h('div.dt-done-foot',
-    h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See stats'), // Manu: Stats, not Matches
-    exitBtn());
+    exitBtn(),
+    h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See stats'));
   function donePanel(today) {
     if (!today.length) {
       return h('div.dt-done',
@@ -463,7 +464,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0)))));
     if (keep) requestAnimationFrame(() => { row.scrollLeft = keep; });
     return h('div.dt-done',
-      h('div.dt-done-mid', row),
+      h('div.dt-done-mid', h('p.dt-done-label', 'Today\'s results'), row),
       doneFoot());
   }
 
