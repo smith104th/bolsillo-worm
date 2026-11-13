@@ -1,0 +1,39 @@
+name: Words
+# Five Letters: twice a day, put the NYT's recent Wordle answers in the database (supabase/words.sh).
+# The game plays the answer from two days before, so a missed run or two doesn't matter.
+# Repo secret: SUPABASE_DB_PASSWORD (same as the other jobs).
+on:
+  schedule: [{ cron: '17 2 * * *' }, { cron: '17 14 * * *' }]   # 23:17 and 11:17 in Buenos Aires
+  workflow_dispatch:
+  push: { branches: [main], paths: ['.github/workflows/words.yml', 'supabase/words.sh'] }
+permissions: { contents: read, actions: write }
+concurrency: { group: words }
+jobs:
+  words:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Database connection
+        # same as the backup job: the password secret, percent-encoded into the session pooler URL
+        env:
+          PW: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          URL_SECRET: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -n "$PW" ]; then
+            enc=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["PW"].strip(), safe=""))')
+            url="postgresql://postgres.kgoxwpmefkpmmlsgyyau:${enc}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+          else
+            url="$URL_SECRET"
+          fi
+          [ -n "$url" ] || { echo "::error::Add the repo secret SUPABASE_DB_PASSWORD"; exit 1; }
+          echo "::add-mask::$url"
+          echo "DB_URL=$url" >> "$GITHUB_ENV"
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null && psql --version
+      - name: Fetch the answers
+        run: bash supabase/words.sh
+      - name: Keep this schedule switched on
+        # GitHub turns off schedules in public repos after 60 days without commits
+        if: always()
+        env: { GH_TOKEN: '${{ github.token }}' }
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/words.yml/enable" || echo "couldn't re-enable (not fatal)"

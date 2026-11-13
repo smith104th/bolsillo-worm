@@ -4,6 +4,8 @@
 // lock in the day's word. The app calls it when wh_fl_state has no word yet. While it's here it also
 // gets tomorrow's (yesterday's NYT answer), so the next day's first open doesn't have to wait.
 // It never hands the word back: the app gets it from wh_fl_state like everything else.
+// On Nov 13 (the first day) NYT didn't give it the word, so a GitHub job (supabase/words.sh, twice a
+// day) now fills fl_words ahead of time and this is the backup. `why` says what NYT answered.
 import postgres from "npm:postgres@3.4.5";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -19,8 +21,8 @@ const json = (body: unknown, status = 200) =>
 const sql = postgres(Deno.env.get("DB_URL") || Deno.env.get("SUPABASE_DB_URL")!, { max: 1, prepare: false, idle_timeout: 20 });
 const NYT = (Deno.env.get("NYT_URL") || "https://www.nytimes.com/svc/wordle/v2").replace(/\/$/, "");
 
-// the answer for one date, or null if it can't be had (NYT down, blocked, or the answer looks wrong)
-async function nyt(day: string): Promise<string | null> {
+// the answer for one date, or why there isn't one (NYT down, blocked, slow, or the answer looks wrong)
+async function nyt(day: string): Promise<{ word: string | null; why: string }> {
   try {
     const res = await fetch(`${NYT}/${day}.json`, {
       headers: {
@@ -28,14 +30,14 @@ async function nyt(day: string): Promise<string | null> {
         "user-agent": "Mozilla/5.0 (compatible; BolsilloWorm/1.0)",
         referer: "https://www.nytimes.com/games/wordle/index.html",
       },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(3500),
     });
-    if (!res.ok) { await res.body?.cancel(); return null; }
+    if (!res.ok) { await res.body?.cancel(); return { word: null, why: `http ${res.status}` }; }
     const j = await res.json().catch(() => null);
     const w = String(j?.solution ?? "").trim().toLowerCase();
-    return /^[a-z]{5}$/.test(w) ? w : null;
-  } catch {
-    return null;
+    return /^[a-z]{5}$/.test(w) ? { word: w, why: "ok" } : { word: null, why: "no solution in the answer" };
+  } catch (e) {
+    return { word: null, why: String((e as Error)?.name === "TimeoutError" ? "timed out" : (e as Error)?.message ?? e).slice(0, 120) };
   }
 }
 
@@ -55,15 +57,17 @@ Deno.serve(async (req) => {
     if (!m) return json({ error: "no_hole" }, 403);
     const want = [m.today_word, m.next_word] as string[];
     const have = new Set((await sql`select day::text as day from public.fl_words where day = any(${want}::date[])`).map((r) => r.day));
-    const got: string[] = [], missing: string[] = [];
-    for (const day of want) {
-      if (have.has(day)) continue;
-      const word = await nyt(day);
-      if (!word) { missing.push(day); continue; }
-      await sql`insert into public.fl_words (day, word) values (${day}, ${word}) on conflict (day) do nothing`;
+    const got: string[] = [], missing: string[] = [], why: Record<string, string> = {};
+    // both at once, so a slow NYT costs one timeout, not two
+    await Promise.all(want.filter((day) => !have.has(day)).map(async (day) => {
+      const r = await nyt(day);
+      why[day] = r.why;
+      if (!r.word) { missing.push(day); return; }
+      await sql`insert into public.fl_words (day, word) values (${day}, ${r.word}) on conflict (day) do nothing`;
       got.push(day);
-    }
-    return json({ ready: !missing.includes(m.today_word), got, missing });
+    }));
+    got.sort(); missing.sort();
+    return json({ ready: !missing.includes(m.today_word), got, missing, why });
   } catch (e) {
     return json({ error: String(e) }, 500);
   }

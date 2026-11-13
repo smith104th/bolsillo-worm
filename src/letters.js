@@ -119,7 +119,8 @@ export function LettersPage(app, root, { onBack } = {}) {
         let s = await app.backend.flState();
         if (!s.word) {
           // no word yet today: ask for the NYT one, then offer ours in case that didn't work
-          await withTimeout(app.backend.flWords(), 9000).catch((e) => console.warn('five letters: no NYT word', e));
+          const w = await withTimeout(app.backend.flWords(), 9000).catch((e) => ({ error: String(e?.message || e) }));
+          if (!w?.ready) console.warn('five letters: no NYT word', w);
           s = await app.backend.flState(backupWord(words, dayKey(s.today)));
         }
         failed = null;
