@@ -333,3 +333,101 @@ console.log('all schema tests passed');
   await fails(C, 'select wh_ds_state()', [], /no_hole/);
   console.log('design tinder ok');
 }
+
+// ── Five Letters: one word a day per pocket, locked on the first open; their guesses hidden until you're done
+{
+  const A = '00000000-0000-0000-0000-0000000000a1', B = '00000000-0000-0000-0000-0000000000a2', C = '00000000-0000-0000-0000-0000000000a3';
+  const P = '00000000-0000-0000-0000-0000000000a4', Q = '00000000-0000-0000-0000-0000000000a5';
+  for (const id of [A, B, C, P, Q]) await db.query('insert into auth.users values ($1)', [id]);
+  const [{ wh_create: hc }] = await as(A, 'select wh_create($1,$2,$3)', ['Manu', worm('Fideo'), BA]);
+  await as(B, 'select wh_join($1,$2,$3,$4)', [hc.code, 'Vio', worm('Pickle'), MAD]);
+  const holeId = hc.hole_id;
+  const plus = (day, n) => new Date(Date.parse(`${day}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const day = (v) => String(v).slice(0, 10);
+  for (const t of ['fl_words', 'fl_days', 'fl_games']) await fails(B, `select * from ${t}`, [], /permission denied/);
+  await fails(B, `select wh_fl_game(null::fl_games, true)`, [], /permission denied/);
+  const state = async (u, fb = null) => (await as(u, 'select wh_fl_state($1) s', [fb]))[0].s;
+  const guess = async (u, d, n, g) => (await as(u, 'select wh_fl_guess($1,$2,$3) r', [d, n, g]))[0].r;
+
+  // no NYT word yet and no fallback: nothing locked in
+  let sa = await state(A);
+  const today = day(sa.today);
+  assert.equal(sa.word, null); assert.equal(day(sa.nyt_day), plus(today, -2)); assert.equal(sa.mine, null); assert.deepEqual(sa.days, []);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 1, 'crane'], /no_word/);
+  // the words function puts the NYT answer from two days before in; the next open locks it for both
+  await db.query(`insert into fl_words (day, word) values ($1, 'crane'), ($2, 'zesty')`, [plus(today, -2), plus(today, -1)]);
+  sa = await state(A, 'proud'); // a fallback is ignored when the NYT word is there
+  assert.equal(sa.word, 'crane'); assert.equal(day(sa.nyt), plus(today, -2));
+  let sb = await state(B);
+  assert.equal(sb.word, 'crane'); assert.equal(sb.theirs, null);
+
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 1, 'cran'], /bad_guess/);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 1, 'cr4ne'], /bad_guess/);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 2, 'slate'], /out_of_order/);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [plus(today, 1), 1, 'slate'], /no_word/);
+  let r = await guess(A, today, 1, 'SLATE');
+  assert.deepEqual(r.mine.guesses, ['slate']); assert.equal(r.mine.done, false); assert.equal(r.theirs, null);
+  r = await guess(A, today, 2, 'trace');
+  r = await guess(A, today, 2, 'trace'); // sent again after a dropped connection: saved once
+  assert.deepEqual(r.mine.guesses, ['slate', 'trace']);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 2, 'brace'], /out_of_order/);
+  // Vio sees how far Manu got, never his guesses
+  sb = await state(B);
+  assert.equal(sb.theirs.n, 2); assert.equal(sb.theirs.done, false); assert.equal(sb.theirs.guesses, undefined);
+  r = await guess(A, today, 3, 'crane');
+  assert.equal(r.mine.solved, true); assert.equal(r.mine.done, true); assert.equal(r.mine.n, 3);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [today, 4, 'proud'], /done/);
+  r = await guess(A, today, 3, 'crane'); // retry of the winning guess is fine
+  assert.equal(r.mine.n, 3);
+  sb = await state(B);
+  assert.equal(sb.theirs.solved, true); assert.equal(sb.theirs.n, 3); assert.equal(sb.theirs.guesses, undefined);
+  // Vio misses all six; finishing shows her Manu's grid, and shows him hers
+  for (const [i, g] of ['about', 'house', 'pride', 'quiet', 'lemon', 'fight'].entries()) r = await guess(B, today, i + 1, g);
+  assert.equal(r.mine.done, true); assert.equal(r.mine.solved, false); assert.equal(r.mine.n, 6);
+  assert.deepEqual(r.theirs.guesses, ['slate', 'trace', 'crane']);
+  await fails(B, 'select wh_fl_guess($1,$2,$3)', [today, 7, 'crane'], /done/);
+  sa = await state(A);
+  assert.deepEqual(sa.theirs.guesses, ['about', 'house', 'pride', 'quiet', 'lemon', 'fight']); assert.equal(sa.mine.solved, true);
+
+  // earlier days: yesterday stays open only to finish a game started before midnight, and their
+  // guesses stay hidden while yours is unfinished; older days show everything
+  const y = plus(today, -1), old = plus(today, -3);
+  await db.query(`insert into fl_days (hole_id, day, word, nyt_day) values ($1, $2, 'zesty', $3), ($1, $4, 'moist', null)`, [holeId, y, plus(today, -3), old]);
+  await db.query(`insert into fl_games (hole_id, slot, day, guesses, solved, done) values
+    ($1, 0, $2, '{nymph}', false, false), ($1, 1, $2, '{zesty}', true, true), ($1, 1, $3, '{moist}', true, true)`, [holeId, y, old]);
+  sa = await state(A);
+  assert.equal(sa.days.length, 2); assert.equal(day(sa.days[0].day), y); assert.equal(day(sa.days[1].day), old);
+  assert.equal(sa.days[0].theirs.guesses, undefined); assert.equal(sa.days[0].theirs.n, 1);
+  assert.deepEqual(sa.days[1].theirs.guesses, ['moist']); assert.equal(sa.days[1].mine, null); assert.equal(sa.days[1].word, 'moist'); assert.equal(sa.days[1].nyt, null);
+  sb = await state(B);
+  assert.equal(sb.days[0].theirs.n, 1); assert.deepEqual(sb.days[0].theirs.guesses, ['nymph']); // she finished yesterday's
+  await fails(B, 'select wh_fl_guess($1,$2,$3)', [old, 2, 'crane'], /bad_day|done/);
+  r = await guess(A, y, 2, 'zesty');
+  assert.equal(r.mine.solved, true); assert.deepEqual(r.theirs.guesses, ['zesty']);
+  sa = await state(A);
+  assert.deepEqual(sa.days[0].theirs.guesses, ['zesty']);
+  // a day you never started can't be played after it's over
+  await db.query(`insert into fl_days (hole_id, day, word) values ($1, $2, 'fjord')`, [holeId, plus(today, -4)]);
+  await fails(A, 'select wh_fl_guess($1,$2,$3)', [plus(today, -4), 1, 'fjord'], /bad_day/);
+  assert.equal((await db.query(`select count(*)::int n from fl_games where day = $1`, [plus(today, -4)])).rows[0].n, 0);
+
+  // a pocket that opens before the NYT word is in: the app's word from its own list is locked in for the day
+  const [{ wh_create: pc }] = await as(P, 'select wh_create($1,$2,$3)', ['Ana', worm('Tito'), MAD]);
+  await as(Q, 'select wh_join($1,$2,$3,$4)', [pc.code, 'Leo', worm('Bo'), BA]);
+  let sp = await state(P);
+  const ptoday = day(sp.today);
+  await db.query(`delete from fl_words where day = $1`, [plus(ptoday, -2)]);
+  await db.query(`delete from fl_days where hole_id = $1`, [pc.hole_id]);
+  sp = await state(P, ' Proud ');
+  assert.equal(sp.word, 'proud'); assert.equal(sp.nyt, null);
+  await db.query(`insert into fl_words (day, word) values ($1, 'crane') on conflict do nothing`, [plus(ptoday, -2)]);
+  assert.equal((await state(Q, 'other')).word, 'proud');
+  assert.equal((await state(P)).word, 'proud');
+  await fails(C, 'select wh_fl_state()', [], /no_hole/);
+  await fails(C, 'select wh_fl_guess($1,$2,$3)', [today, 1, 'crane'], /no_hole/);
+  // deleting a pocket takes its days and games with it; the NYT words stay
+  await as(P, 'select wh_leave()'); await as(Q, 'select wh_leave()');
+  assert.equal((await db.query(`select count(*)::int n from fl_days where hole_id = $1`, [pc.hole_id])).rows[0].n, 0);
+  assert.ok((await db.query(`select count(*)::int n from fl_words`)).rows[0].n >= 2);
+  console.log('five letters ok');
+}

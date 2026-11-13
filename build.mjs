@@ -30,6 +30,16 @@ const DECK_URL = `./design/deck.json?v=${DECK_V}`;
 writeFileSync(`${OUT}/design/deck.json`, deckJson);
 console.log(`built ${OUT}/design/ · v${DECK_V} · deck.json ${(deckJson.length / 1024).toFixed(0)}KB`);
 
+// Five Letters: the words it accepts and its backup answers (src/letters/), as one JSON file of
+// five-letter words run together (g = guesses, a = answers)
+mkdirSync(`${OUT}/letters`, { recursive: true });
+const wordsOf = (f) => readFileSync(`src/letters/${f}`, 'utf8').split('\n').map((w) => w.trim()).filter((w) => /^[a-z]{5}$/.test(w));
+const wordsJson = JSON.stringify({ g: wordsOf('guesses.txt').join(''), a: wordsOf('answers.txt').join('') });
+const WORDS_V = createHash('sha1').update(wordsJson).digest('hex').slice(0, 8);
+const WORDS_URL = `./letters/words.json?v=${WORDS_V}`;
+writeFileSync(`${OUT}/letters/words.json`, wordsJson);
+console.log(`built ${OUT}/letters/ · v${WORDS_V} · words.json ${(wordsJson.length / 1024).toFixed(0)}KB`);
+
 const res = await build({
   entryPoints: ['src/main.js'], bundle: true, format: 'esm', minify: true, sourcemap: false, write: false,
   target: ['es2020', 'safari15'],
@@ -40,15 +50,16 @@ const res = await build({
     __VERSION__: '"dev"',
     __HOUSE__: JSON.stringify(`./house/view.js?v=${HOUSE_V}`),
     __DECK__: JSON.stringify(DECK_URL),
+    __WORDS__: JSON.stringify(WORDS_URL),
   },
 });
 const js = res.outputFiles[0].text;
 const css = readFileSync('src/styles.css', 'utf8');
-const version = createHash('sha1').update(js + css + DECK_V).digest('hex').slice(0, 8);
+const version = createHash('sha1').update(js + css + DECK_V + WORDS_V).digest('hex').slice(0, 8);
 writeFileSync(`${OUT}/app.js`, js.replace('"dev"', JSON.stringify(version)));
 writeFileSync(`${OUT}/styles.css`, css);
 writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replaceAll('__VERSION__', version));
-writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL));
+writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL).replaceAll('__WORDS__', WORDS_URL));
 copyFileSync('src/manifest.webmanifest', `${OUT}/manifest.webmanifest`);
 writeFileSync(`${OUT}/.nojekyll`, '');
 // /deck/: a page to look through every Design Tinder card (reads design/deck.json, same photos as the app).

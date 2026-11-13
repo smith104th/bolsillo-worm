@@ -151,6 +151,16 @@ export function supabaseBackend(cfg) {
     dsState: () => rpc('wh_ds_state'),
     dsSwipe: (item, day, score) => rpc('wh_ds_swipe', { p_item: item, p_day: day, p_score: score }),
     dsUndo: (item) => rpc('wh_ds_undo', { p_item: item }),
+    // Five Letters: today's word (locked in for the pocket on the first call), both games, every earlier day.
+    // fallback = the app's own word, used only when the NYT one isn't in.
+    flState: (fallback = null) => rpc('wh_fl_state', { p_fallback: fallback }),
+    flGuess: (day, n, guess) => rpc('wh_fl_guess', { p_day: day, p_n: n, p_guess: guess }),
+    // asks the words function to fetch the NYT answer; { ready } = today's is in
+    async flWords() {
+      const { data, error } = await sb.functions.invoke('words', { body: {} });
+      if (error) throw new Error(error.message || 'words');
+      return data;
+    },
     // the shelf: everything left for later, plus what either of you kept
     async shelf() {
       const { data, error } = await sb.from('events').select(EVENT_COLS).or('kind.eq.later,kept.eq.true').order('created_at', { ascending: false }).limit(300);

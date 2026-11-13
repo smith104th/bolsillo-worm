@@ -4,7 +4,7 @@ const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
-  './icons/icon-192.png', './icons/badge-96.png', '__DECK__',
+  './icons/icon-192.png', './icons/badge-96.png', '__DECK__', '__WORDS__',
 ];
 // Design Tinder photos (Wikimedia), kept across versions; the newest 150 stay
 const DESIGN = 'bw-design';
@@ -26,7 +26,7 @@ const ITEMS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'
 // Repeat kisses, reactions and knocks fold into one notification with a count.
 const GROUPED = ['kiss', 'react', 'knock'];
 // Where a tap on the notification takes you.
-const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house' };
+const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house', letters: 'letters' };
 
 const lastEmoji = (t) => (String(t || '').match(/(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}\p{Emoji_Modifier}]*)\s*$/u) || [])[1] || null;
 

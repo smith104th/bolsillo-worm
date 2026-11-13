@@ -10,11 +10,12 @@ import { buzz } from './feel.js';
 import { roam } from './shelf.js';
 
 export const GAMES_BOTTOM = '#FFFFFF';
-// Design Tinder last (Manu)
+// Design Tinder after the first two (Manu); Five Letters joined at the end (Nov 13)
 export const GAMES = [
   { id: 'soil', name: 'Soil' },
   { id: 'house', name: 'Garden & House' },
   { id: 'design', name: 'Design Tinder' },
+  { id: 'letters', name: 'Five Letters' },
 ];
 
 // status(id) → short text for the band's pill when something waits there, else null

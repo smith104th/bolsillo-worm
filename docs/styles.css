@@ -999,5 +999,97 @@ body.dark #screen-games .shelf-head { color: var(--ink); }
 .band.game .band-name { font: 400 52px/0.92 var(--display); letter-spacing: -0.02em; text-transform: none; } /* Manu: a display serif, not all caps */
 .band.game { border-top: 1px solid rgba(11,11,12,0.12); }
 .band.game .band-ready { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
-#screen-soil, #screen-design, #screen-house { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
+#screen-soil, #screen-design, #screen-house, #screen-letters { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
 body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }
+
+/* ── Five Letters (Manu, Nov 13): Design Tinder's page, with the app's blue for a letter in the right
+   spot and its pink for a right letter in the wrong spot. Square tiles, square keys. */
+#screen-letters { overflow: hidden; background: #fff; color: var(--ink); display: flex; flex-direction: column; --rule: 1px solid rgba(11,11,12,0.12); }
+.fl-head { position: relative; flex: none; padding: calc(var(--safe-t) + 12px) 22px 0; }
+.fl-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.fl-play { flex: 1; min-height: 0; display: flex; flex-direction: column; --t: 52px; }
+.fl-board { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; padding: 14px 22px 12px; }
+.fl-note { position: absolute; z-index: 2; top: 10px; left: 50%; padding: 10px 14px; background: var(--ink); color: #fff; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; opacity: 0; transform: translate(-50%, -4px); transition: opacity 0.15s, transform 0.15s; pointer-events: none; }
+.fl-note.on { opacity: 1; transform: translate(-50%, 0); }
+.fl-grid { display: grid; gap: 6px; }
+.fl-row { display: grid; grid-template-columns: repeat(5, var(--t)); gap: 6px; }
+.fl-tile { width: var(--t); height: var(--t); display: grid; place-items: center; box-shadow: inset 0 0 0 2px #E5E5EA; color: var(--ink); font: 600 calc(var(--t) * 0.5)/1 var(--sans); letter-spacing: 0; text-transform: uppercase; transition: background-color 0.12s, color 0.12s, box-shadow 0.12s; }
+.fl-tile.typed { box-shadow: inset 0 0 0 2px var(--ink); }
+.fl-tile.s0 { background: #E5E5EA; box-shadow: none; color: #6E6E73; }
+.fl-tile.s1 { background: #FFC8D7; box-shadow: none; color: #D90042; }
+.fl-tile.s2 { background: #1546A8; box-shadow: none; color: #fff; }
+.fl-tile.pop { animation: fl-pop 0.12s ease-out; }
+.fl-tile.show { animation: fl-show 0.34s cubic-bezier(.3,.7,.4,1) both; transition-delay: 0.12s; }
+.fl-row.shake { animation: fl-shake 0.36s; }
+.fl-row.win .fl-tile { animation: fl-hop 0.5s cubic-bezier(.3,.7,.4,1) both; }
+.fl-row.win .fl-tile:nth-child(2) { animation-delay: 0.08s; }
+.fl-row.win .fl-tile:nth-child(3) { animation-delay: 0.16s; }
+.fl-row.win .fl-tile:nth-child(4) { animation-delay: 0.24s; }
+.fl-row.win .fl-tile:nth-child(5) { animation-delay: 0.32s; }
+@keyframes fl-pop { 0%, 100% { transform: none; } 40% { transform: scale(1.09); } }
+@keyframes fl-show { 0%, 100% { transform: none; } 45% { transform: scale(0.8); } }
+@keyframes fl-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes fl-hop { 0%, 100% { transform: none; } 40% { transform: translateY(-14px); } 70% { transform: translateY(2px); } }
+
+/* the keyboard: gray keys; blue and pink once found; a letter that isn't in the word fades out */
+.fl-keys { flex: none; display: flex; flex-direction: column; gap: 7px; padding: 0 5px 12px; }
+.fl-krow { display: flex; justify-content: center; gap: 5px; }
+.fl-key { flex: 1 1 0; min-width: 0; max-width: 46px; height: 52px; display: grid; place-items: center; background: #F2F2F7; color: var(--ink); font: 600 18px/1 var(--sans); letter-spacing: 0; text-transform: uppercase; touch-action: manipulation; transition: background-color 0.25s, color 0.25s, box-shadow 0.25s; }
+.fl-key.wide { flex: 1.55 1 0; max-width: 70px; font: 500 11px/1 var(--mono); letter-spacing: 0.06em; }
+.fl-key:active { filter: brightness(0.9); }
+.fl-key.s0 { background: #fff; color: var(--ink-3); box-shadow: inset 0 0 0 1px #E5E5EA; }
+.fl-key.s1 { background: #FFC8D7; color: #D90042; }
+.fl-key.s2 { background: #1546A8; color: #fff; }
+.fl-foot { height: calc(38px + var(--safe-b)); padding: 0 22px var(--safe-b); }
+.fl-empty { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 22px calc(var(--safe-b) + 40px); }
+.fl-empty p { margin: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.fl-empty .dt-exit { margin-top: 26px; }
+
+/* done: the word, your grid and theirs side by side, Exit game and See stats at the bottom */
+.fl-done { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 22px; }
+.fl-done.in { animation: fl-fade 0.4s ease-out; }
+@keyframes fl-fade { from { opacity: 0; transform: translateY(10px); } }
+.fl-done-mid { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; padding: 18px 0 6px; }
+.fl-word { margin: 0; font: 600 46px/1 var(--sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.fl-src { margin: 10px 0 0; font: 400 15px/1.35 var(--sans); color: var(--ink-2); }
+.fl-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+.fl-side { position: relative; min-width: 0; }
+.fl-who { display: flex; justify-content: space-between; gap: 8px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: var(--rule); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.fl-who span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fl-mini { display: grid; gap: 4px; }
+.fl-mini .fl-row { grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.fl-mini .fl-tile { width: auto; height: auto; aspect-ratio: 1; font-size: 13px; box-shadow: inset 0 0 0 1.5px #E5E5EA; }
+.fl-mini .fl-tile.s0, .fl-mini .fl-tile.s1, .fl-mini .fl-tile.s2 { box-shadow: none; }
+.fl-wait .fl-mini { opacity: 0.6; }
+.fl-wait-note { position: absolute; left: 0; right: 0; top: 32px; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 10px; text-align: center; }
+.fl-wait-note b { font: 600 15px/1.25 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+.fl-wait-note span { font: 400 13px/1.3 var(--sans); color: var(--ink-2); }
+.fl-verdict { margin: 22px 0 0; font: 600 22px/1.2 var(--sans); letter-spacing: -0.03em; color: var(--ink); }
+.fl-pair-wrap .dt-done-label { margin-bottom: 10px; }
+
+/* the stats sheet: a blue hero (pink is the other person's color in the bars) */
+.fl-hero { background: #1546A8; color: #fff; }
+.fl-hero p { color: #fff; }
+.fl-legend { display: inline-flex; align-items: center; gap: 6px; }
+.fl-legend i { width: 9px; height: 9px; display: inline-block; }
+.fl-legend i.me { background: #1546A8; }
+.fl-legend i.them { background: #FFC8D7; margin-left: 6px; }
+.fl-dist { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.fl-dist-row { display: flex; align-items: center; gap: 12px; }
+.fl-dist-k { flex: none; width: 14px; font: 500 13px/1 var(--mono); color: var(--ink); }
+.fl-bars { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fl-bar { height: 18px; display: flex; align-items: center; justify-content: flex-end; padding: 0 6px; font: 600 11px/1 var(--mono); }
+.fl-bar.me { background: #1546A8; color: #fff; }
+.fl-bar.them { background: #FFC8D7; color: #D90042; }
+.fl-bar.zero { width: 3px; padding: 0; background: #E5E5EA; }
+.fl-days { display: flex; flex-direction: column; }
+.fl-day { display: grid; grid-template-columns: 92px 1fr auto; align-items: baseline; gap: 10px; padding: 13px 0 12px; border-bottom: 1px solid rgba(11,11,12,0.08); text-align: left; }
+.fl-day:last-child { border-bottom: 0; }
+.fl-day-d { font: 500 11px/1 var(--mono); letter-spacing: 0.06em; color: var(--ink-2); }
+.fl-day-w { font: 600 17px/1 var(--sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+.fl-day-r { font: 400 14px/1 var(--sans); color: var(--ink-2); white-space: nowrap; }
+.fl-day-sheet .fl-pair-wrap { padding-top: 6px; }
+.fl-how { margin: 0 0 18px; font: 400 17px/1.4 var(--sans); color: var(--ink); }
+.fl-ex { margin: 0 0 18px; --t: 40px; }
+.fl-ex p { margin: 8px 0 0; font: 400 15px/1.35 var(--sans); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .fl-tile.pop, .fl-tile.show, .fl-row.shake, .fl-row.win .fl-tile, .fl-done.in { animation: none; } }

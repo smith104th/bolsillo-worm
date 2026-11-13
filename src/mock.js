@@ -1,6 +1,7 @@
 // Demo mode (?demo): a pretend partner so you can play without pairing.
 import { rand, pick, dayIn, hash } from './util.js';
 import { loadDeck, dealOrder } from './design.js';
+import { loadWords, backupWord } from './letters.js';
 
 export function mockBackend() {
   const now = () => new Date().toISOString();
@@ -15,6 +16,7 @@ export function mockBackend() {
   const hq = [];
   const media = new Map();
   const ds = { started: null, swipes: [new Map(), new Map()] }; // Design Tinder: your swipes, Luz's
+  const fl = { days: new Map(), games: [new Map(), new Map()], seeded: false }; // Five Letters: day → word; each of you: day → game
   let on = {};
   let present = true;
   const theirSlot = () => 1;
@@ -143,6 +145,31 @@ export function mockBackend() {
       order.slice(5, 10).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-1) }));
       order.slice(10, 13).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(0) }));
     } catch (e) { console.warn('demo deck', e); }
+  }
+
+  // Five Letters in the demo: words from the app's own list (the demo never asks the NYT). The last nine
+  // days have games for both of you (each of you skipped one), and Luz already got today's in 4.
+  const flGame = (guesses, w) => ({ guesses, solved: guesses[guesses.length - 1] === w, done: guesses[guesses.length - 1] === w || guesses.length >= 6, at: now() });
+  const flView = (g, full) => (g ? { n: g.guesses.length, solved: g.solved, done: g.done, at: g.at, ...(full ? { guesses: [...g.guesses] } : {}) } : null);
+  async function seedLetters() {
+    if (fl.seeded) return;
+    const words = await loadWords();
+    fl.seeded = true;
+    const tz = mine()?.place?.tz || 'UTC';
+    const day = (n) => dayIn(tz, new Date(Date.now() + n * 86400000));
+    const other = (w, salt, i) => { const g = words.answers[hash(`${w}:${salt}:${i}`) % words.answers.length]; return g === w ? 'pique' : g; };
+    const got = (w, k, salt) => [...Array.from({ length: k - 1 }, (_, i) => other(w, salt, i)), w];
+    const miss = (w, salt) => Array.from({ length: 6 }, (_, i) => other(w, salt, i));
+    for (let i = 9; i >= 1; i--) {
+      const d = day(-i), w = backupWord(words, d);
+      fl.days.set(d, { word: w, nyt: null });
+      const play = (salt) => (hash(`${d}:${salt}:x`) % 8 === 0 ? miss(w, salt) : got(w, 2 + (hash(`${d}:${salt}`) % 5), salt));
+      if (i !== 4) fl.games[0].set(d, flGame(play('m'), w));
+      if (i !== 6) fl.games[1].set(d, flGame(play('l'), w));
+    }
+    const t = day(0), w = backupWord(words, t);
+    fl.days.set(t, { word: w, nyt: null });
+    fl.games[1].set(t, flGame(got(w, 4, 'today'), w));
   }
 
   return {
@@ -287,6 +314,30 @@ export function mockBackend() {
     },
     async dsSwipe(item, day, score) { ds.swipes[0].set(item, { score, day }); const t = ds.swipes[1].get(item); return { item, score, theirs: t ? t.score : null }; },
     async dsUndo(item) { ds.swipes[0].delete(item); },
+    async flState() {
+      await seedLetters();
+      const today = dayIn(mine()?.place?.tz || 'UTC');
+      if (!fl.days.has(today)) fl.days.set(today, { word: backupWord(await loadWords(), today), nyt: null });
+      const d = fl.days.get(today), m = fl.games[0].get(today);
+      return {
+        today, nyt_day: null, word: d.word, nyt: d.nyt, mine: flView(m, true), theirs: flView(fl.games[1].get(today), !!m?.done),
+        days: [...fl.days.keys()].filter((k) => k < today).sort().reverse()
+          .map((k) => ({ day: k, word: fl.days.get(k).word, nyt: null, mine: flView(fl.games[0].get(k), true), theirs: flView(fl.games[1].get(k), true) })),
+      };
+    },
+    async flGuess(day, n, guess) {
+      const d = fl.days.get(day);
+      if (!d) throw new Error('no_word');
+      let g = fl.games[0].get(day);
+      if (!g) { g = flGame([], d.word); g.done = false; fl.games[0].set(day, g); }
+      if (!(n === g.guesses.length && g.guesses[n - 1] === guess)) {
+        if (g.done) throw new Error('done');
+        if (n !== g.guesses.length + 1) throw new Error('out_of_order');
+        g.guesses.push(guess); g.solved = guess === d.word; g.done = g.solved || g.guesses.length >= 6; g.at = now();
+      }
+      return { day, mine: flView(g, true), theirs: flView(fl.games[1].get(day), g.done) };
+    },
+    async flWords() { return { ready: false, got: [], missing: [] }; },
     async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },
     async nudge() {},
     connect(holeId, slot, handlers) { on = handlers; setTimeout(() => { on.status?.('SUBSCRIBED'); on.presence?.({ 0: [{ slot: 0 }], 1: [{ slot: 1 }] }); }, 300); },

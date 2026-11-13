@@ -1,5 +1,5 @@
 // "Save everything": one .zip with every note, answer, photo, song and voice note
-// in the pocket, plus the games (Design Tinder swipes, the house and its questions),
+// in the pocket, plus the games (Design Tinder swipes, the house and its questions, Five Letters),
 // so a server failure can't erase your history.
 //   pocket.json   everything, as data (the full record)
 //   index.html    a page you can open anywhere, no app needed
@@ -13,6 +13,7 @@ import { h, store } from './util.js';
 import { sheet, btn, toast } from './ui.js';
 import { loadDeck, LEVEL } from './design.js';
 import { TOTAL as HOUSE_PIECES } from './housepage.js';
+import { score as letterScore } from './letters.js';
 
 const DAY = 86400000;
 export const lastBackup = () => store('lastBackup') || null;
@@ -72,7 +73,7 @@ const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-
 // The games: what's on the server, as readable as the app shows it. Each part is optional,
 // so a pocket that never opened a game (or an older server) still saves everything else.
 async function gatherGames(backend) {
-  const out = { design: null, house: null };
+  const out = { design: null, house: null, letters: null };
   try {
     const ds = await backend.dsState();
     let byId = new Map();
@@ -101,6 +102,20 @@ async function gatherGames(backend) {
       waiting_for_you: hq.waiting || 0,
     };
   } catch { /* no house yet */ }
+  try {
+    const fl = await backend.flState();
+    const today = String(fl.today).slice(0, 10);
+    const game = (g) => g && { guesses: g.guesses ?? null, tries: g.n, solved: g.solved, done: g.done };
+    const days = [{ day: fl.today, word: fl.word, nyt: fl.nyt, mine: fl.mine, theirs: fl.theirs }, ...(fl.days || [])]
+      .filter((d) => d.word && (d.mine || d.theirs))
+      .map((d) => {
+        const day = String(d.day).slice(0, 10);
+        // today's word stays out of the file until you've played it
+        const word = day === today && !d.mine?.done ? null : d.word;
+        return { day, word, from_nyt_wordle_of: d.nyt ? String(d.nyt).slice(0, 10) : null, you: game(d.mine), them: game(d.theirs) };
+      });
+    out.letters = days.length ? { days } : null;
+  } catch { /* never played */ }
   return out;
 }
 
@@ -148,7 +163,8 @@ export async function buildBackup(app, onProgress = () => {}) {
     planted,
     design: games.design,
     house: games.house,
-    notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. So do your person\'s swipes on cards you haven\'t swiped yet, and the house questions waiting for you. Media files are in photos/, today/ and whispers/.',
+    letters: games.letters,
+    notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. So do your person\'s swipes on cards you haven\'t swiped yet, the house questions waiting for you, and their Five Letters guesses on a day you haven\'t finished. Media files are in photos/, today/ and whispers/.',
   };
   const counts = {
     moments: events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket', 'later'].includes(e.kind)).length,
@@ -156,6 +172,7 @@ export async function buildBackup(app, onProgress = () => {}) {
     whispers: files.filter((f) => f.name.startsWith('whispers/')).length, missing,
     cards: games.design?.cards.length || 0,
     questions: (games.house?.you_asked.length || 0) + (games.house?.they_asked.length || 0),
+    words: games.letters?.days.filter((d) => d.you?.done).length || 0,
   };
   const stamp = exportedAt.slice(0, 10);
   files.unshift(
@@ -176,7 +193,7 @@ function readme(r, c) {
     `Worms: ${names}.`,
     '',
     `${c.moments} things you sent each other, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes.`,
-    r.design || r.house ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}.` : null,
+    r.design || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} days of Five Letters` : ''}.` : null,
     '',
     'index.html   open it to read your pocket as a page (any phone or computer)',
     'pocket.json  the complete record, as data',
@@ -184,7 +201,7 @@ function readme(r, c) {
     'today/       Today photos, one per person per day',
     'whispers/    voice notes',
     '',
-    'The games are at the end of index.html, and under "design" and "house" in pocket.json.',
+    'The games are at the end of index.html, and under "design", "house" and "letters" in pocket.json.',
     '',
     'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are in this file.',
     `Your pocket's code: ${r.pocket.code || '?'} (keep it between you two).`,
@@ -222,7 +239,7 @@ function page(r, nameOf, slot) {
   const title = r.worms.map((w) => esc(w.name)).join(' & ');
   const games = gamesHtml(r, slot);
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Bolsillo Worm · ${title}</title>
-<style>body{font:16px/1.45 -apple-system,system-ui,sans-serif;margin:0;padding:28px 20px 60px;max-width:640px;margin:auto;color:#111;background:#fff}h1{font-size:34px;letter-spacing:-.03em;margin:0 0 4px}.sub{color:#666;margin:0 0 28px}h2{font:600 12px/1 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#0F7A4E;margin:34px 0 10px}h1.sec{font-size:28px;margin:56px 0 0;padding-top:28px;border-top:2px solid #111}h3{font-size:17px;margin:26px 0 6px}.ok{color:#1546A8}.miss{color:#D90042}.ev{padding:12px 0;border-top:1px solid #eee}.who{display:block;font:500 11px/1.4 ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#666}.note{white-space:pre-wrap;font-size:18px}.th{width:110px;height:110px;object-fit:cover;border-radius:14px;margin:6px 8px 0 0}.dim{color:#888}a{color:#1546A8}p{margin:6px 0}</style></head>
+<style>body{font:16px/1.45 -apple-system,system-ui,sans-serif;margin:0;padding:28px 20px 60px;max-width:640px;margin:auto;color:#111;background:#fff}h1{font-size:34px;letter-spacing:-.03em;margin:0 0 4px}.sub{color:#666;margin:0 0 28px}h2{font:600 12px/1 ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#0F7A4E;margin:34px 0 10px}h1.sec{font-size:28px;margin:56px 0 0;padding-top:28px;border-top:2px solid #111}h3{font-size:17px;margin:26px 0 6px}.ok{color:#1546A8}.miss{color:#D90042}.ev{padding:12px 0;border-top:1px solid #eee}.who{display:block;font:500 11px/1.4 ui-monospace,monospace;letter-spacing:.06em;text-transform:uppercase;color:#666}.note{white-space:pre-wrap;font-size:18px}.th{width:110px;height:110px;object-fit:cover;border-radius:14px;margin:6px 8px 0 0}.dim{color:#888}a{color:#1546A8}p{margin:6px 0}.fl{display:inline-block;vertical-align:top;margin:6px 22px 0 0}.fl .who{margin-bottom:4px}.t{display:inline-block;width:22px;height:22px;margin:0 2px 2px 0;font:700 12px/22px -apple-system,system-ui,sans-serif;text-align:center;text-transform:uppercase}.t0{background:#E5E5EA;color:#6E6E73}.t1{background:#FFC8D7;color:#D90042}.t2{background:#1546A8;color:#fff}</style></head>
 <body><h1>${title}</h1><p class="sub">Bolsillo Worm · saved ${esc(new Date(r.exported_at).toDateString())}${games ? ' · <a href="#games">The games</a>' : ''}</p>
 ${days.map((day) => `<h2>${esc(new Date(day + 'T12:00:00').toDateString())}</h2>${byDay.get(day).join('')}`).join('\n')}
 ${games}
@@ -260,6 +277,21 @@ function gamesHtml(r, slot) {
       for (const q of ho.they_asked) out.push(`<div class="ev"><span class="who">${dt(q.answered_at)}</span><p><b>${esc(q.question)}</b></p><p>The answer: “${esc(q.answer)}” · ${res(me, q.you_picked, q.right)}</p></div>`);
     }
   }
+  const fl = r.letters;
+  if (fl?.days.length) {
+    const grid = (who, g, word) => {
+      if (!g) return `<div class="fl"><span class="who">${who}</span><span class="dim">Didn't play</span></div>`;
+      const head = `${who} · ${g.done ? `${g.solved ? g.tries : 'X'}/6` : 'not finished'}`;
+      if (!g.guesses || !word) return `<div class="fl"><span class="who">${head}</span></div>`;
+      const rows = g.guesses.map((w) => `<div>${letterScore(w, word).map((sc, i) => `<span class="t t${sc}">${esc(w[i])}</span>`).join('')}</div>`).join('');
+      return `<div class="fl"><span class="who">${head}</span>${rows}</div>`;
+    };
+    out.push(`<h2>Five Letters</h2><p class="sub">${fl.days.length} ${fl.days.length === 1 ? 'day' : 'days'} played. A letter in the right spot is blue, a right letter in the wrong spot pink.</p>`);
+    for (const d of fl.days) {
+      const src = d.from_nyt_wordle_of ? ` · the NYT Wordle from ${dt(d.from_nyt_wordle_of)}` : '';
+      out.push(`<div class="ev"><span class="who">${dt(d.day)}${src}</span><p><b>${d.word ? esc(d.word.toUpperCase()) : 'Today\'s word (you haven\'t played it yet)'}</b></p>${grid(me, d.you, d.word)}${grid(them, d.them, d.word)}</div>`);
+    }
+  }
   return out.length ? `<h1 class="sec" id="games">The games</h1>\n${out.join('\n')}` : '';
 }
 
@@ -272,7 +304,7 @@ export function backupSheet(app) {
     try {
       built = await buildBackup(app, (msg) => { status.textContent = msg; });
       const c = built.counts, mb = (built.size / 1048576).toFixed(built.size > 10485760 ? 0 : 1);
-      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
+      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} days of Five Letters` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
       go.hidden = true; saveBtn.hidden = false;
     } catch (err) {
       status.textContent = `Couldn't gather everything: ${String(err?.message || err).slice(0, 80)}. Try again.`;

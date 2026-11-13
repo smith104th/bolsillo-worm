@@ -1,9 +1,12 @@
 # Used by the Supabase CLI in .github/workflows/supabase.yml.
-# Both functions check the caller themselves (supabase.auth.getUser).
+# Every function checks the caller itself (supabase.auth.getUser).
 project_id = "bolsillo-worm"
 
 [functions.nudge]
 verify_jwt = false
 
 [functions.media]
+verify_jwt = false
+
+[functions.words]
 verify_jwt = false
