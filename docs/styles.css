@@ -503,11 +503,7 @@ body.dark .zz { color: #fff; }
 
 /* Safari tints its bars from what touches the top and bottom edges; keep them the sky's colors */
 .edge { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none; background-color: #6FBEFF; }
-/* iOS 26 tints the band under the status bar from a full-width fixed element at the top edge, but only one
-   at least ~6px tall; with none it uses the page background color, which is the BOTTOM color (for the strip
-   under home-screen apps), so the shelf's yellow showed at the top (Manu, Nov 12). 10px, above the games
-   (z 3) and below sheets, in the page's top color, behind the status bar. */
-#edge-top { top: 0; height: 10px; z-index: 4; }
+#edge-top { top: 0; } /* a 10px version didn't change the iPhone app's status bar tint (Nov 12) */
 #edge-bottom { bottom: 0; background-color: #EEF6FF; }
 
 /* call them in: only when they're away */

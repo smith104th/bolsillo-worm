@@ -436,12 +436,13 @@ function paintEdges() {
   // bottom: the page's bottom color, or the open sheet's.
   const open = topSheet();
   const under = open ? getComputedStyle(open.card).backgroundColor || '#FFFFFF' : bottom;
-  // iOS also shows the page background ABOVE the page (under the status bar), so one solid color
-  // can't do both ends (Manu, Nov 12: the shelf's yellow showed at the top). The root background is
-  // three screens tall, centered on the page: the top color above it, the page's gradient on it,
-  // and the bottom color (or the open sheet's) below it.
+  // iOS 26 also tints the band under the status bar with the page's background COLOR (not the image),
+  // so with the bottom color there the shelf's yellow showed at the top (Manu, Nov 12: "Remove
+  // yellow"). The color is the top's now. The root background image is three screens tall, centered
+  // on the page: the top color above it, the page's gradient on it, and the bottom color (or the open
+  // sheet's) below it, for wherever iOS paints the strip under the page from the image.
   const root = document.documentElement.style;
-  root.backgroundColor = under;
+  root.backgroundColor = top;
   root.backgroundImage = `linear-gradient(${top} 33.333%, ${bottom} 66.667%, ${under} 66.667%)`;
   root.backgroundSize = '100% 300%';
   root.backgroundPosition = '0 50%';
