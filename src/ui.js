@@ -78,8 +78,9 @@ const stack = [];
 let sheetListener = null;
 export const onSheets = (fn) => { sheetListener = fn; };
 // ready: a promise to wait for (at most 350 ms) before the card slides up, e.g. its photo decoding,
-// so the photo is there for the whole slide instead of flashing in partway
-export function sheet(title, body, { onClose, wide = false, tall = false, className = '', quiet = false, ready = null } = {}) {
+// so the photo is there for the whole slide instead of flashing in partway.
+// pullAnywhere: pull down anywhere on the card (once it's scrolled to the top) to drag it down and close it.
+export function sheet(title, body, { onClose, wide = false, tall = false, className = '', quiet = false, ready = null, pullAnywhere = false } = {}) {
   const close = () => {
     if (!el.isConnected || el.dataset.closing) return;
     el.dataset.closing = '1';
@@ -101,6 +102,7 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   const move = (e) => { if (y0 == null) return; dy = Math.max(0, e.clientY - y0); card.style.transform = `translateY(${dy}px)`; };
   const end = () => { if (y0 == null) return; y0 = null; card.classList.remove('dragging'); if (dy > 110) close(); else card.style.transform = ''; };
   for (const t of [grab, head]) { t.addEventListener('pointerdown', start); t.addEventListener('pointermove', move); t.addEventListener('pointerup', end); t.addEventListener('pointercancel', end); }
+  if (pullAnywhere) pullToClose(el, card, close);
   document.body.append(el);
   const slideIn = () => requestAnimationFrame(() => requestAnimationFrame(() => { if (!el.dataset.closing) el.classList.add('in'); }));
   if (ready) Promise.race([Promise.resolve(ready).catch(() => {}), new Promise((r) => setTimeout(r, 350))]).then(slideIn);
@@ -109,6 +111,51 @@ export function sheet(title, body, { onClose, wide = false, tall = false, classN
   stack.push(api);
   sheetListener?.(stack.length);
   return api;
+}
+// Pull down anywhere on a sheet to close it, like the grabber (Manu, for Design Tinder's cards). A pull
+// only takes over when the card is scrolled to the top and the finger goes down first; otherwise the
+// card just scrolls. The card follows the finger and the backdrop lightens; let go past a quarter of
+// the card (or flick down) to close, else it springs back. Touch only: the grabber still works with a mouse.
+function pullToClose(el, card, close) {
+  let t = null; // { y0, x0, top, on, dy, hist }
+  const reset = () => { card.classList.remove('dragging'); el.style.transition = ''; el.style.background = ''; };
+  card.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1 || e.target.closest('.grabber, .sheet-head, input, textarea, select')) { t = null; return; }
+    const p = e.touches[0];
+    t = { y0: p.clientY, x0: p.clientX, top: card.scrollTop <= 0, on: false, dy: 0, hist: [] };
+  }, { passive: true });
+  card.addEventListener('touchmove', (e) => {
+    if (!t) return;
+    const p = e.touches[0];
+    const dy = p.clientY - t.y0, dx = p.clientX - t.x0;
+    if (!t.on) {
+      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      // only a pull that starts at the top and goes down (more than sideways) drags the card
+      if (!t.top || card.scrollTop > 0 || dy <= 0 || Math.abs(dx) > Math.abs(dy) || !e.cancelable) { t = null; return; }
+      t.on = true; t.y0 = p.clientY; // follow from here, so the card doesn't jump by the dead zone
+      card.classList.add('dragging');
+      el.style.transition = 'none';
+    }
+    e.preventDefault(); // the card moves, not its content
+    t.dy = Math.max(0, p.clientY - t.y0);
+    card.style.transform = `translateY(${t.dy}px)`;
+    el.style.background = `rgba(0,0,0,${(0.28 * Math.max(0, 1 - t.dy / (card.offsetHeight || 1))).toFixed(3)})`;
+    t.hist.push([t.dy, performance.now()]); if (t.hist.length > 5) t.hist.shift();
+  }, { passive: false });
+  const end = () => {
+    if (!t || !t.on) { t = null; return; }
+    const [a, z] = [t.hist[0], t.hist[t.hist.length - 1]];
+    const v = a && z && z[1] > a[1] ? (z[0] - a[0]) / (z[1] - a[1]) : 0; // px per ms, down is positive
+    const go = t.dy > card.offsetHeight * 0.25 || (v > 0.5 && t.dy > 30);
+    t = null;
+    reset();
+    if (go) { close(); return; }
+    card.style.transition = 'transform 0.32s cubic-bezier(.2,.8,.3,1)';
+    card.style.transform = '';
+    setTimeout(() => { if (!card.classList.contains('dragging')) card.style.transition = ''; }, 340);
+  };
+  card.addEventListener('touchend', end);
+  card.addEventListener('touchcancel', end);
 }
 export const closeAllSheets = () => [...stack].forEach((s) => s.close());
 export const topSheet = () => stack[stack.length - 1] || null;

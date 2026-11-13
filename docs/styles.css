@@ -975,6 +975,8 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
    (Manu: the faster curves shot up). 0.6s, slower than the app's other sheets. */
 .sheet-card.dt-article { will-change: transform; transition: transform 0.6s cubic-bezier(.45,0,.2,1); }
 .sheet-card.dt-article.dragging { transition: none; }
+/* closing (the X, a tap outside, or a pull let go): quick and smooth, carrying on from where the finger left it */
+.sheet:not(.in) .sheet-card.dt-article { transition: transform 0.34s cubic-bezier(.2,.6,.35,1); }
 .dt-article .dt-name { margin-top: 18px; }
 .dt-verdicts { margin-top: 18px; border-top: 1px solid rgba(11,11,12,0.12); }
 .dt-verdict { display: flex; align-items: center; gap: 12px; padding: 11px 0 10px; border-bottom: 1px solid rgba(11,11,12,0.12); }

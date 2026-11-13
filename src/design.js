@@ -498,7 +498,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       section('YOU BOTH LIKE', liked, 'Nothing yet. Keep swiping.'),
       section('SPLIT', split, 'No disagreements yet.'),
       section('NEITHER OF YOU', neither, 'Nothing you both turned down yet.'),
-    ], { tall: true, quiet: true, className: 'dt-sheet' });
+    ], { tall: true, quiet: true, className: 'dt-sheet', pullAnywhere: true });
   }
 
   // Taste profiles: a plain list of stats, You and them side by side, over the cards you've
@@ -558,7 +558,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       h('p.dt-by', c.by),
       h('div.dt-verdicts', row('You', me), row(them(), me == null ? null : they, me == null)),
       more(c),
-    ], { quiet: true, className: 'dt-sheet dt-article', ready });
+    ], { quiet: true, className: 'dt-sheet dt-article', ready, pullAnywhere: true }); // Manu: pull down from anywhere
   }
 
   return {
