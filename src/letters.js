@@ -1,13 +1,13 @@
 // Five Letters: one of the games (opens from the Games page). A five-letter word a day, the same one
 // for both of you: the New York Times' Wordle answer from two days before (Manu, Nov 13). Six tries.
-// A letter in the right spot turns blue, a right letter in the wrong spot pink (Manu), the rest gray.
+// Wordle's colors (Manu, after trying blue and pink): green = right spot, yellow = in the word elsewhere, dark gray = not in it.
 // Your person's grid stays buried until you've finished yours (the server only hands it over then);
 // then the two sit side by side. The stats add up over every day, all time.
 // The word comes from wh_fl_state. If the NYT one isn't in yet, the words function fetches it; if that
 // fails, the app offers a word from its own list (src/letters/answers.txt), the same on both phones,
 // and the server locks in whichever arrives first. Guesses are checked here (the phone has the word),
 // so you can play with no signal: each guess waits in store('flOutbox') and goes out in order.
-// Look: Design Tinder's (white page, square corners, Geist, red mono meta), with the app's blue and pink.
+// Look: Design Tinder's (white page, square corners, Geist, red mono meta). In the stats, blue is you, pink is them.
 import { h, store, hash } from './util.js';
 import { sheet, topSheet } from './ui.js';
 import { buzz, sfx } from './feel.js';
@@ -33,7 +33,7 @@ export function loadWords() {
 // the app's own word for a day, for when the NYT one can't be had: the same on both phones
 export const backupWord = (words, day) => words.answers[hash(`five-letters:${day}`) % words.answers.length];
 
-// How a guess scores against the word: 2 = right spot (blue), 1 = in the word, elsewhere (pink),
+// How a guess scores against the word: 2 = right spot (green), 1 = in the word, elsewhere (yellow),
 // 0 = not in it. A repeated letter only counts as often as the word has it, right spots first.
 export function score(guess, word) {
   const out = Array(LEN).fill(0), left = {};
@@ -242,7 +242,7 @@ export function LettersPage(app, root, { onBack } = {}) {
   }
   function paintBoard() { for (let r = 0; r < ROWS; r++) paintRow(r); }
 
-  // each key takes the best it has been: blue, then pink, then gray
+  // each key takes the best it has been: green, then yellow, then gray
   function paintKeys() {
     const best = {};
     for (const g of mine) score(g, word).forEach((s, i) => { best[g[i]] = Math.max(best[g[i]] ?? -1, s); });
@@ -427,8 +427,8 @@ export function LettersPage(app, root, { onBack } = {}) {
     const ex = (w, at, s, text) => h('div.fl-ex', h('div.fl-row', [...w].map((c, i) => h(`div.fl-tile${i === at ? `.s${s}` : '.typed'}`, c))), h('p', text));
     sheet('How to play', [
       h('p.fl-how', 'Guess the word in six tries. Each guess is a real five-letter word: type it and tap Enter.'),
-      ex('worms', 0, 2, 'Blue: W is in the word, in the right spot.'),
-      ex('heart', 1, 1, 'Pink: E is in the word, in another spot.'),
+      ex('worms', 0, 2, 'Green: W is in the word, in the right spot.'),
+      ex('heart', 1, 1, 'Yellow: E is in the word, in another spot.'),
       ex('cloud', 3, 0, 'Gray: U isn\'t in the word at all.'),
       h('p.fl-how', `You and ${n} get the same word: the New York Times' Wordle answer from two days before. ${n}'s grid stays hidden until you've finished yours, then they sit side by side.`),
     ], { quiet: true, className: 'dt-sheet fl-sheet' });
