@@ -431,3 +431,49 @@ console.log('all schema tests passed');
   assert.ok((await db.query(`select count(*)::int n from fl_words`)).rows[0].n >= 2);
   console.log('five letters ok');
 }
+
+// ── Five Letters extra words: fl_bonus gives a day a round 2 with an older NYT answer; it counts like any game
+{
+  const A = '00000000-0000-0000-0000-0000000000b1', B = '00000000-0000-0000-0000-0000000000b2';
+  for (const id of [A, B]) await db.query('insert into auth.users values ($1)', [id]);
+  const [{ wh_create: hc }] = await as(A, 'select wh_create($1,$2,$3)', ['Manu', worm('Fideo'), BA]);
+  await as(B, 'select wh_join($1,$2,$3,$4)', [hc.code, 'Vio', worm('Pickle'), MAD]);
+  const plus = (day, n) => new Date(Date.parse(`${day}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+  const state = async (u, fb = null) => (await as(u, 'select wh_fl_state($1) s', [fb]))[0].s;
+  const guess = async (u, d, n, g, r) => (await as(u, r == null ? 'select wh_fl_guess($1,$2,$3) r' : 'select wh_fl_guess($1,$2,$3,$4) r', r == null ? [d, n, g] : [d, n, g, r]))[0].r;
+  let sa = await state(A, 'proud');
+  const today = String(sa.today).slice(0, 10);
+  assert.deepEqual(sa.extra, []);
+  await fails(B, 'select * from fl_bonus', [], /permission denied/);
+  // a round 2 today from the NYT answer of 9 days ago: nothing until that answer is in fl_words
+  await db.query(`insert into fl_bonus (day, round, nyt_day) values ($1, 2, $2)`, [today, plus(today, -9)]);
+  assert.deepEqual((await state(A)).extra, []);
+  await db.query(`insert into fl_words (day, word) values ($1, 'ghost') on conflict (day) do update set word = 'ghost'`, [plus(today, -9)]);
+  sa = await state(A);
+  assert.equal(sa.extra.length, 1); assert.equal(sa.extra[0].round, 2); assert.equal(sa.extra[0].word, 'ghost'); assert.equal(String(sa.extra[0].nyt).slice(0, 10), plus(today, -9));
+  assert.equal(sa.extra[0].mine, null);
+  const r1word = sa.word;
+  // round 2 is its own game: guesses, hiding and finishing work the same; round 1 is untouched
+  await fails(A, 'select wh_fl_guess($1,$2,$3,$4)', [today, 1, 'crane', 3], /no_word/);
+  let r = await guess(A, today, 1, 'crane', 2);
+  assert.equal(r.round, 2); assert.deepEqual(r.mine.guesses, ['crane']);
+  r = await guess(A, today, 2, 'ghost', 2);
+  assert.equal(r.mine.solved, true); assert.equal(r.theirs, null);
+  let sb = await state(B);
+  assert.equal(sb.extra[0].theirs.n, 2); assert.equal(sb.extra[0].theirs.guesses, undefined); assert.equal(sb.mine, null);
+  r = await guess(B, today, 1, 'ghost', 2);
+  assert.deepEqual(r.theirs.guesses, ['crane', 'ghost']);
+  // a call without the round is round 1, the day's word (old app versions keep working)
+  r = await guess(A, today, 1, r1word === 'slate' ? 'crane' : 'slate');
+  assert.equal(r.round, 1); assert.equal(r.mine.n, 1);
+  sa = await state(A);
+  assert.equal(sa.mine.n, 1); assert.equal(sa.extra[0].mine.n, 2); assert.deepEqual(sa.extra[0].theirs.guesses, ['ghost']);
+  // earlier days list every round, round 1 first
+  await db.query(`insert into fl_days (hole_id, day, round, word, nyt_day) values ($1, $2, 1, 'moist', null), ($1, $2, 2, 'fjord', $3)`, [hc.hole_id, plus(today, -3), plus(today, -12)]);
+  await db.query(`insert into fl_games (hole_id, slot, day, round, guesses, solved, done) values ($1, 1, $2, 2, '{fjord}', true, true)`, [hc.hole_id, plus(today, -3)]);
+  sa = await state(A);
+  assert.deepEqual(sa.days.map((d) => [String(d.day).slice(0, 10), d.round, d.word]), [[plus(today, -3), 1, 'moist'], [plus(today, -3), 2, 'fjord']]);
+  assert.deepEqual(sa.days[1].theirs.guesses, ['fjord']);
+  // an extra word for a pocket only shows up in that pocket
+  console.log('five letters extra words ok');
+}

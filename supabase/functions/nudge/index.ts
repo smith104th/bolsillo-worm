@@ -70,9 +70,12 @@ function compose(kind: string, me: any, extra: any = {}) {
       : { title: `${n} answered your question`, body: extra.q ? `“${extra.q}” Not this time.` : "Not this time." };
     case "hq":      return { title: `${n} wrote you a question`, body: "Answer it to build the house." };
     case "plant":   return { title: `${n} planted a question 🌱`, body: `It comes up ${extra.when ?? "soon"} as your question of the day.` };
-    case "letters": return extra.both
-      ? { title: `${n} finished Five Letters`, body: `${extra.solved ? `In ${extra.n}.` : "No luck today."} Your grids are side by side.` }
-      : { title: extra.solved ? `${n} got today's word in ${extra.n}` : `${n} didn't get today's word`, body: `Your turn. ${n}'s grid stays hidden till you've played.` };
+    case "letters": {
+      const what = extra.bonus ? "the bonus word" : "today's word";
+      return extra.both
+        ? { title: `${n} finished ${extra.bonus ? "the bonus word" : "Five Letters"}`, body: `${extra.solved ? `In ${extra.n}.` : "No luck this time."} Your grids are side by side.` }
+        : { title: extra.solved ? `${n} got ${what} in ${extra.n}` : `${n} didn't get ${what}`, body: `Your turn. ${n}'s grid stays hidden till you've played.` };
+    }
     default:        return { title: "Something moved in your pocket", body: `From ${n}.` };
   }
 }

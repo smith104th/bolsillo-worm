@@ -154,7 +154,8 @@ export function supabaseBackend(cfg) {
     // Five Letters: today's word (locked in for the pocket on the first call), both games, every earlier day.
     // fallback = the app's own word, used only when the NYT one isn't in.
     flState: (fallback = null) => rpc('wh_fl_state', { p_fallback: fallback }),
-    flGuess: (day, n, guess) => rpc('wh_fl_guess', { p_day: day, p_n: n, p_guess: guess }),
+    // round 1 = the day's word (sent without p_round, the same call as before rounds existed)
+    flGuess: (day, n, guess, round = 1) => rpc('wh_fl_guess', round > 1 ? { p_day: day, p_n: n, p_guess: guess, p_round: round } : { p_day: day, p_n: n, p_guess: guess }),
     // asks the words function to fetch the NYT answer; { ready } = today's is in
     async flWords() {
       const { data, error } = await sb.functions.invoke('words', { body: {} });

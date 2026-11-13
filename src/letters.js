@@ -8,6 +8,8 @@
 // and the server locks in whichever arrives first. Guesses are checked here (the phone has the word),
 // so you can play with no signal: each guess waits in store('flOutbox') and goes out in order.
 // Look: Design Tinder's (white page, square corners, Geist, red mono meta). In the stats, blue is you, pink is them.
+// A day can have extra words (rounds 2+, Manu Nov 13: "let us play one extra game today"): they come in
+// state.extra, play the same way, and count in the stats like any other word. Round 1 is the day's word.
 import { h, store, hash } from './util.js';
 import { sheet, topSheet } from './ui.js';
 import { buzz, sfx } from './feel.js';
@@ -47,6 +49,10 @@ const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 864000
 const shortDate = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
 const points = (g) => (g.solved ? g.n : ROWS + 1); // fewer is better; a miss counts as seven
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('timed out')), ms))]);
+// the server's today as a list of words: round 1 (the day's word), then any extra ones
+const roundsOf = (s) => (s?.word ? [{ round: 1, word: s.word, nyt: s.nyt, mine: s.mine, theirs: s.theirs }, ...(s.extra || [])] : []);
+const isDone = (gs, w) => gs[gs.length - 1] === w || gs.length >= ROWS;
+const roundName = (r, many) => (r === 1 ? 'Today\'s word' : many ? `Bonus word ${r - 1}` : 'Bonus word');
 
 // a small grid of finished rows (for the results, the stats and Save everything)
 function miniGrid(guesses, word, { hidden = false } = {}) {
@@ -71,7 +77,8 @@ function verdict(me, th, name) {
 // ── the page ────────────────────────────────────────────────
 export function LettersPage(app, root, { onBack } = {}) {
   let words = null, st = store('flState') || null, failed = null, visible = false, loading = null;
-  let day = null, word = null, nyt = null;           // the game on screen
+  let day = null, round = 1, word = null, nyt = null; // the game on screen
+  let picked = false;                                // you chose which of today's words to look at
   let mine = [], done = false, solved = false;       // your guesses so far
   let theirs = null;                                 // { n, solved, done, guesses? (only once you're done) }
   let typed = '', revealing = false, play = null, tiles = [], rows = [], keyEls = new Map(), note = null, noteTimer = 0, pollTimer = 0;
@@ -85,29 +92,56 @@ export function LettersPage(app, root, { onBack } = {}) {
     body);
 
   // ── state ──
+  // the server's guesses for a word, plus any still waiting for a signal
+  const merged = (g, d, r) => {
+    const out = [...(g?.guesses || [])];
+    for (const x of (store('flOutbox') || []).filter((o) => o.day === d && (o.round || 1) === r).sort((a, b) => a.n - b.n)) if (x.n === out.length + 1) out.push(x.guess);
+    return out;
+  };
   function applyState(s) {
     st = s;
     store('flState', s);
     const sday = dayKey(s.today);
     // a game you started before midnight stays on screen until it's finished (the server takes yesterday's for that)
     if (day && day !== sday && mine.length && !done) return;
-    const same = day === sday;
-    if (!same) { typed = ''; play = null; }
-    day = sday; word = s.word || null; nyt = s.nyt ? dayKey(s.nyt) : null;
-    // the server's guesses, plus any still waiting for a signal
-    const merged = [...(s.mine?.guesses || [])];
-    for (const x of (store('flOutbox') || []).filter((o) => o.day === day).sort((a, b) => a.n - b.n)) if (x.n === merged.length + 1) merged.push(x.guess);
-    if (!same || merged.length >= mine.length) mine = merged;
-    theirs = s.theirs || null;
+    const was = `${day}#${round}`;
+    if (day !== sday) { typed = ''; play = null; picked = false; }
+    const list = roundsOf(s);
+    // which word: the one you picked; else one you started and haven't finished; else the day's word until
+    // it's done; then the last one you finished (the results have a button for a word still waiting)
+    if (!picked || !list.some((x) => x.round === round)) {
+      const all = list.map((x) => ({ r: x.round, gs: merged(x.mine, sday, x.round), w: x.word }));
+      const open = all.find((x) => x.gs.length && !isDone(x.gs, x.w));
+      const lastDone = [...all].reverse().find((x) => x.gs.length && isDone(x.gs, x.w));
+      round = open?.r ?? (all[0] && !isDone(all[0].gs, all[0].w) ? 1 : lastDone?.r ?? 1);
+    }
+    day = sday;
+    if (`${day}#${round}` !== was) { typed = ''; play = null; }
+    const cur = list.find((x) => x.round === round) || {};
+    word = cur.word || null; nyt = cur.nyt ? dayKey(cur.nyt) : null;
+    const gs = merged(cur.mine, day, round);
+    if (`${day}#${round}` !== was || gs.length >= mine.length) mine = gs;
+    theirs = cur.theirs || null;
     solved = !!word && mine[mine.length - 1] === word;
     done = solved || mine.length >= ROWS;
+  }
+  // switch to another of today's words
+  function setRound(r) {
+    picked = true;
+    if (r === round) return;
+    round = r; typed = ''; play = null; mine = [];
+    applyState(st);
+    render();
+    if (!done) body.firstChild?.classList.add('in');
   }
   if (st?.word && dayKey(st.today) === app.today()) applyState(st);
 
   // keeps the copy on the phone in step with what's on screen
   function saveCopy() {
     if (!st || dayKey(st.today) !== day) return;
-    st = { ...st, mine: mine.length ? { ...(st.mine || {}), n: mine.length, solved, done, guesses: [...mine] } : null, theirs };
+    const g = (old) => (mine.length ? { ...(old || {}), n: mine.length, solved, done, guesses: [...mine] } : null);
+    st = round === 1 ? { ...st, mine: g(st.mine), theirs }
+      : { ...st, extra: (st.extra || []).map((x) => (x.round === round ? { ...x, mine: g(x.mine), theirs } : x)) };
     store('flState', st);
   }
 
@@ -137,7 +171,8 @@ export function LettersPage(app, root, { onBack } = {}) {
 
   // ── guesses go out in order; with no signal they wait on the phone ──
   const queued = () => store('flOutbox') || [];
-  function queue(it) { store('flOutbox', [...queued().filter((x) => !(x.day === it.day && x.n === it.n)), it].slice(-40)); }
+  const same = (a, b) => a.day === b.day && (a.round || 1) === (b.round || 1) && a.n === b.n;
+  function queue(it) { store('flOutbox', [...queued().filter((x) => !same(x, it)), it].slice(-40)); }
   let flushing = false, flushAgain = false;
   async function flush() {
     if (flushing) { flushAgain = true; return; }
@@ -149,16 +184,16 @@ export function LettersPage(app, root, { onBack } = {}) {
         for (let q = queued(); q.length; q = queued()) {
           const it = q[0];
           try {
-            const r = await app.backend.flGuess(it.day, it.n, it.guess);
+            const r = await app.backend.flGuess(it.day, it.n, it.guess, it.round || 1);
             sent = true;
-            if (it.day === day && r && 'theirs' in r) theirs = r.theirs;
-            if (it.finishing) app.backend.nudge('letters', { n: it.n, solved: !!it.solved, both: !!r?.theirs?.done });
+            if (it.day === day && (it.round || 1) === round && r && 'theirs' in r) theirs = r.theirs;
+            if (it.finishing) app.backend.nudge('letters', { n: it.n, solved: !!it.solved, both: !!r?.theirs?.done, bonus: (it.round || 1) > 1 });
           } catch (e) {
             if (offlineError(e)) return;
             console.warn('five letters: guess dropped', it, e); // the server knows better (a new day, or it was already saved)
             dropped = true;
           }
-          store('flOutbox', queued().filter((x) => !(x.day === it.day && x.n === it.n)));
+          store('flOutbox', queued().filter((x) => !same(x, it)));
         }
       } while (flushAgain);
     } finally {
@@ -172,10 +207,10 @@ export function LettersPage(app, root, { onBack } = {}) {
   // ── drawing ──
   function renderMeta() {
     if (!word) { meta.textContent = ' '; return; }
-    if (done && !revealing) { meta.textContent = day === app.today() ? 'NEW WORD TOMORROW' : shortDate(day).toUpperCase(); return; }
+    if (done && !revealing) { meta.textContent = day !== app.today() ? shortDate(day).toUpperCase() : waiting() ? 'ONE MORE WORD TODAY' : 'NEW WORD TOMORROW'; return; }
     const n = them().toUpperCase(), t = theirs;
     const who = !app.them() ? '' : !t ? `${n} HASN'T PLAYED` : t.done ? (t.solved ? `${n} GOT IT IN ${t.n}` : `${n} DIDN'T GET IT`) : `${n} IS PLAYING`;
-    meta.textContent = [shortDate(day).toUpperCase(), who].filter(Boolean).join(' · ');
+    meta.textContent = [round > 1 ? 'BONUS WORD' : shortDate(day).toUpperCase(), who].filter(Boolean).join(' · ');
   }
 
   function render() {
@@ -289,7 +324,7 @@ export function LettersPage(app, root, { onBack } = {}) {
     mine.push(g);
     solved = g === word; done = solved || n >= ROWS;
     const finishing = done;
-    queue({ day, n, guess: g, finishing, solved, at: Date.now() });
+    queue({ day, round, n, guess: g, finishing, solved, at: Date.now() });
     saveCopy();
     flush();
     // the row turns over one tile at a time, then the keyboard catches up
@@ -322,17 +357,30 @@ export function LettersPage(app, root, { onBack } = {}) {
         h('div.fl-wait-note', h('b', note), g?.done ? null : h('span', `It shows up here when ${n} finishes.`)));
     };
     const v = verdict(x.me, x.them, n);
+    const label = x.day === app.today() ? roundName(x.round || 1) : (x.round || 1) > 1 ? `${shortDate(x.day)} · bonus word` : shortDate(x.day);
     return h('div.fl-pair-wrap',
-      h('p.dt-done-label', x.day === app.today() ? 'Today\'s word' : shortDate(x.day)),
+      h('p.dt-done-label', label),
       h('h2.fl-word', x.word),
       h('p.fl-src', x.nyt ? `The NYT Wordle from ${shortDate(x.nyt)}.` : app.backend?.kind === 'mock' ? 'A practice word. The demo plays from the app\'s own list.' : 'From our own list. The NYT word didn\'t come through that day.'),
       h('div.fl-pair', side('You', x.me, true), side(n, x.them, false)),
       v ? h('p.fl-verdict', v) : null);
   }
+  // today's words with their state (the one on screen as it is right now)
+  const todays = () => (st && dayKey(st.today) === day ? roundsOf(st) : [])
+    .map((x) => ({ ...x, gs: x.round === round ? mine : merged(x.mine, day, x.round) }));
+  // another of today's words you haven't finished
+  const waiting = () => todays().find((x) => x.round !== round && !isDone(x.gs, x.word)) || null;
   function resultsPanel() {
+    const list = todays(), next = waiting();
+    // with more than one word today: a switch between them
+    const tabs = list.length > 1 ? h('div.fl-rounds', list.map((x) => h(`button.fl-round${x.round === round ? '.on' : ''}`, { type: 'button', onclick: () => setRound(x.round) },
+      roundName(x.round, list.length > 2)))) : null;
     return h('div.fl-done',
-      h('div.fl-done-mid', pairPanel({ day, word, nyt, me: { n: mine.length, solved, done, guesses: mine }, them: theirs })),
-      h('div.dt-done-foot', exitBtn(), h('button.dt-wide', { type: 'button', onclick: () => statsSheet() }, 'See stats')));
+      tabs,
+      h('div.fl-done-mid', pairPanel({ day, round, word, nyt, me: { n: mine.length, solved, done, guesses: mine }, them: theirs })),
+      h('div.dt-done-foot', exitBtn(), next
+        ? h('button.dt-wide', { type: 'button', onclick: () => setRound(next.round) }, next.round === 1 ? 'Play today\'s word' : 'Play the bonus word')
+        : h('button.dt-wide', { type: 'button', onclick: () => statsSheet() }, 'See stats')));
   }
 
   // while their grid is still on its way, look again now and then
@@ -343,19 +391,22 @@ export function LettersPage(app, root, { onBack } = {}) {
   document.addEventListener('visibilitychange', () => { if (visible && !document.hidden) load(); });
 
   // ── stats: all time, You and them side by side ──
+  // every word either of you played, newest first (a day's bonus words after its own word)
   function history() {
     const m = new Map();
-    const put = (d, word2, nyt2, me, th) => m.set(d, { day: d, word: word2, nyt: nyt2 ? dayKey(nyt2) : null, me: me || null, them: th || null });
-    for (const d of st?.days || []) put(dayKey(d.day), d.word, d.nyt, d.mine, d.theirs);
-    if (st?.word) put(dayKey(st.today), st.word, st.nyt, st.mine, st.theirs);
-    if (day && word) put(day, word, nyt, mine.length ? { n: mine.length, solved, done, guesses: [...mine] } : null, theirs);
-    return [...m.values()].filter((x) => x.me || x.them).sort((a, b) => (a.day < b.day ? 1 : -1));
+    const put = (d, r, word2, nyt2, me, th) => m.set(`${d}#${r}`, { day: d, round: r, word: word2, nyt: nyt2 ? dayKey(nyt2) : null, me: me || null, them: th || null });
+    for (const d of st?.days || []) put(dayKey(d.day), d.round || 1, d.word, d.nyt, d.mine, d.theirs);
+    for (const x of roundsOf(st)) put(dayKey(st.today), x.round, x.word, x.nyt, x.mine, x.theirs);
+    if (day && word) put(day, round, word, nyt, mine.length ? { n: mine.length, solved, done, guesses: [...mine] } : null, theirs);
+    return [...m.values()].filter((x) => x.me || x.them).sort((a, b) => (a.day !== b.day ? (a.day < b.day ? 1 : -1) : b.round - a.round));
   }
-  // a run of days in a row: the current one ends today if today's is done, else yesterday
-  function streaks(list, ok, isDone) {
+  // a run of days in a row, on each day's own word (bonus words don't make or break a streak): the
+  // current one ends today if today's is done, else yesterday
+  function streaks(all, ok, finished) {
+    const list = all.filter((x) => (x.round || 1) === 1);
     const good = new Set(list.filter(ok).map((x) => x.day));
     const today = app.today();
-    let d = list.some((x) => x.day === today && isDone(x)) ? today : addDays(today, -1), cur = 0;
+    let d = list.some((x) => x.day === today && finished(x)) ? today : addDays(today, -1), cur = 0;
     while (good.has(d)) { cur++; d = addDays(d, -1); }
     let best = 0, run = 0, prev = null;
     for (const x of [...good].sort()) { run = prev && addDays(prev, 1) === x ? run + 1 : 1; best = Math.max(best, run); prev = x; }
@@ -395,14 +446,14 @@ export function LettersPage(app, root, { onBack } = {}) {
       h('span.fl-dist-k', i < ROWS ? String(i + 1) : 'X'),
       h('div.fl-bars', bar('me', a.dist[i]), bar('them', b.dist[i])))));
     const label = (x, y) => h('div.dt-label', h('span', x), h('span', y));
-    const past = list.filter((x) => !(x.day === day && !done));
+    const past = list.filter((x) => !(x.day === day && x.round === round && !done));
     sheet('Stats', [
       h('div.dt-hero.fl-hero',
         h('span.dt-hero-label', 'HEAD TO HEAD, ALL TIME'),
         h('div.dt-hero-num', `${w}–${l}`),
-        h('p', both.length ? `You ${w}, ${n} ${l}${t ? `, ${t} tie${t > 1 ? 's' : ''}` : ''}, over the ${both.length === 1 ? 'one day' : `${both.length} days`} you've both played. Fewer guesses wins the day.` : `Once you and ${n} have both played a day, it counts here. Fewer guesses wins the day.`)),
+        h('p', both.length ? `You ${w}, ${n} ${l}${t ? `, ${t} tie${t > 1 ? 's' : ''}` : ''}, over the ${both.length === 1 ? 'one word' : `${both.length} words`} you've both played. Fewer guesses wins.` : `Once you and ${n} have both played a word, it counts here. Fewer guesses wins.`)),
       h('section.dt-sec',
-        label('YOU AND ' + n.toUpperCase(), `ALL TIME · ${list.length} ${list.length === 1 ? 'DAY' : 'DAYS'}`),
+        label('YOU AND ' + n.toUpperCase(), `ALL TIME · ${list.length} ${list.length === 1 ? 'WORD' : 'WORDS'}`),
         h('table.dt-stats',
           h('thead', h('tr', h('th', ''), h('th', 'You'), h('th', n))),
           h('tbody', rowsT.map(([k, x, y]) => h('tr', h('th', k), h('td', x), h('td', y))))),
@@ -413,7 +464,7 @@ export function LettersPage(app, root, { onBack } = {}) {
       h('section.dt-sec', h('div.dt-label', h('span', 'GUESSES'), h('span.fl-legend', h('i.me'), 'YOU', h('i.them'), n.toUpperCase())), dist),
       h('section.dt-sec', label('PAST DAYS', String(past.length)),
         past.length ? h('div.fl-days', past.map((x) => h('button.fl-day', { type: 'button', onclick: () => daySheet(x) },
-          h('span.fl-day-d', shortDate(x.day).toUpperCase()),
+          h('span.fl-day-d', shortDate(x.day).toUpperCase(), x.round > 1 ? h('i', 'BONUS') : null),
           h('b.fl-day-w', x.word),
           h('span.fl-day-r', `You ${x.me?.done ? (x.me.solved ? x.me.n : 'X') : '–'} · ${n} ${x.them?.done ? (x.them.solved ? x.them.n : 'X') : '–'}`))))
           : h('p.dt-empty-line', 'Finished days land here.')),
@@ -439,8 +490,10 @@ export function LettersPage(app, root, { onBack } = {}) {
     // for the Games page: what waits here (null = nothing)
     status() {
       const today = app.today();
-      if (day === today && word) return done ? null : mine.length ? 'Your turn' : 'New word';
-      return st?.word && dayKey(st.today) === today && st.mine?.done ? null : 'New word';
+      if (!(st?.word && dayKey(st.today) === today)) return 'New word';
+      const list = roundsOf(st).map((x) => ({ ...x, gs: day === today && x.round === round ? mine : merged(x.mine, today, x.round) }));
+      if (!isDone(list[0].gs, list[0].word)) return list[0].gs.length ? 'Your turn' : 'New word';
+      return list.slice(1).some((x) => !isDone(x.gs, x.word)) ? 'Bonus word' : null;
     },
     prime: () => (st?.word && dayKey(st.today) === app.today() ? null : load()),
     show() { visible = true; render(); load(); },

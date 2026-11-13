@@ -148,7 +148,8 @@ export function mockBackend() {
   }
 
   // Five Letters in the demo: words from the app's own list (the demo never asks the NYT). The last nine
-  // days have games for both of you (each of you skipped one), and Luz already got today's in 4.
+  // days have games for both of you (each of you skipped one), Luz already got today's in 4, and today
+  // has a bonus word that Luz got in 3. Games are keyed "day#round".
   const flGame = (guesses, w) => ({ guesses, solved: guesses[guesses.length - 1] === w, done: guesses[guesses.length - 1] === w || guesses.length >= 6, at: now() });
   const flView = (g, full) => (g ? { n: g.guesses.length, solved: g.solved, done: g.done, at: g.at, ...(full ? { guesses: [...g.guesses] } : {}) } : null);
   async function seedLetters() {
@@ -162,14 +163,16 @@ export function mockBackend() {
     const miss = (w, salt) => Array.from({ length: 6 }, (_, i) => other(w, salt, i));
     for (let i = 9; i >= 1; i--) {
       const d = day(-i), w = backupWord(words, d);
-      fl.days.set(d, { word: w, nyt: null });
+      fl.days.set(`${d}#1`, { word: w, nyt: null });
       const play = (salt) => (hash(`${d}:${salt}:x`) % 8 === 0 ? miss(w, salt) : got(w, 2 + (hash(`${d}:${salt}`) % 5), salt));
-      if (i !== 4) fl.games[0].set(d, flGame(play('m'), w));
-      if (i !== 6) fl.games[1].set(d, flGame(play('l'), w));
+      if (i !== 4) fl.games[0].set(`${d}#1`, flGame(play('m'), w));
+      if (i !== 6) fl.games[1].set(`${d}#1`, flGame(play('l'), w));
     }
-    const t = day(0), w = backupWord(words, t);
-    fl.days.set(t, { word: w, nyt: null });
-    fl.games[1].set(t, flGame(got(w, 4, 'today'), w));
+    const t = day(0), w = backupWord(words, t), wb = backupWord(words, `${t}:bonus`);
+    fl.days.set(`${t}#1`, { word: w, nyt: null });
+    fl.games[1].set(`${t}#1`, flGame(got(w, 4, 'today'), w));
+    fl.days.set(`${t}#2`, { word: wb, nyt: null });
+    fl.games[1].set(`${t}#2`, flGame(got(wb, 3, 'bonus'), wb));
   }
 
   return {
@@ -317,25 +320,27 @@ export function mockBackend() {
     async flState() {
       await seedLetters();
       const today = dayIn(mine()?.place?.tz || 'UTC');
-      if (!fl.days.has(today)) fl.days.set(today, { word: backupWord(await loadWords(), today), nyt: null });
-      const d = fl.days.get(today), m = fl.games[0].get(today);
+      if (!fl.days.has(`${today}#1`)) fl.days.set(`${today}#1`, { word: backupWord(await loadWords(), today), nyt: null });
+      const one = (k) => { const [d, r] = k.split('#'); const m = fl.games[0].get(k); return { day: d, round: +r, word: fl.days.get(k).word, nyt: null, mine: flView(m, true), theirs: flView(fl.games[1].get(k), !!m?.done) }; };
+      const keys = [...fl.days.keys()].sort((a, b) => (a < b ? 1 : -1));
+      const t = one(`${today}#1`);
       return {
-        today, nyt_day: null, word: d.word, nyt: d.nyt, mine: flView(m, true), theirs: flView(fl.games[1].get(today), !!m?.done),
-        days: [...fl.days.keys()].filter((k) => k < today).sort().reverse()
-          .map((k) => ({ day: k, word: fl.days.get(k).word, nyt: null, mine: flView(fl.games[0].get(k), true), theirs: flView(fl.games[1].get(k), true) })),
+        today, nyt_day: null, word: t.word, nyt: null, mine: t.mine, theirs: t.theirs,
+        extra: keys.filter((k) => k.startsWith(`${today}#`) && !k.endsWith('#1')).sort().map(one).map(({ day: _d, ...x }) => x),
+        days: keys.filter((k) => k.split('#')[0] < today).map((k) => ({ ...one(k), theirs: flView(fl.games[1].get(k), true) })),
       };
     },
-    async flGuess(day, n, guess) {
-      const d = fl.days.get(day);
+    async flGuess(day, n, guess, round = 1) {
+      const k = `${day}#${round}`, d = fl.days.get(k);
       if (!d) throw new Error('no_word');
-      let g = fl.games[0].get(day);
-      if (!g) { g = flGame([], d.word); g.done = false; fl.games[0].set(day, g); }
+      let g = fl.games[0].get(k);
+      if (!g) { g = flGame([], d.word); g.done = false; fl.games[0].set(k, g); }
       if (!(n === g.guesses.length && g.guesses[n - 1] === guess)) {
         if (g.done) throw new Error('done');
         if (n !== g.guesses.length + 1) throw new Error('out_of_order');
         g.guesses.push(guess); g.solved = guess === d.word; g.done = g.solved || g.guesses.length >= 6; g.at = now();
       }
-      return { day, mine: flView(g, true), theirs: flView(fl.games[1].get(day), g.done) };
+      return { day, round, mine: flView(g, true), theirs: flView(fl.games[1].get(k), g.done) };
     },
     async flWords() { return { ready: false, got: [], missing: [] }; },
     async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },

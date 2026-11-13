@@ -106,13 +106,14 @@ async function gatherGames(backend) {
     const fl = await backend.flState();
     const today = String(fl.today).slice(0, 10);
     const game = (g) => g && { guesses: g.guesses ?? null, tries: g.n, solved: g.solved, done: g.done };
-    const days = [{ day: fl.today, word: fl.word, nyt: fl.nyt, mine: fl.mine, theirs: fl.theirs }, ...(fl.days || [])]
+    const days = [...(fl.word ? [{ day: fl.today, round: 1, word: fl.word, nyt: fl.nyt, mine: fl.mine, theirs: fl.theirs }] : []),
+      ...(fl.extra || []).map((x) => ({ ...x, day: fl.today })), ...(fl.days || [])]
       .filter((d) => d.word && (d.mine || d.theirs))
       .map((d) => {
         const day = String(d.day).slice(0, 10);
         // today's word stays out of the file until you've played it
         const word = day === today && !d.mine?.done ? null : d.word;
-        return { day, word, from_nyt_wordle_of: d.nyt ? String(d.nyt).slice(0, 10) : null, you: game(d.mine), them: game(d.theirs) };
+        return { day, round: d.round || 1, word, from_nyt_wordle_of: d.nyt ? String(d.nyt).slice(0, 10) : null, you: game(d.mine), them: game(d.theirs) };
       });
     out.letters = days.length ? { days } : null;
   } catch { /* never played */ }
@@ -193,7 +194,7 @@ function readme(r, c) {
     `Worms: ${names}.`,
     '',
     `${c.moments} things you sent each other, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes.`,
-    r.design || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} days of Five Letters` : ''}.` : null,
+    r.design || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}.` : null,
     '',
     'index.html   open it to read your pocket as a page (any phone or computer)',
     'pocket.json  the complete record, as data',
@@ -286,10 +287,10 @@ function gamesHtml(r, slot) {
       const rows = g.guesses.map((w) => `<div>${letterScore(w, word).map((sc, i) => `<span class="t t${sc}">${esc(w[i])}</span>`).join('')}</div>`).join('');
       return `<div class="fl"><span class="who">${head}</span>${rows}</div>`;
     };
-    out.push(`<h2>Five Letters</h2><p class="sub">${fl.days.length} ${fl.days.length === 1 ? 'day' : 'days'} played. A letter in the right spot is green, a right letter in the wrong spot yellow.</p>`);
+    out.push(`<h2>Five Letters</h2><p class="sub">${fl.days.length} ${fl.days.length === 1 ? 'word' : 'words'} played. A letter in the right spot is green, a right letter in the wrong spot yellow.</p>`);
     for (const d of fl.days) {
       const src = d.from_nyt_wordle_of ? ` · the NYT Wordle from ${dt(d.from_nyt_wordle_of)}` : '';
-      out.push(`<div class="ev"><span class="who">${dt(d.day)}${src}</span><p><b>${d.word ? esc(d.word.toUpperCase()) : 'Today\'s word (you haven\'t played it yet)'}</b></p>${grid(me, d.you, d.word)}${grid(them, d.them, d.word)}</div>`);
+      out.push(`<div class="ev"><span class="who">${dt(d.day)}${d.round > 1 ? ' · bonus word' : ''}${src}</span><p><b>${d.word ? esc(d.word.toUpperCase()) : 'Today\'s word (you haven\'t played it yet)'}</b></p>${grid(me, d.you, d.word)}${grid(them, d.them, d.word)}</div>`);
     }
   }
   return out.length ? `<h1 class="sec" id="games">The games</h1>\n${out.join('\n')}` : '';
@@ -304,7 +305,7 @@ export function backupSheet(app) {
     try {
       built = await buildBackup(app, (msg) => { status.textContent = msg; });
       const c = built.counts, mb = (built.size / 1048576).toFixed(built.size > 10485760 ? 0 : 1);
-      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} days of Five Letters` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
+      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
       go.hidden = true; saveBtn.hidden = false;
     } catch (err) {
       status.textContent = `Couldn't gather everything: ${String(err?.message || err).slice(0, 80)}. Try again.`;
