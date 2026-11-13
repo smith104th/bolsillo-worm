@@ -902,19 +902,23 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 /* when today's are done: the five small cards in the middle of the page, See matches and Exit the
    game at the bottom (Manu). Runs to the bottom edge like a swipe card. */
 .dt-done { position: absolute; top: 0; left: 0; right: 0; bottom: calc(-1 * (var(--safe-b) + 50px)); display: flex; flex-direction: column; }
-.dt-done-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
+.dt-done-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; } /* no overflow clip, so the card row runs to the screen edges */
 .dt-done-title { margin: 0; font: 700 34px/1.04 var(--sans); letter-spacing: -0.04em; color: var(--ink); }
 .dt-lede { margin: 8px 0 0; font: 400 17px/1.35 var(--sans); letter-spacing: -0.01em; color: var(--ink-2); }
-.dt-five { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.dt-mini { display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; }
+/* today's cards in a sideways row, each about three quarters of the screen wide so the next one
+   peeks in (Manu). The row bleeds to the screen edges; the first card lines up with the page. */
+.dt-five { display: flex; gap: 10px; margin: 0 -22px; padding: 0 0 0 22px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; scroll-padding: 0 22px; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.dt-five::-webkit-scrollbar { display: none; }
+.dt-five::after { content: ''; flex: 0 0 12px; } /* with the gap, 22px after the last card */
+.dt-mini { flex: 0 0 72%; display: flex; flex-direction: column; gap: 8px; min-width: 0; text-align: left; color: var(--ink); scroll-snap-align: start; }
 .dt-mini:active { opacity: 0.7; }
-.dt-mini-pic { aspect-ratio: 3 / 4; overflow: hidden; margin-bottom: 2px; background: #F2F2F7; }
-.dt-mini-pic img, .dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.dt-mini-row, .dt-tile-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
-.dt-mini-row span, .dt-tile-row span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 9px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
-.dt-mini-row .dt-scale { gap: 1px; }
-.dt-mini-row .dt-scale i { width: 4px; height: 4px; }
-.dt-mini-row .dt-scale i:nth-child(4) { margin-left: 3px; }
+.dt-mini-pic { aspect-ratio: 3 / 4; overflow: hidden; background: #F2F2F7; }
+.dt-mini-pic img, .dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
+.dt-mini-name { margin: 4px 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 19px/1.15 var(--sans); letter-spacing: -0.03em; }
+.dt-mini-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dt-mini-row span { width: 40px; flex: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.dt-tile-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+.dt-tile-row span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 9px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 .dt-wide { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin-top: 26px; background: var(--ink); color: #fff; font: 600 16px/1 var(--sans); letter-spacing: -0.01em; }
 .dt-wide:active { transform: scale(0.98); }
 .dt-wide.dt-exit { margin-top: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }

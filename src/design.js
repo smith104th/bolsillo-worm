@@ -444,7 +444,7 @@ export function DesignPage(app, root, { onBack } = {}) {
   // BACK in a card's foot, so Exit the game is the way out.
   const exitBtn = () => h('button.dt-wide.dt-exit', { type: 'button', onclick: () => onBack?.() }, 'Exit the game');
   const doneFoot = () => h('div.dt-done-foot',
-    h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'),
+    h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See stats'), // Manu: Stats, not Matches
     exitBtn());
   function donePanel(today) {
     if (!today.length) {
@@ -453,11 +453,17 @@ export function DesignPage(app, root, { onBack } = {}) {
         doneFoot());
     }
     const n = them();
+    // a sideways row of cards about three quarters of the screen wide, so the next one peeks in and
+    // it's clear the row scrolls (Manu). A redraw (say, they just swiped) keeps the row where it was.
+    const keep = stage.querySelector('.dt-five')?.scrollLeft || 0;
+    const row = h('div.dt-five', { 'data-nopager': '' }, today.map((x) => h('button.dt-mini', { type: 'button', onclick: () => cardSheet(x.c) },
+      h('div.dt-mini-pic', setPhoto(h('img', { alt: '', draggable: false }), x.c)),
+      h('b.dt-mini-name', x.c.name),
+      h('div.dt-mini-row', h('span', 'You'), scaleEl(mine.get(x.c.id)?.score || 0)),
+      h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0)))));
+    if (keep) requestAnimationFrame(() => { row.scrollLeft = keep; });
     return h('div.dt-done',
-      h('div.dt-done-mid', h('div.dt-five', today.map((x) => h('button.dt-mini', { type: 'button', onclick: () => cardSheet(x.c) },
-        h('div.dt-mini-pic', setPhoto(h('img', { alt: '' }), x.c)),
-        h('div.dt-mini-row', h('span', 'You'), scaleEl(mine.get(x.c.id)?.score || 0)),
-        h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0)))))),
+      h('div.dt-done-mid', row),
       doneFoot());
   }
 
