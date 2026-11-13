@@ -416,6 +416,17 @@ function updateSky() {
   paintEdges();
 }
 
+// env(safe-area-inset-top) in px: 0 under a solid status bar, 20+ under a see-through one
+let safeProbe = null;
+function safeTop() {
+  if (!safeProbe) {
+    safeProbe = h('div', { 'aria-hidden': 'true' });
+    safeProbe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';
+    document.body.append(safeProbe);
+  }
+  return safeProbe.getBoundingClientRect().height;
+}
+
 // Safari tints its bars from the page edges: match whatever screen is showing
 function paintEdges() {
   const i = pager?.index || 0, g = stack?.current;
@@ -436,24 +447,27 @@ function paintEdges() {
   // bottom: the page's bottom color, or the open sheet's.
   const open = topSheet();
   const under = open ? getComputedStyle(open.card).backgroundColor || '#FFFFFF' : bottom;
-  // Since iOS 26.1 the band under the status bar is tinted from the page background COLOR too, so
-  // this one color can't do both ends. The bottom keeps it: the strip under the page reads as more
-  // page (the sky, the shelf's yellow), as it did through Nov 11. The top gets its color from
-  // #edge-top instead (see below and styles.css). Making this the top color (a3c5d61) turned the
-  // bottom strip navy (Manu, Nov 12). The root background image is three screens tall, centered on
-  // the page: the top color above it, the page's gradient on it, the bottom (or sheet's) below it.
+  // iPhone home-screen app, see-through status bar (black-translucent, every install before Nov 12):
+  // since iOS 26.1 iOS paints the scrim under the status bar AND the strip under the page (the page
+  // stops a status bar short of the bottom) with one color, the page background color (WebKit:
+  // scroll view background = underPageBackgroundColor = html/body background; fixed elements don't
+  // count in a home-screen app, tried in 703af6f and baacf16). That color is the bottom's, so the
+  // sky or the shelf's yellow runs to the bottom (Manu wanted that back, Nov 12); the top then shows
+  // the bottom color. Installs made since index.html says "default" get a solid status bar: no
+  // scrim, no strip, the bar takes theme-color. There the page background is the top color too.
+  const solidBar = isStandalone() && safeTop() < 1;
   const root = document.documentElement.style;
-  root.backgroundColor = under;
+  root.backgroundColor = solidBar ? top : under;
   root.backgroundImage = `linear-gradient(${top} 33.333%, ${bottom} 66.667%, ${under} 66.667%)`;
   root.backgroundSize = '100% 300%';
   root.backgroundPosition = '0 50%';
   root.backgroundRepeat = 'repeat-x';
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
-  // the band under the status bar follows #edge-top, which sits above sheets: dim it like their
-  // backdrops dim the page (each open sheet lays rgba(0,0,0,0.28) over everything under it)
+  // the solid status bar takes theme-color: dim it like the page while sheets are up (each open sheet
+  // lays rgba(0,0,0,0.28) over everything under it)
   const backdrops = document.querySelectorAll('.sheet:not([data-closing]):not(.lowered)').length;
   const dim = 1 - 0.72 ** backdrops;
-  $('#edge-top').style.backgroundColor = dim && /^#[0-9a-f]{6}$/i.test(top) ? mixHex(top, '#000000', dim) : top;
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', dim && /^#[0-9a-f]{6}$/i.test(top) ? mixHex(top, '#000000', dim) : top);
+  $('#edge-top').style.backgroundColor = top;
   $('#edge-bottom').style.backgroundColor = bottom;
 }
 

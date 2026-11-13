@@ -7,7 +7,10 @@
   <meta name="description" content="Carry each other. A pocket for two worms.">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- default, not black-translucent (Nov 12): since iOS 26.1 a see-through status bar gets a scrim in the page
+       background color and the page stops a status bar short of the bottom, so one color paints both ends.
+       A solid bar takes theme-color and the page reaches the bottom. iOS reads this only when the app is added. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Bolsillo">
   <meta property="og:title" content="Bolsillo Worm">
   <meta property="og:description" content="Carry each other. A pocket for two worms.">
