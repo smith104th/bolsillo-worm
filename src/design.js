@@ -59,6 +59,18 @@ export function dealOrder(deck, seed) {
   return out;
 }
 
+// Cards older than the Florence Cathedral dome (1436) left the deck on Nov 13 (Manu: "more modern
+// things"). They're still in the order, marked retired, so days already dealt don't change. From
+// RETIRE_FROM on, days are dealt from the rest of the order without them. A pocket that starts later
+// never meets them.
+const RETIRE_FROM = '2026-11-14';
+export function dealtDay(order, started, i) {
+  const cut = Math.max(0, dayNumber(RETIRE_FROM) - dayNumber(started));
+  if (i < cut) return order.slice(i * PER_DAY, (i + 1) * PER_DAY);
+  const rest = order.slice(cut * PER_DAY).filter((c) => !c.retired);
+  return rest.slice((i - cut) * PER_DAY, (i - cut + 1) * PER_DAY);
+}
+
 export const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
 const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 const shortDate = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -208,18 +220,19 @@ export function DesignPage(app, root, { onBack } = {}) {
   // ── dealing ──
   const started = () => String(st?.started || app.today()).slice(0, 10);
   const dayIndex = () => Math.max(0, dayNumber(app.today()) - dayNumber(started()));
-  const dealtOn = (i) => order.slice(i * PER_DAY, (i + 1) * PER_DAY).map((c, k) => ({ c, i, k, day: addDays(started(), i) }));
+  const dealtOn = (i) => dealtDay(order, started(), i).map((c, k) => ({ c, i, k, day: addDays(started(), i) }));
   function pile() {
     const i = dayIndex();
-    const out = dealtOn(i).filter((x) => !mine.has(x.c.id));
-    for (let j = i - 1; j >= Math.max(0, i - CATCH_UP) && out.length < PILE_MAX; j--) out.push(...dealtOn(j).filter((x) => !mine.has(x.c.id)));
+    const open = (x) => !mine.has(x.c.id) && !x.c.retired; // retired cards are never asked again
+    const out = dealtOn(i).filter(open);
+    for (let j = i - 1; j >= Math.max(0, i - CATCH_UP) && out.length < PILE_MAX; j--) out.push(...dealtOn(j).filter(open));
     if (front) {
       const k = out.findIndex((x) => x.c.id === front);
       if (k > 0) out.unshift(...out.splice(k, 1));
     }
     return out.slice(0, PILE_MAX);
   }
-  const bothLike = () => [...theirs].filter(([id, t]) => t > 0 && mine.get(id)?.score > 0).length;
+  const bothLike = () => [...theirs].filter(([id, t]) => t > 0 && mine.get(id)?.score > 0 && !byId.get(id)?.retired).length;
 
   // ── drawing ──
   function render() {
@@ -231,7 +244,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       return;
     }
     if (!deck) return;
-    const today = dealtOn(dayIndex());
+    const today = dealtOn(dayIndex()).filter((x) => !x.c.retired);
     const p = pile();
     meta.textContent = `${p.length} LEFT`; // just how many are left to answer (Manu)
     if (!p.length) {
@@ -470,7 +483,7 @@ export function DesignPage(app, root, { onBack } = {}) {
 
   // ── matches ──
   function both() {
-    return [...theirs].filter(([id]) => mine.has(id) && byId.has(id))
+    return [...theirs].filter(([id]) => mine.has(id) && byId.has(id) && !byId.get(id).retired) // retired cards leave the stats too
       .map(([id, t]) => ({ c: byId.get(id), me: mine.get(id).score, them: t }));
   }
   function matchesSheet() {

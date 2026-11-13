@@ -1,6 +1,6 @@
 // Demo mode (?demo): a pretend partner so you can play without pairing.
 import { rand, pick, dayIn, hash } from './util.js';
-import { loadDeck, dealOrder } from './design.js';
+import { loadDeck, dealOrder, dealtDay } from './design.js';
 import { loadWords, backupWord } from './letters.js';
 
 export function mockBackend() {
@@ -141,9 +141,10 @@ export function mockBackend() {
     try {
       const order = dealOrder(await loadDeck(), hole.id);
       const score = (id, salt) => { const k = hash(id + salt) % 100; return k < 14 ? -3 : k < 28 ? -2 : k < 42 ? -1 : k < 62 ? 1 : k < 82 ? 2 : 3; };
-      order.slice(0, 5).forEach((c) => { ds.swipes[0].set(c.id, { score: score(c.id, 'm'), day: day(-2) }); ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-2) }); });
-      order.slice(5, 10).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-1) }));
-      order.slice(10, 13).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(0) }));
+      const on = (i) => dealtDay(order, ds.started, i).filter((c) => !c.retired);
+      on(0).forEach((c) => { ds.swipes[0].set(c.id, { score: score(c.id, 'm'), day: day(-2) }); ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-2) }); });
+      on(1).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-1) }));
+      on(2).slice(0, 3).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(0) }));
     } catch (e) { console.warn('demo deck', e); }
   }
 

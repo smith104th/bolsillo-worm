@@ -120,7 +120,7 @@ $('#copy').onclick = async () => {
   catch { $('#ovin').innerHTML = `<div class="top"><button class="btn ghost" id="close">← Back</button></div><p class="note">Copy this and paste it to Claude:</p><textarea style="width:100%;height:200px;font:14px Geist">${esc(text)}</textarea>`; $('#ov').classList.add('on'); $('#close').onclick = () => $('#ov').classList.remove('on'); }
 };
 fetch('../design/deck.json', { cache: 'no-cache' }).then((r) => r.json()).then((d) => {
-  CARDS = d.editions.flatMap((ed, k) => ed.map((c) => ({ ...c, ed: k + 1, materials: c.materials || [] })));
+  CARDS = d.editions.flatMap((ed, k) => ed.filter((c) => !c.retired).map((c) => ({ ...c, ed: k + 1, materials: c.materials || [] }))); // older than 1436: out of the deck (Nov 13)
   render();
 }).catch(() => { $('#grid').textContent = 'Could not load the deck.'; });
 </script></body></html>

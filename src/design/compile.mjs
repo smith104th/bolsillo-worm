@@ -35,6 +35,10 @@ export function compileDeck() {
     if (!/^https:\/\//.test(url) || !(+w > 0) || !(+h > 0)) throw new Error(`links.txt: bad line for ${id}`);
     links.set(id, { url, w: +w, h: +h, credit, page });
   }
+  // Manu (Nov 13): nothing older than the Florence Cathedral dome (1436); the deck is about more
+  // modern things. Older cards stay in deck.json marked retired so the shuffle, and every day already
+  // dealt, stays the same; the app never deals, shows or counts them again (design.js dealtDay).
+  const OLDEST = 1436;
   const editions = [];
   const ids = new Set();
   for (const l of rows('deck.txt')) {
@@ -59,6 +63,7 @@ export function compileDeck() {
       palette: tags[1] === 'c' ? 'color' : 'neutral',
       feel: tags[2] === 'm' ? 'minimal' : 'expressive',
       note,
+      retired: +year.replace('~', '') < OLDEST || undefined,
       ...(links.has(id) ? {
         img: links.get(id).url, w: links.get(id).w, h: links.get(id).h,
         credit: links.get(id).credit, source: links.get(id).page,
@@ -77,6 +82,7 @@ export function compileDeck() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const d = compileDeck();
   const all = d.editions.flat();
-  console.log(`${all.length} cards in ${d.editions.length} edition(s), ${Math.ceil(all.length / 5)} days`);
+  const live = all.filter((c) => !c.retired);
+  console.log(`${live.length} cards in ${d.editions.length} edition(s) (${all.length - live.length} retired), ${Math.ceil(live.length / 5)} days`);
   if (process.argv[2] === 'urls') console.log(all.map((c) => `${c.id} ${c.img}`).join('\n'));
 }
