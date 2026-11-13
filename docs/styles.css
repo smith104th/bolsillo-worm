@@ -899,30 +899,27 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-empty .dt-exit { margin-top: 26px; }
 .dt-empty p { margin: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 
-/* when today's are done: today's cards again, each full screen, side by side; swipe sideways
-   through them (Manu). Covers the whole width and runs to the bottom edge, like a swipe card. */
-.dt-done { position: absolute; top: -18px; left: -22px; right: -22px; bottom: calc(-1 * (var(--safe-b) + 50px)); display: flex; flex-direction: column; background: #fff; }
-.dt-reel { flex: 1; min-height: 0; display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-.dt-reel::-webkit-scrollbar { display: none; }
-.dt-slide { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; padding: 18px 22px 0; scroll-snap-align: start; scroll-snap-stop: always; cursor: pointer; -webkit-user-select: none; user-select: none; }
-.dt-slide .dt-pic { flex: 0 1 auto; min-height: 120px; transition: none; }
-.dt-slide-text { flex: none; padding-top: 14px; }
-.dt-slide .dt-verdicts { flex: none; margin-top: 16px; }
-.dt-dots { flex: none; display: flex; justify-content: center; gap: 6px; padding-top: 14px; }
-.dt-dots[hidden] { display: none; }
-.dt-dots i { width: 6px; height: 6px; background: var(--line); transition: background 0.2s; }
-.dt-dots i.on { background: var(--ink); }
-.dt-done-end { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 22px; }
+/* when today's are done: the five small cards in the middle of the page, See matches and Exit the
+   game at the bottom (Manu). Runs to the bottom edge like a swipe card. */
+.dt-done { position: absolute; top: 0; left: 0; right: 0; bottom: calc(-1 * (var(--safe-b) + 50px)); display: flex; flex-direction: column; }
+.dt-done-mid { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; overflow-y: auto; }
 .dt-done-title { margin: 0; font: 700 34px/1.04 var(--sans); letter-spacing: -0.04em; color: var(--ink); }
 .dt-lede { margin: 8px 0 0; font: 400 17px/1.35 var(--sans); letter-spacing: -0.01em; color: var(--ink-2); }
-.dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.dt-tile-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
-.dt-tile-row span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 9px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.dt-five { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.dt-mini { display: flex; flex-direction: column; gap: 6px; min-width: 0; text-align: left; }
+.dt-mini:active { opacity: 0.7; }
+.dt-mini-pic { aspect-ratio: 3 / 4; overflow: hidden; margin-bottom: 2px; background: #F2F2F7; }
+.dt-mini-pic img, .dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.dt-mini-row, .dt-tile-row { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-width: 0; }
+.dt-mini-row span, .dt-tile-row span { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 500 9px/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.dt-mini-row .dt-scale { gap: 1px; }
+.dt-mini-row .dt-scale i { width: 4px; height: 4px; }
+.dt-mini-row .dt-scale i:nth-child(4) { margin-left: 3px; }
 .dt-wide { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 52px; margin-top: 26px; background: var(--ink); color: #fff; font: 600 16px/1 var(--sans); letter-spacing: -0.01em; }
 .dt-wide:active { transform: scale(0.98); }
 .dt-wide.dt-exit { margin-top: 10px; background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
 /* See matches and Exit the game side by side at the bottom, where the other games keep their Back (Manu) */
-.dt-done-foot { flex: none; display: flex; gap: 10px; padding: 14px 22px calc(var(--safe-b) + 10px); }
+.dt-done-foot { flex: none; display: flex; gap: 10px; padding: 14px 0 calc(var(--safe-b) + 10px); }
 .dt-done-foot .dt-wide { flex: 1; min-width: 0; margin: 0; }
 
 /* both of you liked it (Soil's pink and red) */

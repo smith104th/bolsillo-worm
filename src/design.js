@@ -439,9 +439,9 @@ export function DesignPage(app, root, { onBack } = {}) {
   }
 
   // ── when today's are done ──
-  // Today's cards again, each full screen, side by side: swipe sideways to go through them, tap one
-  // for the whole article. See matches and Exit the game sit at the bottom (Manu). With no card left
-  // there's no BACK in a card's foot, so Exit the game is the way out.
+  // Manu: no "Done for today." (the meta says NEW 5 TOMORROW); today's five as small cards in the
+  // middle of the page, See matches and Exit the game at the bottom. With no card left there's no
+  // BACK in a card's foot, so Exit the game is the way out.
   const exitBtn = () => h('button.dt-wide.dt-exit', { type: 'button', onclick: () => onBack?.() }, 'Exit the game');
   const doneFoot = () => h('div.dt-done-foot',
     h('button.dt-wide', { type: 'button', onclick: () => matchesSheet() }, 'See matches'),
@@ -449,34 +449,16 @@ export function DesignPage(app, root, { onBack } = {}) {
   function donePanel(today) {
     if (!today.length) {
       return h('div.dt-done',
-        h('div.dt-done-end', h('h2.dt-done-title', 'That\'s the whole deck.'), h('p.dt-lede', 'New cards are on the way.')),
+        h('div.dt-done-mid', h('h2.dt-done-title', 'That\'s the whole deck.'), h('p.dt-lede', 'New cards are on the way.')),
         doneFoot());
     }
     const n = them();
-    // a redraw (say, they just swiped) keeps you on the card you were looking at
-    const prev = stage.querySelector('.dt-reel');
-    const at = prev ? clamp(Math.round(prev.scrollLeft / (prev.clientWidth || 1)), 0, today.length - 1) : 0;
-    const W = stage.clientWidth || window.innerWidth - 44;
-    const row = (who, s) => h('div.dt-verdict', h('span', who), scaleEl(s || 0), h('b', s ? LEVEL[s] : 'Not yet'));
-    const reel = h('div.dt-reel', { 'data-nopager': '' }, today.map((x) => {
-      const c = x.c;
-      return h('div.dt-slide', { onclick: () => cardSheet(c) },
-        // its own shape, a little taller at most (like the swipe card); it gives way if the text needs the room
-        h('div.dt-pic', { style: { flexBasis: `${Math.round(W * (c.h / c.w) * 1.22)}px` } }, img(c, '.dt-img')),
-        h('div.dt-slide-text', h(`h2.dt-name${c.name.length > 26 ? '.long' : ''}`, c.name), h('p.dt-by', c.by)),
-        h('div.dt-verdicts', row('You', mine.get(c.id)?.score), row(n, theirs.get(c.id))));
-    }));
-    const dots = h('div.dt-dots', { hidden: today.length < 2 }, today.map((_, k) => h(`i${k === at ? '.on' : ''}`)));
-    let raf = 0;
-    reel.addEventListener('scroll', () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const i = Math.round(reel.scrollLeft / (reel.clientWidth || 1));
-        dots.querySelectorAll('i').forEach((d, k) => d.classList.toggle('on', k === i));
-      });
-    }, { passive: true });
-    if (at) requestAnimationFrame(() => { reel.scrollLeft = at * reel.clientWidth; });
-    return h('div.dt-done', reel, dots, doneFoot());
+    return h('div.dt-done',
+      h('div.dt-done-mid', h('div.dt-five', today.map((x) => h('button.dt-mini', { type: 'button', onclick: () => cardSheet(x.c) },
+        h('div.dt-mini-pic', setPhoto(h('img', { alt: '' }), x.c)),
+        h('div.dt-mini-row', h('span', 'You'), scaleEl(mine.get(x.c.id)?.score || 0)),
+        h('div.dt-mini-row', h('span', n), scaleEl(theirs.get(x.c.id) || 0)))))),
+      doneFoot());
   }
 
   // ── matches ──
