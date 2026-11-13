@@ -503,7 +503,15 @@ body.dark .zz { color: #fff; }
 
 /* Safari tints its bars from what touches the top and bottom edges; keep them the sky's colors */
 .edge { position: fixed; left: 0; right: 0; height: 2px; z-index: 2; pointer-events: none; background-color: #6FBEFF; }
-#edge-top { top: 0; } /* a 10px version didn't change the iPhone app's status bar tint (Nov 12) */
+/* The band under the iPhone app's status bar. Since iOS 26.1 iOS tints it from a fixed element with a
+   background color at the top edge, else from the page background color, which is the BOTTOM color (it
+   colors the strip under the page), so the shelf's yellow showed up top (Manu, Nov 12). A 10px strip
+   didn't take (703af6f); iOS may look just under the status bar, where it didn't reach. This one runs
+   from the screen top to 8px under the status bar, sits above sheets (z 25) and below toasts (z 30),
+   takes touches in case iOS finds it by hit test, and is masked to its top 2px so the sky still shows
+   behind the status bar (iOS reads the background color, not the pixels). */
+#edge-top { top: 0; height: calc(var(--safe-t) + 8px); z-index: 26; pointer-events: auto;
+  -webkit-mask-image: linear-gradient(#000 2px, transparent 2px); mask-image: linear-gradient(#000 2px, transparent 2px); }
 #edge-bottom { bottom: 0; background-color: #EEF6FF; }
 
 /* call them in: only when they're away */

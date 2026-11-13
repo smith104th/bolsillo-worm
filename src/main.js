@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { h, $, store, hoursSince, clamp, timeIn, hourIn, dayIn, hash, isIOS, isStandalone, rand, sleep } from './util.js';
 import { Pocket } from './pocket.js';
 import { cmFor } from './worm.js';
-import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS } from './draw.js';
+import { ITEM_KINDS, FOODS, foodName, TRINKETS, weatherKind, weatherWord, skyFor, KISS_EMOJI, KISS_NAMES, REACTIONS, mixHex } from './draw.js';
 import { toast, icon, sheet, btn, closeAllSheets, onSheets, topSheet, ICON, confirmBox } from './ui.js';
 import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
 import { backupDue } from './backup.js';
@@ -449,7 +449,11 @@ function paintEdges() {
   root.backgroundPosition = '0 50%';
   root.backgroundRepeat = 'repeat-x';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', top);
-  $('#edge-top').style.backgroundColor = top;
+  // the band under the status bar follows #edge-top, which sits above sheets: dim it like their
+  // backdrops dim the page (each open sheet lays rgba(0,0,0,0.28) over everything under it)
+  const backdrops = document.querySelectorAll('.sheet:not([data-closing]):not(.lowered)').length;
+  const dim = 1 - 0.72 ** backdrops;
+  $('#edge-top').style.backgroundColor = dim && /^#[0-9a-f]{6}$/i.test(top) ? mixHex(top, '#000000', dim) : top;
   $('#edge-bottom').style.backgroundColor = bottom;
 }
 
