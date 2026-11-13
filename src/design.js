@@ -547,7 +547,6 @@ export function DesignPage(app, root, { onBack } = {}) {
     // the photo's box has its shape from the start, and the sheet waits for the photo to decode before
     // it slides up, so nothing flashes or jumps on the way (Manu)
     const pic = img(c);
-    pic.decoding = 'sync';
     if (!pic.complete) {
       pic.style.opacity = '0';
       pic.addEventListener('load', () => { pic.style.transition = 'opacity 0.25s'; pic.style.opacity = '1'; }, { once: true });

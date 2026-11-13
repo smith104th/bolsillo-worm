@@ -912,8 +912,9 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-five::-webkit-scrollbar { display: none; }
 .dt-five::after { content: ''; flex: 0 0 12px; } /* with the gap, 22px after the last card */
 .dt-mini { flex: 0 0 72%; display: flex; flex-direction: column; gap: 8px; min-width: 0; text-align: left; color: var(--ink); scroll-snap-align: start; }
-.dt-mini, .dt-tile { transition: transform 0.15s ease-out; }
-.dt-mini:active, .dt-tile:active { transform: scale(0.98); } /* a small press, not a blink (Manu) */
+/* no press effect: on iPhone a press that dims or scales the card re-draws its photo, which blinks (Manu).
+   Each photo keeps its own layer, so the sheet sliding up over the row doesn't re-draw them either. */
+.dt-mini-pic { transform: translateZ(0); -webkit-backface-visibility: hidden; backface-visibility: hidden; }
 .dt-mini-pic { aspect-ratio: 3 / 4; overflow: hidden; background: #F2F2F7; }
 .dt-mini-pic img, .dt-tile-pic img { display: block; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; }
 .dt-mini-name { margin: 4px 0 2px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 19px/1.15 var(--sans); letter-spacing: -0.03em; }
@@ -968,9 +969,12 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 /* one card, opened from the done panel or the matches: the whole article */
 .dt-article .grabber, .dt-article .sheet-head { margin: 0 -20px; padding-left: 20px; padding-right: 20px; }
 .dt-article .sheet-head { padding-top: 4px; padding-bottom: 10px; }
-.dt-sheet-pic { margin: 0 -20px; overflow: hidden; background: #F2F2F7; } /* height set from the card's shape, so it never jumps */
+.dt-sheet-pic { margin: 0 -20px; overflow: hidden; } /* height set from the card's shape, so it never jumps; no gray box to flash */
 .dt-sheet-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.sheet-card.dt-article { will-change: transform; } /* its own layer before the slide starts */
+/* the article slides up on its own layer, on the iPhone sheet curve: slower to start than the app's other
+   sheets, so it reads as a slide, not a pop (Manu) */
+.sheet-card.dt-article { will-change: transform; transition: transform 0.5s cubic-bezier(.32,.72,0,1); }
+.sheet-card.dt-article.dragging { transition: none; }
 .dt-article .dt-name { margin-top: 18px; }
 .dt-verdicts { margin-top: 18px; border-top: 1px solid rgba(11,11,12,0.12); }
 .dt-verdict { display: flex; align-items: center; gap: 12px; padding: 11px 0 10px; border-bottom: 1px solid rgba(11,11,12,0.12); }
