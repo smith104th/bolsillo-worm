@@ -63,7 +63,7 @@ export function dealOrder(deck, seed) {
 // things"). They're still in the order, marked retired, so days already dealt don't change. From
 // RETIRE_FROM on, days are dealt from the rest of the order without them. A pocket that starts later
 // never meets them.
-const RETIRE_FROM = '2026-11-14';
+const RETIRE_FROM = '2026-11-15'; // moved from Nov 14: the change wasn't live yet and Nov 14's cards were already being played
 export function dealtDay(order, started, i) {
   const cut = Math.max(0, dayNumber(RETIRE_FROM) - dayNumber(started));
   if (i < cut) return order.slice(i * PER_DAY, (i + 1) * PER_DAY);
@@ -71,6 +71,8 @@ export function dealtDay(order, started, i) {
   return rest.slice((i - cut) * PER_DAY, (i - cut + 1) * PER_DAY);
 }
 
+// Google Images for a card: its name and who made it, plus the city for houses and buildings.
+export const imagesUrl = (c) => `https://www.google.com/search?udm=2&q=${encodeURIComponent([c.name, c.by, isPlace(c) && c.at && !c.name.includes(c.at) ? c.at : ''].filter(Boolean).join(' '))}`;
 export const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
 const addDays = (day, n) => new Date(Date.parse(day + 'T12:00:00Z') + n * 86400000).toISOString().slice(0, 10);
 const shortDate = (day) => new Date(day + 'T12:00:00Z').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -276,13 +278,15 @@ export function DesignPage(app, root, { onBack } = {}) {
     const long = c.name.length > 26;
     const readBtn = h('button.dt-read', { type: 'button' }, 'READ');
     const backBtn = h('button.dt-back', { type: 'button', onclick: () => onBack?.() }, '← BACK');
+    // Manu: a Google Images search for the thing, to see more of it (opens Safari, the card stays put)
+    const moreImages = h('a.dt-images', { href: imagesUrl(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images');
     const text = h('div.dt-text',
       h(`h2.dt-name${long ? '.long' : ''}`, c.name),
       h('p.dt-by', c.by),
       more(c));
     const el = h(`div.dt-card${depth ? '.next' : ''}`, { 'data-nopager': '' },
       pic, text,
-      h('div.dt-foot', backBtn, readBtn)); // Manu: Back where Hate was, Read where Adore was
+      h('div.dt-foot', backBtn, moreImages, readBtn)); // Manu: Back where Hate was, Read where Adore was, More images between
     const flip = (on = !el.classList.contains('open')) => {
       el.classList.toggle('open', on);
       readBtn.textContent = on ? 'CLOSE' : 'READ';

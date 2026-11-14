@@ -874,10 +874,11 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 .dt-facts dt { padding-right: 18px; font: 500 11px/1.5 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
 .dt-facts dd { font: 400 15px/1.35 var(--sans); color: var(--ink); }
 .dt-credit { display: block; margin-top: 12px; font: 400 11px/1.4 var(--mono); color: var(--ink-3); text-decoration: none; overflow-wrap: anywhere; }
-.dt-foot { flex: none; height: 38px; display: flex; align-items: center; justify-content: space-between; border-top: var(--rule); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.dt-foot { flex: none; height: 38px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; border-top: var(--rule); font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
 .dt-back, .dt-read { height: 100%; font: inherit; letter-spacing: inherit; color: var(--ink); }
-.dt-back { padding: 0 18px 0 0; }
-.dt-read { padding: 0 0 0 18px; }
+.dt-back { padding: 0 18px 0 0; justify-self: start; }
+.dt-read { padding: 0 0 0 18px; justify-self: end; }
+.dt-images { display: flex; align-items: center; height: 100%; padding: 0 14px; color: var(--ink); text-decoration: none; -webkit-touch-callout: none; } /* centered between Back and Read */
 
 /* the level you're dragging to: on the page over the photo, so it never leaves the screen */
 .dt-rate { position: absolute; z-index: 3; top: 50%; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 150px; padding: 16px 20px 15px; background: #fff; opacity: 0; pointer-events: none; transform: translate(-50%, -50%); transition: transform 0.14s cubic-bezier(.2,1.4,.4,1); }
