@@ -151,6 +151,9 @@ export function supabaseBackend(cfg) {
     dsState: () => rpc('wh_ds_state'),
     dsSwipe: (item, day, score) => rpc('wh_ds_swipe', { p_item: item, p_day: day, p_score: score }),
     dsUndo: (item) => rpc('wh_ds_undo', { p_item: item }),
+    asState: () => rpc('wh_as_state'),
+    asSwipe: (item, day, score) => rpc('wh_as_swipe', { p_item: item, p_day: day, p_score: score }),
+    asUndo: (item) => rpc('wh_as_undo', { p_item: item }),
     // Five Letters: today's word (locked in for the pocket on the first call), both games, every earlier day.
     // fallback = the app's own word, used only when the NYT one isn't in.
     flState: (fallback = null) => rpc('wh_fl_state', { p_fallback: fallback }),

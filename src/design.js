@@ -7,12 +7,15 @@
 // judging the same things, which is what the agreement numbers and the stats run on.
 // The deck: src/design/deck.txt (tags for the stats), photos from Wikimedia (photos.txt).
 // Look (Manu, Nov 12): white page, square corners, the app's type (Geist), very little color.
+// Art Tinder (Manu, Nov 14) is the same game with a deck of art (src/art/): TinderPage runs both,
+// DESIGN and ART below say what differs (deck, server calls, how cards are dealt, the facts and stats).
 import { h, store, hash, seeded, dayNumber, clamp } from './util.js';
 import { sheet, toast } from './ui.js';
 import { buzz, sfx } from './feel.js';
 import { offlineError } from './cache.js';
 
 const DECK = __DECK__;   // ./design/deck.json?v=<hash>, set by build.mjs
+const ART_DECK = __ART__; // ./art/deck.json?v=<hash>
 const PER_DAY = 5;       // cards dealt a day
 const CATCH_UP = 6;      // days a missed card stays in your pile
 const PILE_MAX = 15;
@@ -25,27 +28,32 @@ const STEPS = [0.1, 0.22, 0.36]; // share of the card's width for each level (Ma
 
 const KINDS = { chair: 'Chairs', lamp: 'Lamps', furniture: 'Furniture', house: 'Houses', building: 'Buildings' };
 const GROUP = { chair: 'chair', lamp: 'object', furniture: 'object', house: 'house', building: 'building' };
+const ART_KINDS = { painting: 'Paintings', sculpture: 'Sculpture', installation: 'Installations', paper: 'Works on paper' };
 const svg = (d, w = 24, sw = 2) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 const HEART = (w) => `<svg viewBox="0 0 24 24" width="${w}" height="${w}"><path fill="currentColor" d="M12 20.6s-7.6-4.7-7.6-10.6A4.2 4.2 0 0 1 12 7.4a4.2 4.2 0 0 1 7.6 2.6c0 5.9-7.6 10.6-7.6 10.6Z"/></svg>`;
 const ICONS = { undo: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>', 19) };
 const svgEl = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstChild; };
 
 // ── the deck ────────────────────────────────────────────────
-let deckLoad = null;
-export function loadDeck() {
-  deckLoad ??= fetch(new URL(DECK, location.href)).then((r) => { if (!r.ok) throw new Error(`deck_${r.status}`); return r.json(); })
-    .catch((e) => { deckLoad = null; throw e; });
-  return deckLoad;
+function deckLoader(url) {
+  let p = null;
+  return () => {
+    p ??= fetch(new URL(url, location.href)).then((r) => { if (!r.ok) throw new Error(`deck_${r.status}`); return r.json(); })
+      .catch((e) => { p = null; throw e; });
+    return p;
+  };
 }
+export const loadDeck = deckLoader(DECK);
+export const loadArtDeck = deckLoader(ART_DECK);
 
 // The order cards are dealt in, the same on both phones (seeded by the pocket). Each edition is
 // shuffled on its own and appended, so adding an edition later never moves a card already dealt.
 // Kinds are spread evenly through it, so a day isn't five buildings.
-export function dealOrder(deck, seed) {
+export function dealOrder(deck, seed, group = (c) => GROUP[c.kind]) {
   const out = [];
   deck.editions.forEach((ed, k) => {
     const groups = {};
-    for (const c of ed) (groups[GROUP[c.kind]] ||= []).push(c);
+    for (const c of ed) (groups[group(c)] ||= []).push(c);
     const keyed = [];
     for (const [g, list] of Object.entries(groups)) {
       const r = seeded(hash(`${seed}:${k}:${g}`));
@@ -71,6 +79,16 @@ export function dealtDay(order, started, i) {
   return rest.slice((i - cut) * PER_DAY, (i - cut + 1) * PER_DAY);
 }
 
+// Art Tinder: the first day deals ten (Manu: "just for today, we can do 10"; edition 1 of the art deck
+// is exactly those ten), then five a day. Art is spread through the order by flat or not and by era
+// (old masters, modern, after 1945), so a day mixes paintings with sculpture and old with new.
+export const ART_FIRST = 10;
+export function artDealtDay(order, started, i) {
+  const a = i ? ART_FIRST + (i - 1) * PER_DAY : 0;
+  return order.slice(a, i ? a + PER_DAY : ART_FIRST);
+}
+export const artGroup = (c) => `${c.kind === 'sculpture' || c.kind === 'installation' ? 'round' : 'flat'}:${c.year < 1850 ? 'old' : c.year < 1945 ? 'modern' : 'now'}`;
+
 // Google Images for a card: its name and who made it, plus the city for houses and buildings.
 export const imagesUrl = (c) => `https://www.google.com/search?udm=2&q=${encodeURIComponent([c.name, c.by, isPlace(c) && c.at && !c.name.includes(c.at) ? c.at : ''].filter(Boolean).join(' '))}`;
 export const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
@@ -87,11 +105,51 @@ const MATS = [
   ['Brick and clay', /brick|clay|terracotta|mud|tile|ceramic|porcelain/], ['Plaster', /stucco|plaster|harl/],
   ['Steel', /steel|chrome|iron|galvan/], ['Aluminum', /alumin/], ['Brass and copper', /brass|copper|bronze|gilded|gold/], ['Metal', /zinc|titanium|metal|nickel/],
 ];
-export const matsOf = (c) => [...new Set(c.materials.map((m) => (MATS.find(([, re]) => re.test(m.toLowerCase())) || [])[0]).filter(Boolean))];
+export const matsOf = (c, groups = MATS) => [...new Set(c.materials.map((m) => (groups.find(([, re]) => re.test(m.toLowerCase())) || [])[0]).filter(Boolean))];
+// art: before 1850 split in two, then the same eras as design; mediums grouped like materials
+const artEraOf = (y) => (y < 1600 ? 'Renaissance' : y < 1850 ? 'Baroque to Romantic' : eraOf(y));
+const MEDIUMS = [
+  ['Fresco', /fresco/], ['Woodblock and lithograph', /woodblock|lithograph/], ['Tempera', /tempera|casein/], ['Oil', /\boil\b|oilstick/],
+  ['Acrylic and enamel', /acrylic|synthetic polymer|enamel|spray|resin/], ['Watercolor and gouache', /watercolor|gouache/], ['Ink', /\bink\b/],
+  ['Light', /light|lamp|\bled\b|neon|fluorescent/], ['Found objects', /goat|tire|urinal|citro|cand|shark|books|bottle caps|television|tutu|mirror|porcelain/],
+  ['Marble and stone', /marble|stone|ivory/], ['Bronze', /bronze/], ['Steel and metal', /steel|iron|alumin|copper|wire|metal/],
+  ['Wood', /wood/], ['Concrete', /concrete/], ['Wax', /wax/], ['Fabric', /fabric|nylon|burlap|silk/], ['Paper', /paper/],
+];
+
+// What differs between the two decks. A card's tags come out of compile.mjs as form, palette and feel.
+const DESIGN = {
+  key: 'design', title: 'Design Tinder', store: 'ds', calls: ['dsState', 'dsSwipe', 'dsUndo'],
+  load: loadDeck, group: (c) => GROUP[c.kind], dealt: (...a) => dealtDay(...a), kinds: KINDS, era: eraOf, mats: MATS, crop: 1.22,
+  lean: { form: ['organic', 'geometric'], palette: ['color', 'neutral'], feel: ['minimal', 'expressive'] },
+  labels: { style: 'Style', form: 'Shapes', material: 'Material' },
+  facts: (c) => [
+    ['Year', yearText(c)],
+    [isPlace(c) ? 'Where' : 'From', isPlace(c) ? [c.at, c.country].filter(Boolean).join(', ') : c.country],
+    !isPlace(c) && c.at ? ['Made by', c.at] : null,
+    ['Style', c.style],
+    ['Materials', c.materials.join(', ')],
+  ],
+  images: (c) => imagesUrl(c),
+};
+const ART = {
+  key: 'art', title: 'Art Tinder', store: 'as', calls: ['asState', 'asSwipe', 'asUndo'],
+  load: loadArtDeck, group: artGroup, dealt: artDealtDay, kinds: ART_KINDS, era: artEraOf, mats: MEDIUMS, crop: 1,
+  contain: true, // the whole work, never cropped: paintings sit on a light gray wall
+  lean: { form: ['figurative', 'abstract'], palette: ['color', 'muted'], feel: ['calm', 'intense'] },
+  labels: { style: 'Movement', form: 'Subject', material: 'Medium' },
+  facts: (c) => [
+    ['Year', yearText(c)],
+    c.at ? ['Where', c.at] : null,
+    ['Artist from', c.country],
+    ['Movement', c.style],
+    ['Medium', c.materials.join(', ')],
+  ],
+  images: (c) => `https://www.google.com/search?udm=2&q=${encodeURIComponent(`${c.name} ${c.by}`)}`,
+};
 
 // One person's taste over a list of { c, me, them } (scores): who = 'me' | 'them'.
 // Favorites are the values with the highest total score (adore counts 3, hate counts -3).
-export function taste(list, who) {
+export function taste(list, who, cfg = DESIGN) {
   const s = list.map((x) => [x.c, x[who]]);
   const liked = s.filter(([, v]) => v > 0);
   const best = (key) => {
@@ -112,14 +170,14 @@ export function taste(list, who) {
     avg,
     adore: s.filter(([, v]) => v === 3).length,
     hate: s.filter(([, v]) => v === -3).length,
-    kind: best((c) => KINDS[c.kind]),
-    era: best((c) => eraOf(c.year)),
+    kind: best((c) => cfg.kinds[c.kind]),
+    era: best((c) => cfg.era(c.year)),
     style: best((c) => c.style),
-    material: best(matsOf),
+    material: best((c) => matsOf(c, cfg.mats)),
     country: best((c) => c.country),
-    form: lean('form', 'organic', 'geometric'),
-    palette: lean('palette', 'color', 'neutral'),
-    feel: lean('feel', 'minimal', 'expressive'),
+    form: lean('form', ...cfg.lean.form),
+    palette: lean('palette', ...cfg.lean.palette),
+    feel: lean('feel', ...cfg.lean.feel),
   };
 }
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
@@ -133,14 +191,8 @@ export function scaleEl(v) {
 }
 
 // the rest of the article: who, when, where, what it's made of, the story, the photo credit
-function more(c) {
-  const rows = [
-    ['Year', yearText(c)],
-    [isPlace(c) ? 'Where' : 'From', isPlace(c) ? [c.at, c.country].filter(Boolean).join(', ') : c.country],
-    !isPlace(c) && c.at ? ['Made by', c.at] : null,
-    ['Style', c.style],
-    ['Materials', c.materials.join(', ')],
-  ].filter(Boolean);
+function more(c, cfg = DESIGN) {
+  const rows = cfg.facts(c).filter(Boolean);
   return h('div.dt-more',
     h('p.dt-note', c.note),
     h('dl.dt-facts', rows.map(([k, v]) => [h('dt', k), h('dd', v)])),
@@ -168,9 +220,14 @@ function prefetch(cards) {
 }
 
 // ── the page ────────────────────────────────────────────────
-export function DesignPage(app, root, { onBack } = {}) {
+export const DesignPage = (app, root, opts) => TinderPage(app, root, DESIGN, opts);
+export const ArtPage = (app, root, opts) => TinderPage(app, root, ART, opts);
+
+function TinderPage(app, root, cfg, { onBack } = {}) {
+  const STATE = `${cfg.store}State`, OUTBOX = `${cfg.store}Outbox`; // dsState / asState on the phone
+  const [callState, callSwipe, callUndo] = cfg.calls.map((k) => (...a) => app.backend[k](...a));
   let deck = null, order = [], byId = new Map();
-  let st = store('dsState') || null; // { today, started, mine, theirs, pending } from the server
+  let st = store(STATE) || null; // { today, started, mine, theirs, pending } from the server
   const mine = new Map(), theirs = new Map(), pending = new Set(); // mine: id → { score, day }; theirs: id → score
   const history = []; // swipes this visit, newest last, for the rewind button
   let front = null;   // a card brought back by rewind goes on top
@@ -185,7 +242,7 @@ export function DesignPage(app, root, { onBack } = {}) {
   const matchesBtn = h('button.dt-sq.dt-matches', { type: 'button', 'aria-label': 'Matches', onclick: () => matchesSheet() }, svgEl(HEART(18)), count);
   const stage = h('div.dt-stage');
   root.replaceChildren(
-    h('header.dt-head', h('div.dt-top', meta, h('div.dt-tools', undoBtn, matchesBtn)), h('h1.dt-title', 'Design Tinder')),
+    h('header.dt-head', h('div.dt-top', meta, h('div.dt-tools', undoBtn, matchesBtn)), h('h1.dt-title', cfg.title)),
     stage);
 
   function applyState(s) {
@@ -195,7 +252,7 @@ export function DesignPage(app, root, { onBack } = {}) {
     for (const x of s.theirs || []) theirs.set(x.item, x.score);
     for (const x of s.pending || []) pending.add(x);
     // swipes still waiting for a signal count as made
-    for (const o of store('dsOutbox') || []) {
+    for (const o of store(OUTBOX) || []) {
       if (o.undo) mine.delete(o.item); else mine.set(o.item, { score: o.score, day: o.day });
     }
   }
@@ -204,25 +261,25 @@ export function DesignPage(app, root, { onBack } = {}) {
   async function load() {
     try {
       if (!deck) {
-        deck = await loadDeck();
+        deck = await cfg.load();
         byId = new Map(deck.editions.flat().map((c) => [c.id, c]));
       }
-      order = dealOrder(deck, seed());
+      order = dealOrder(deck, seed(), cfg.group);
       failed = null;
-    } catch (e) { console.warn('design deck', e); failed = 'deck'; render(); return; }
+    } catch (e) { console.warn(`${cfg.key} deck`, e); failed = 'deck'; render(); return; }
     await flushOutbox();
     try {
-      const s = await app.backend.dsState();
-      store('dsState', s);
+      const s = await callState();
+      store(STATE, s);
       applyState(s);
-    } catch (e) { console.warn('design state', e); if (!st) failed = 'state'; }
+    } catch (e) { console.warn(`${cfg.key} state`, e); if (!st) failed = 'state'; }
     render();
   }
 
   // ── dealing ──
   const started = () => String(st?.started || app.today()).slice(0, 10);
   const dayIndex = () => Math.max(0, dayNumber(app.today()) - dayNumber(started()));
-  const dealtOn = (i) => dealtDay(order, started(), i).map((c, k) => ({ c, i, k, day: addDays(started(), i) }));
+  const dealtOn = (i) => cfg.dealt(order, started(), i).map((c, k) => ({ c, i, k, day: addDays(started(), i) }));
   function pile() {
     const i = dayIndex();
     const open = (x) => !mine.has(x.c.id) && !x.c.retired; // retired cards are never asked again
@@ -273,17 +330,17 @@ export function DesignPage(app, root, { onBack } = {}) {
     const foot = 38;
     const room = H - foot - 150; // the photo leaves at least this much for the name and maker
     // its own shape, allowed to run a little taller (cropping the sides) so less page sits empty
-    const picH = Math.round(clamp(W * (c.h / c.w) * 1.22, Math.min(170, room), room));
-    const pic = h('div.dt-pic', { style: { height: `${picH}px` } }, img(c, '.dt-img'));
+    const picH = Math.round(clamp(W * (c.h / c.w) * cfg.crop, Math.min(170, room), room));
+    const pic = h(`div.dt-pic${cfg.contain ? '.whole' : ''}`, { style: { height: `${picH}px` } }, img(c, '.dt-img'));
     const long = c.name.length > 26;
     const readBtn = h('button.dt-read', { type: 'button' }, 'READ');
     const backBtn = h('button.dt-back', { type: 'button', onclick: () => onBack?.() }, '← BACK');
     // Manu: a Google Images search for the thing, to see more of it (opens Safari, the card stays put)
-    const moreImages = h('a.dt-images', { href: imagesUrl(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images');
+    const moreImages = h('a.dt-images', { href: cfg.images(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images');
     const text = h('div.dt-text',
       h(`h2.dt-name${long ? '.long' : ''}`, c.name),
       h('p.dt-by', c.by),
-      more(c));
+      more(c, cfg));
     const el = h(`div.dt-card${depth ? '.next' : ''}`, { 'data-nopager': '' },
       pic, text,
       h('div.dt-foot', backBtn, moreImages, readBtn)); // Manu: Back where Hate was, Read where Adore was, More images between
@@ -379,7 +436,7 @@ export function DesignPage(app, root, { onBack } = {}) {
     }
     setTimeout(() => { busy = false; rising = true; render(); }, el ? 240 : 0);
     try {
-      const r = await app.backend.dsSwipe(id, x.day, score);
+      const r = await callSwipe(id, x.day, score);
       pending.delete(id);
       if (r?.theirs != null) { theirs.set(id, r.theirs); reveal(x.c, score, r.theirs); }
       saveCopy();
@@ -407,7 +464,7 @@ export function DesignPage(app, root, { onBack } = {}) {
       el.style.transform = 'translate3d(0, -24px, 0)'; el.style.opacity = '0';
       requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = 'transform 0.34s cubic-bezier(.2,1.3,.4,1), opacity 0.2s'; el.style.transform = ''; el.style.opacity = ''; }));
     }
-    try { await app.backend.dsUndo(id); saveCopy(); } catch (e) { if (offlineError(e)) queueOut({ item: id, undo: true }); }
+    try { await callUndo(id); saveCopy(); } catch (e) { if (offlineError(e)) queueOut({ item: id, undo: true }); }
   }
 
   function reveal(c, me, they) {
@@ -433,21 +490,21 @@ export function DesignPage(app, root, { onBack } = {}) {
 
   // offline: swipes wait on the phone and go out on the next visit with a signal
   function queueOut(o) {
-    const q = (store('dsOutbox') || []).filter((x) => x.item !== o.item);
-    q.push(o); store('dsOutbox', q.slice(-100));
+    const q = (store(OUTBOX) || []).filter((x) => x.item !== o.item);
+    q.push(o); store(OUTBOX, q.slice(-100));
   }
   async function flushOutbox() {
-    const q = (store('dsOutbox') || []).filter((o) => o.undo || o.score != null);
+    const q = (store(OUTBOX) || []).filter((o) => o.undo || o.score != null);
     while (q.length) {
       const o = q[0];
-      try { if (o.undo) await app.backend.dsUndo(o.item); else await app.backend.dsSwipe(o.item, o.day, o.score); }
+      try { if (o.undo) await callUndo(o.item); else await callSwipe(o.item, o.day, o.score); }
       catch (e) { if (offlineError(e)) break; console.warn('swipe dropped', o, e); }
-      q.shift(); store('dsOutbox', q);
+      q.shift(); store(OUTBOX, q);
     }
   }
   function saveCopy() {
     if (!st) return;
-    store('dsState', {
+    store(STATE, {
       ...st,
       mine: [...mine].map(([item, v]) => ({ item, day: v.day, score: v.score })),
       theirs: [...theirs].map(([item, score]) => ({ item, score })),
@@ -526,12 +583,12 @@ export function DesignPage(app, root, { onBack } = {}) {
     // every card you've both ever swiped, not just today's (Manu: the stats keep adding up)
     const head = h('div.dt-label', h('span', 'TASTE PROFILES'), h('span', `ALL TIME · ${list.length} CARDS`));
     if (!list.length) return h('section.dt-sec', head, h('p.dt-empty-line', 'Stats start with the first card you\'ve both swiped.'));
-    const a = taste(list, 'me'), b = taste(list, 'them');
+    const a = taste(list, 'me', cfg), b = taste(list, 'them', cfg);
     const v = (x) => x ?? '–';
     const exact = list.filter((x) => x.me === x.them).length;
     const byKind = new Map();
     for (const x of list) { const k = byKind.get(x.c.kind) || [0, 0]; k[0]++; if (Math.sign(x.me) === Math.sign(x.them)) k[1]++; byKind.set(x.c.kind, k); }
-    const kinds = [...byKind].filter(([, k]) => k[0] >= 2).map(([kind, k]) => [KINDS[kind], k[1] / k[0]]).sort((p, q) => q[1] - p[1]);
+    const kinds = [...byKind].filter(([, k]) => k[0] >= 2).map(([kind, k]) => [cfg.kinds[kind], k[1] / k[0]]).sort((p, q) => q[1] - p[1]);
     const rows = [
       ['Like rate', a.rate == null ? '–' : pct(a.rate), b.rate == null ? '–' : pct(b.rate)],
       ['Average', a.avg == null ? '–' : signed(a.avg), b.avg == null ? '–' : signed(b.avg)],
@@ -539,11 +596,11 @@ export function DesignPage(app, root, { onBack } = {}) {
       ['Hated', String(a.hate), String(b.hate)],
       ['Kind', v(a.kind), v(b.kind)],
       ['Era', v(a.era), v(b.era)],
-      ['Style', v(a.style), v(b.style)],
-      ['Shapes', v(a.form), v(b.form)],
+      [cfg.labels.style, v(a.style), v(b.style)],
+      [cfg.labels.form, v(a.form), v(b.form)],
       ['Color', v(a.palette), v(b.palette)],
       ['Feel', v(a.feel), v(b.feel)],
-      ['Material', v(a.material), v(b.material)],
+      [cfg.labels.material, v(a.material), v(b.material)],
       ['Country', v(a.country), v(b.country)],
     ];
     const shared = [
@@ -571,13 +628,13 @@ export function DesignPage(app, root, { onBack } = {}) {
     }
     const ready = pic.decode ? pic.decode().catch(() => {}) : null;
     sheet('', [
-      h('div.dt-sheet-pic', { style: { height: `min(calc(min(100vw, 560px) * ${(c.h / c.w).toFixed(4)}), 58vh)` } }, pic, // the sheet's width (max 560) at the photo's shape, capped
+      h(`div.dt-sheet-pic${cfg.contain ? '.whole' : ''}`, { style: { height: `min(calc(min(100vw, 560px) * ${(c.h / c.w).toFixed(4)}), 58vh)` } }, pic, // the sheet's width (max 560) at the photo's shape, capped
         // Manu: More images here too (results and stats both open this sheet), as a tag on the photo
-        h('a.dt-tag', { href: imagesUrl(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images ↗')),
+        h('a.dt-tag', { href: cfg.images(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images ↗')),
       h('h2.dt-name', c.name),
       h('p.dt-by', c.by),
       h('div.dt-verdicts', row('You', me), row(them(), me == null ? null : they, me == null)),
-      more(c),
+      more(c, cfg),
     ], { quiet: true, className: 'dt-sheet dt-article', ready, pullAnywhere: true }); // Manu: pull down from anywhere
   }
 
@@ -585,8 +642,8 @@ export function DesignPage(app, root, { onBack } = {}) {
     // for the Games page: how many are left to swipe (null until the deck and state are in)
     left: () => (deck && st ? pile().length : null),
     prime: () => (deck && st ? null : load()),
-    show() { visible = true; document.body.classList.add('on-design'); render(); load(); },
-    hide() { visible = false; document.body.classList.remove('on-design'); },
+    show() { visible = true; document.body.classList.add(`on-${cfg.key}`); render(); load(); },
+    hide() { visible = false; document.body.classList.remove(`on-${cfg.key}`); },
     get visible() { return visible; },
     matches: () => matchesSheet(),
   };

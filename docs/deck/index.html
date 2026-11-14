@@ -23,6 +23,7 @@ input[type=search]{flex:1;min-width:160px;border:1px solid var(--line);backgroun
 .by{color:var(--gray);font-size:13px;line-height:1.3}
 .yr{font:400 11px/1.4 'Geist Mono',monospace;color:var(--gray);letter-spacing:.04em;text-transform:uppercase;margin-top:4px}
 .flag{position:absolute;top:6px;right:6px;width:28px;height:28px;border:none;background:rgba(255,255,255,.9);color:var(--ink);font:600 14px/28px Geist;cursor:pointer;padding:0}
+.art .pic img{object-fit:contain}.switch{float:right;font:500 12px/1 'Geist Mono',monospace;letter-spacing:.08em;text-transform:uppercase}.switch a{color:var(--ink)}.switch b{color:var(--gray);font-weight:500}
 .card.flagged .pic{outline:3px solid var(--red);outline-offset:-3px}.card.flagged .flag{background:var(--red);color:#fff}
 .new{position:absolute;top:6px;left:6px;background:var(--ink);color:#fff;font:500 10px/1 'Geist Mono',monospace;letter-spacing:.06em;padding:5px 6px}
 .flagbox{display:none;gap:8px;align-items:center;margin-top:8px}.flagbox.on{display:flex}
@@ -42,8 +43,8 @@ dt,dd{margin:0;padding:10px 0;border-bottom:1px solid var(--line)}dt{font:500 11
 @media (max-width:520px){h1{font-size:38px}.grid{grid-template-columns:repeat(2,1fr);gap:18px 10px}}
 </style></head><body>
 <div class="wrap">
-<div class="meta" id="meta"></div>
-<h1>Design Tinder</h1>
+<div class="switch" id="switch"></div><div class="meta" id="meta"></div>
+<h1 id="title">Design Tinder</h1>
 <p class="lede">Every card in the deck, in the order of the file (the app shuffles them for your pocket), with the same photos the app shows. Tap one to read it. Tap the flag on any photo you want replaced, then copy the list and send it to Claude.</p>
 <div class="bar">
   <div class="row" id="kinds"></div>
@@ -57,11 +58,19 @@ dt,dd{margin:0;padding:10px 0;border-bottom:1px solid var(--line)}dt{font:500 11
 <div class="toast" id="toast"></div>
 <script>
 let CARDS = [];
-const KINDS = [['all','All'],['chair','Chairs'],['lamp','Lamps'],['furniture','Furniture'],['house','Houses'],['building','Buildings']];
-const EDS = [['all','Both batches'],['1','Batch 1'],['2','Batch 2 · new']];
+// /deck/?art shows the Art Tinder deck (Nov 14): same page, its own flags
+const ART = new URLSearchParams(location.search).has('art');
+const GAME = ART ? 'Art Tinder' : 'Design Tinder', FLAGS = ART ? 'at-flags' : 'dt-flags';
+const KINDS = ART ? [['all','All'],['painting','Paintings'],['sculpture','Sculpture'],['installation','Installations'],['paper','On paper']]
+  : [['all','All'],['chair','Chairs'],['lamp','Lamps'],['furniture','Furniture'],['house','Houses'],['building','Buildings']];
+const EDS = ART ? [['all','All'],['1','First day'],['2','The rest']] : [['all','Both batches'],['1','Batch 1'],['2','Batch 2 · new']];
 let kind = 'all', ed = 'all', q = '', onlyFlagged = false;
-let flags = new Set(); try { flags = new Set(JSON.parse(localStorage.getItem('dt-flags') || '[]')); } catch {}
-const save = () => { try { localStorage.setItem('dt-flags', JSON.stringify([...flags])); } catch {} };
+let flags = new Set(); try { flags = new Set(JSON.parse(localStorage.getItem(FLAGS) || '[]')); } catch {}
+const save = () => { try { localStorage.setItem(FLAGS, JSON.stringify([...flags])); } catch {} };
+document.title = `${GAME} · the deck`;
+document.body.classList.toggle('art', ART);
+document.querySelector('#title').textContent = GAME;
+document.querySelector('#switch').innerHTML = ART ? '<a href="./">Design</a> · <b>Art</b>' : '<b>Design</b> · <a href="./?art">Art</a>';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const yearText = (c) => (c.year < 0 ? `c. ${-c.year} BC` : c.circa ? `c. ${c.year}` : String(c.year));
@@ -82,11 +91,11 @@ function render() {
   chips($('#kinds'), KINDS, () => kind, (k) => { kind = k; });
   chips($('#eds'), EDS, () => ed, (k) => { ed = k; });
   const L = list();
-  $('#meta').textContent = `${CARDS.length} cards · ${CARDS.filter((c) => c.ed === 2).length} new`;
+  $('#meta').textContent = ART ? `${CARDS.length} cards · ${CARDS.filter((c) => c.year >= 1850).length} from 1850 on` : `${CARDS.length} cards · ${CARDS.filter((c) => c.ed === 2).length} new`;
   $('#count').textContent = `${L.length} shown`;
   $('#grid').innerHTML = L.map((c) => `<div class="card${flags.has(c.id) ? ' flagged' : ''}" data-id="${c.id}">
     <div class="pic"><img loading="lazy" referrerpolicy="no-referrer" src="${esc(c.img)}" data-fb="${esc(c.fallback || '')}" alt=""></div>
-    ${c.ed === 2 ? '<span class="new">NEW</span>' : ''}<button class="flag" title="Flag this photo" data-flag="${c.id}">⚑</button>
+    ${c.ed === 2 && !ART ? '<span class="new">NEW</span>' : ''}<button class="flag" title="Flag this photo" data-flag="${c.id}">⚑</button>
     <div class="name">${esc(c.name)}</div><div class="by">${esc(c.by)}</div><div class="yr">${esc(yearText(c))} · ${esc(c.country)}</div></div>`).join('');
   $('#flagbox').classList.toggle('on', flags.size > 0 || onlyFlagged);
   $('#fcount').textContent = `${flags.size} flagged`;
@@ -99,7 +108,8 @@ $('#grid').onclick = (e) => {
 };
 function open(id) {
   const c = CARDS.find((x) => x.id === id);
-  const rows = [['Year', yearText(c)], [c.kind === 'house' || c.kind === 'building' ? 'Where' : 'From', placeLine(c)], ['Made by', c.kind === 'house' || c.kind === 'building' ? '' : c.at], ['Style', c.style], ['Materials', c.materials.join(', ')], ['Batch', c.ed === 2 ? '2 (new)' : '1'], ['Card id', c.id]].filter((r) => r[1]);
+  const rows = (ART ? [['Year', yearText(c)], ['Where', c.at], ['Artist from', c.country], ['Movement', c.style], ['Medium', c.materials.join(', ')], ['Card id', c.id]]
+    : [['Year', yearText(c)], [c.kind === 'house' || c.kind === 'building' ? 'Where' : 'From', placeLine(c)], ['Made by', c.kind === 'house' || c.kind === 'building' ? '' : c.at], ['Style', c.style], ['Materials', c.materials.join(', ')], ['Batch', c.ed === 2 ? '2 (new)' : '1'], ['Card id', c.id]]).filter((r) => r[1]);
   $('#ovin').innerHTML = `<div class="top"><button class="btn ghost" id="close">← Back</button><button class="btn${flags.has(c.id) ? '' : ' ghost'}" id="ovflag">${flags.has(c.id) ? 'Flagged' : 'Flag photo'}</button></div>
     <img referrerpolicy="no-referrer" src="${esc(c.img)}" data-fb="${esc(c.fallback || '')}" alt=""><h2>${esc(c.name)}</h2><div class="by" style="font-size:17px">${esc(c.by)}</div>
     <p class="note">${esc(c.note)}</p><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
@@ -115,11 +125,11 @@ $('#onlyf').onclick = () => { onlyFlagged = !onlyFlagged; render(); };
 $('#clearf').onclick = () => { flags.clear(); onlyFlagged = false; save(); render(); };
 function toast(t) { const el = $('#toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => { el.style.display = 'none'; }, 2200); }
 $('#copy').onclick = async () => {
-  const text = 'Replace these Design Tinder photos: ' + [...flags].map((id) => { const c = CARDS.find((x) => x.id === id); return c ? `${c.name} (${id})` : id; }).join(', ');
+  const text = `Replace these ${GAME} photos: ` + [...flags].map((id) => { const c = CARDS.find((x) => x.id === id); return c ? `${c.name} (${id})` : id; }).join(', ');
   try { await navigator.clipboard.writeText(text); toast('Copied. Paste it to Claude.'); }
   catch { $('#ovin').innerHTML = `<div class="top"><button class="btn ghost" id="close">← Back</button></div><p class="note">Copy this and paste it to Claude:</p><textarea style="width:100%;height:200px;font:14px Geist">${esc(text)}</textarea>`; $('#ov').classList.add('on'); $('#close').onclick = () => $('#ov').classList.remove('on'); }
 };
-fetch('../design/deck.json', { cache: 'no-cache' }).then((r) => r.json()).then((d) => {
+fetch(ART ? '../art/deck.json' : '../design/deck.json', { cache: 'no-cache' }).then((r) => r.json()).then((d) => {
   CARDS = d.editions.flatMap((ed, k) => ed.filter((c) => !c.retired).map((c) => ({ ...c, ed: k + 1, materials: c.materials || [] }))); // older than 1436: out of the deck (Nov 13)
   render();
 }).catch(() => { $('#grid').textContent = 'Could not load the deck.'; });

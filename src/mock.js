@@ -1,6 +1,6 @@
 // Demo mode (?demo): a pretend partner so you can play without pairing.
 import { rand, pick, dayIn, hash } from './util.js';
-import { loadDeck, dealOrder, dealtDay } from './design.js';
+import { loadDeck, loadArtDeck, dealOrder, dealtDay, artDealtDay, artGroup } from './design.js';
 import { loadWords, backupWord } from './letters.js';
 
 export function mockBackend() {
@@ -16,6 +16,7 @@ export function mockBackend() {
   const hq = [];
   const media = new Map();
   const ds = { started: null, swipes: [new Map(), new Map()] }; // Design Tinder: your swipes, Luz's
+  const as = { started: null, swipes: [new Map(), new Map()] }; // Art Tinder, the same
   const fl = { days: new Map(), games: [new Map(), new Map()], seeded: false }; // Five Letters: day → word; each of you: day → game
   let on = {};
   let present = true;
@@ -146,6 +147,18 @@ export function mockBackend() {
       on(1).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(-1) }));
       on(2).slice(0, 3).forEach((c) => ds.swipes[1].set(c.id, { score: score(c.id, 'l'), day: day(0) }));
     } catch (e) { console.warn('demo deck', e); }
+  }
+
+  // Art Tinder in the demo: the deck starts today (ten cards on the first day), Luz has swiped four of them.
+  async function seedArt() {
+    if (as.started) return;
+    const tz = mine()?.place?.tz || 'UTC';
+    as.started = dayIn(tz);
+    try {
+      const order = dealOrder(await loadArtDeck(), hole.id, artGroup);
+      const score = (id) => { const k = hash(id + 'art') % 100; return k < 12 ? -3 : k < 24 ? -2 : k < 38 ? -1 : k < 60 ? 1 : k < 82 ? 2 : 3; };
+      artDealtDay(order, as.started, 0).slice(0, 4).forEach((c) => as.swipes[1].set(c.id, { score: score(c.id), day: as.started }));
+    } catch (e) { console.warn('demo art deck', e); }
   }
 
   // Five Letters in the demo: words from the app's own list (the demo never asks the NYT). The last nine
@@ -318,6 +331,18 @@ export function mockBackend() {
     },
     async dsSwipe(item, day, score) { ds.swipes[0].set(item, { score, day }); const t = ds.swipes[1].get(item); return { item, score, theirs: t ? t.score : null }; },
     async dsUndo(item) { ds.swipes[0].delete(item); },
+    async asState() {
+      await seedArt();
+      const [m, t] = as.swipes;
+      return {
+        today: dayIn(mine()?.place?.tz || 'UTC'), started: as.started,
+        mine: [...m].map(([item, v]) => ({ item, ...v })),
+        theirs: [...t].filter(([k]) => m.has(k)).map(([item, v]) => ({ item, ...v })),
+        pending: [...t.keys()].filter((k) => !m.has(k)),
+      };
+    },
+    async asSwipe(item, day, score) { as.swipes[0].set(item, { score, day }); const t = as.swipes[1].get(item); return { item, score, theirs: t ? t.score : null }; },
+    async asUndo(item) { as.swipes[0].delete(item); },
     async flState() {
       await seedLetters();
       const today = dayIn(mine()?.place?.tz || 'UTC');

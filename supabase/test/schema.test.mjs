@@ -332,6 +332,31 @@ console.log('all schema tests passed');
   assert.equal(sa.mine.length, 2); assert.deepEqual(sa.theirs, []);
   await fails(C, 'select wh_ds_state()', [], /no_hole/);
   console.log('design tinder ok');
+
+  // Art Tinder: same rules, its own deck start and swipes (a design swipe never shows up in art)
+  await fails(B, 'select * from art_swipes', [], /permission denied/);
+  await fails(B, 'select * from art_decks', [], /permission denied/);
+  let [{ wh_as_state: aa }] = await as(A, 'select wh_as_state()');
+  assert.equal(aa.started, aa.today); assert.deepEqual(aa.mine, []); assert.deepEqual(aa.theirs, []); assert.deepEqual(aa.pending, []);
+  const aswipe = (u, item, score, day = aa.today) => as(u, 'select wh_as_swipe($1,$2,$3) r', [item, day, score]);
+  await fails(A, 'select wh_as_swipe($1,$2,$3)', ['Bad Item!', aa.today, 1], /bad_item/);
+  await fails(A, 'select wh_as_swipe($1,$2,$3)', ['the-kiss', '2030-01-01', 1], /bad_day/);
+  await fails(A, 'select wh_as_swipe($1,$2,$3)', ['the-kiss', aa.today, 0], /bad_swipe/);
+  [{ r }] = await aswipe(A, 'the-kiss', 2);
+  assert.equal(r.theirs, null);
+  let [{ wh_as_state: ab }] = await as(B, 'select wh_as_state()');
+  assert.deepEqual(ab.pending, ['the-kiss']);
+  [{ r }] = await aswipe(B, 'the-kiss', -1);
+  assert.equal(r.theirs, 2);
+  [{ wh_as_state: aa }] = await as(A, 'select wh_as_state()');
+  assert.equal(aa.theirs.length, 1); assert.equal(aa.theirs[0].score, -1);
+  [{ wh_ds_state: sa }] = await as(A, 'select wh_ds_state()');
+  assert.ok(!sa.mine.some((x) => x.item === 'the-kiss'));
+  await as(A, 'select wh_as_undo($1)', ['the-kiss']);
+  [{ wh_as_state: ab }] = await as(B, 'select wh_as_state()');
+  assert.deepEqual(ab.theirs, []); assert.equal(ab.mine.length, 1);
+  await fails(C, 'select wh_as_state()', [], /no_hole/);
+  console.log('art tinder ok');
 }
 
 // ── Five Letters: one word a day per pocket, locked on the first open; their guesses hidden until you're done

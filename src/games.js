@@ -10,13 +10,15 @@ import { buzz } from './feel.js';
 import { roam } from './shelf.js';
 
 export const GAMES_BOTTOM = '#FFFFFF';
-// Design Tinder after the first two (Manu); Five Letters joined at the end (Nov 13)
+// Design Tinder after the first two (Manu); Five Letters joined at the end (Nov 13). Art Tinder
+// (Nov 14) shares Design Tinder's row: "Design", a bar, "Art" (Manu), each half opening its own game.
 export const GAMES = [
   { id: 'soil', name: 'Soil' },
   { id: 'house', name: 'Garden & House' },
-  { id: 'design', name: 'Design Tinder' },
+  { id: 'design', name: 'Design', pair: { id: 'art', name: 'Art' } },
   { id: 'letters', name: 'Five Letters' },
 ];
+const ALL = GAMES.flatMap((g) => (g.pair ? [g, g.pair] : [g]));
 
 // status(id) → short text for the band's pill when something waits there, else null
 export function GamesPage(app, root, { open, status }) {
@@ -39,14 +41,17 @@ export function GamesPage(app, root, { open, status }) {
   }
 
   function render() {
-    const waiting = GAMES.map((g) => status(g.id)).filter(Boolean).length;
+    const waiting = ALL.map((g) => status(g.id)).filter(Boolean).length;
     meta.textContent = waiting ? `${waiting} WAITING FOR YOU` : 'GAMES FOR TWO';
-    bands.replaceChildren(...GAMES.map((g) => {
+    const band = (g, cls = '') => {
       const s = status(g.id);
-      return h('button.band.game', { type: 'button', style: { '--bg': '#FFFFFF', '--fg': '#0B0B0C' }, onclick: () => { buzz(8); open(g.id); } },
+      return h(`button.band.game${cls}`, { type: 'button', style: { '--bg': '#FFFFFF', '--fg': '#0B0B0C' }, onclick: () => { buzz(8); open(g.id); } },
         h('span.band-name', g.name),
         h('span.band-side', s ? h('span.band-ready', s) : null));
-    }));
+    };
+    bands.replaceChildren(...GAMES.map((g) => (g.pair
+      ? h('div.band-pair', band(g, '.half'), h('i.band-bar', { 'aria-hidden': 'true' }), band(g.pair, '.half'))
+      : band(g))));
   }
 
   render(); // drawn from the start, so the first swipe over from the shelf already shows it

@@ -1,0 +1,100 @@
+# Wikimedia photos: id|file|w|h|where (c commons, e enwiki)|by|license
+birth-of-venus|Sandro Botticelli - La nascita di Venere - Google Art Project - edited.jpg|30000|18840|c|Sandro Botticelli|Public domain
+pearl-earring|1665 Girl with a Pearl Earring.jpg|12285|14550|c|Johannes Vermeer|Public domain
+starry-night|Van Gogh - Starry Night - Google Art Project.jpg|44567|35291|c|Vincent van Gogh|Public domain
+the-kiss|The Kiss - Gustav Klimt - Google Cultural Institute.jpg|7376|7401|c|Gustav Klimt|Public domain
+maman|-Maman-, by Louise Bourgeois, Guggenheim Museum, Bilbao, Spain (PPL1-Corrected) julesvernex2.jpg|5432|3604|c|julesvernex2|CC BY-SA 4.0
+arnolfini|The Arnolfini portrait (1434).jpg|8283|11331|c|Jan van Eyck|Public domain
+earthly-delights|The Garden of earthly delights.jpg|39137|22279|c|Hieronymus Bosch|Public domain
+mona-lisa|Mona Lisa, by Leonardo da Vinci, from C2RMF retouched.jpg|7479|11146|c|Leonardo da Vinci|Public domain
+david|'David' by Michelangelo Fir JBU004.jpg|3260|4890|c|Jörg Bittner Unna|CC BY 3.0
+school-of-athens|"The School of Athens" by Raffaello Sanzio da Urbino.jpg|3820|2964|c|Raphael|Public domain
+creation-of-adam|Michelangelo - Creation of Adam (cropped).jpg|3524|1599|c|Michelangelo|Public domain
+young-hare|Albrecht Dürer - Hare, 1502 - Google Art Project.jpg|3731|4123|c|Albrecht Dürer|Public domain
+ambassadors|Hans Holbein the Younger - The Ambassadors - Google Art Project.jpg|30000|29560|c|Hans Holbein the Younger|Public domain
+hunters-in-the-snow|Pieter Bruegel the Elder - Hunters in the Snow (Winter) - Google Art Project.jpg|6819|4853|c|Pieter Bruegel the Elder|Public domain
+view-of-toledo|El Greco View of Toledo.jpg|3436|3878|c|El Greco|Public domain
+calling-of-matthew|Caravaggio — The Calling of Saint Matthew.jpg|8792|8304|c|Gleb Simonov|CC0
+judith-holofernes|Judit decapitando a Holofernes, por Artemisia Gentileschi.jpg|2056|2500|c|Artemisia Gentileschi|Public domain
+apollo-and-daphne|Apollo and Daphne (Bernini) (cropped).jpg|4640|7800|c|Architas|CC BY-SA 4.0
+jahangir-sufi|Bichitr - Jahangir Preferring a Sufi Shaikh to Kings, from the St. Petersburg album - Google Art Project.jpg|2474|3600|c|Bichitr|Public domain
+night-watch|La ronda de noche, por Rembrandt van Rijn.jpg|14168|11528|c|Rembrandt|Public domain
+las-meninas|Las Meninas, by Diego Velázquez, from Prado in Google Earth.jpg|26065|30000|c|Diego Velázquez|Public domain
+the-swing|The Swing (P430).jpg|1487|1920|c|Jean-Honoré Fragonard|Public domain
+straw-hat|Self-portrait in a Straw Hat by Elisabeth-Louise Vigée-Lebrun.jpg|4320|6000|c|Élisabeth Vigée Le Brun|Public domain
+death-of-marat|Death of Marat by David.jpg|4045|5205|c|Jacques-Louis David|Public domain
+psyche-and-cupid|0 Psyché ranimée par le baiser de l'Amour - Canova - Louvre 1.JPG|2976|2592|c|Jean-Pol Grandmont|CC BY 4.0
+third-of-may|El Tres de Mayo, by Francisco de Goya, from Prado thin black margin.jpg|29294|22626|c|Francisco Goya|Public domain
+wanderer|Caspar David Friedrich - Wanderer above the Sea of Fog.jpeg|5256|6742|c|Caspar David Friedrich|Public domain
+hay-wain|John Constable - The Hay Wain (1821).jpg|6128|4226|c|John Constable|Public domain
+liberty|La Liberté guidant le peuple - Eugène Delacroix - Musée du Louvre Peintures RF 129 - après restauration 2024.jpg|10128|8103|c|Eugène Delacroix|Public domain
+temeraire|The Fighting Temeraire, JMW Turner, National Gallery.jpg|5684|4223|c|J. M. W. Turner|Public domain
+idia-mask|Queen Mother Pendant Mask- Iyoba MET DP231460.jpg|1483|2000|c|The Met|CC0
+hiroshige-shower|Utagawa Hiroshige - Evening Shower at Atake and the Great Bridge.jpg|6300|9200|c|Utagawa Hiroshige|Public domain
+falling-rocket|Whistler-Nocturne in black and gold.jpg|4371|5807|c|James McNeill Whistler|Public domain
+folies-bergere|"Un Bar aux Folies-Bergère" by Édouard Manet (1882).jpg|12580|9236|c|Édouard Manet|Public domain
+impression-sunrise|Monet - Impression, Sunrise.jpg|5773|4478|c|Claude Monet|Public domain
+moulin-galette|Renoir, Pierre-Auguste - Dance at Le Moulin de la Galette, 1876.jpg|40869|30379|c|Pierre-Auguste Renoir|Public domain
+little-dancer|The Little Fourteen-Year-Old Dancer MET DP-14939-005.jpg|2887|4000|c|The Met|CC0
+rainy-day|Gustave Caillebotte - Paris Street; Rainy Day - Google Art Project.jpg|5982|4531|c|Gustave Caillebotte|Public domain
+grande-jatte|A Sunday on La Grande Jatte, Georges Seurat, 1884.jpg|20000|13313|c|Georges Seurat|Public domain
+basket-of-apples|Paul Cézanne - The Basket of Apples - 1926.252 - Art Institute of Chicago.jpg|2811|2250|c|Paul Cézanne|Public domain
+where-do-we-come-from|Gauguin - Where Do We Come From? What Are We? Where Are We Going? (1897-98).jpg|5400|1987|c|Paul Gauguin|Public domain
+almond-blossoms|Vincent van Gogh - Almond blossom - Google Art Project.jpg|3139|2480|c|Vincent van Gogh|Public domain
+the-scream|Edvard Munch, 1893, The Scream, oil, tempera and pastel on cardboard, 91 x 73 cm, National Gallery of Norway.jpg|3223|4000|c|Edvard Munch|Public domain
+la-goulue|Henri de Toulouse-Lautrec, Moulin Rouge - La Goulue, 1891 - The Metropolitan Museum of Art.jpg|2314|3722|c|Henri de Toulouse-Lautrec|Public domain
+childs-bath|Mary Cassatt - The Child's Bath - Google Art Project.jpg|3219|4912|c|Mary Cassatt|Public domain
+madame-x|Madame X (Madame Pierre Gautreau), John Singer Sargent, 1884 (unfree frame crop).jpg|1895|3680|c|John Singer Sargent|Public domain
+sleeping-gypsy|La Bohémienne endormie.jpg|5411|3457|c|Henri Rousseau|Public domain
+dance-matisse|Henri Matisse - Dance II (Hermitage Museum).jpg|19425|13029|c|Henri Matisse|Public domain
+composition-vii|Composition VII - Wassily Kandinsky, GAC.jpg|7015|4661|c|Wassily Kandinsky|Public domain
+black-square|Kazimir Malevich, 1915, Black Suprematic Square, oil on linen canvas, 79.5 x 79.5 cm, Tretyakov Gallery, Moscow.jpg|1718|1718|c|Kazimir Malevich|Public domain
+broadway-boogie|Piet Mondrian, 1942 - Broadway Boogie Woogie.jpg|4104|4111|c|Piet Mondrian|Public domain
+senecio|Paul Klee, 1922, Senecio, oil on gauze, 40.3 × 37.4 cm, Kunstmuseum Basel.jpg|3712|4046|c|Paul Klee|Public domain
+fountain|Marcel Duchamp, 1917, Fountain, photograph by Alfred Stieglitz.jpg|1416|1849|c|Alfred Stieglitz|Public domain
+bird-in-space|Bird in Space.jpg|1776|2500|c|Art Poskanzer|Public domain
+nu-couche|Modigliani - Nu couché.jpg|3200|2015|c|Amedeo Modigliani|Public domain
+american-gothic|Grant Wood - American Gothic (1930).jpg|6949|8400|c|Grant Wood|Public domain
+the-cradle|Berthe Morisot 008.jpg|2024|2604|c|Berthe Morisot|Public domain
+barge-haulers|Ilia Efimovich Repin (1844-1930) - Volga Boatmen (1870-1873).jpg|4586|2120|c|Ilya Repin|Public domain
+walk-on-the-beach|Joaquín Sorolla y Bastida - Strolling along the Seashore - Google Art Project.jpg|4832|4894|c|Joaquín Sorolla|Public domain
+gulf-stream|Winslow Homer - The Gulf Stream - Metropolitan Museum of Art.jpg|5886|3540|c|Winslow Homer|Public domain
+banjo-lesson|Henry Ossawa Tanner, The Banjo Lesson (darker).jpg|2000|2838|c|Henry Ossawa Tanner|Public domain
+christ-the-redeemer|Christ the Redeemer - Cristo Redentor.jpg|2497|3744|c|Arne Müseler|CC BY-SA 3.0 de
+statue-of-liberty|Front view of Statue of Liberty (cropped).jpg|2498|3828|c|AskALotl|CC0
+entry-into-brussels|Christ's Entry into Brussels in 1889.jpg|12900|7352|c|James Ensor|Public domain
+soup-cans|Campbell's Soup Cans by Andy Warhol.jpg|2604|1514|c|Brandon Fick|Public domain
+ikb-191|IKB 191.jpg|1496|1927|c|Yves Klein|Public domain
+shibboleth|Shibboleth Tate Modern.jpg|1944|2592|c|Nuno Nogueira|CC BY-SA 2.5
+tv-buddha|TV Buddha.jpg|3072|2304|c|Angus Fraser|CC BY 2.0
+sunflower-seeds|Ai Weiwei's Sunflower Seeds, Tate Modern.jpg|2592|3888|c|Mike Peel|CC BY-SA 4.0
+the-gates|The Gates, a site-specific work of art by Christo and Jeanne-Claude in Central Park, New York City LCCN2011633978.jpg|3750|2671|c|Carol M. Highsmith|Public domain
+angel-of-the-north|Angel of the North 2010.jpg|3264|2448|c|saw2th|CC BY-SA 2.0
+single-form|Single Form, UNO New York.JPG|718|799|c||CC BY-SA 3.0
+tarot-garden|Sculptures in Giardino dei Tarocchi.jpg|4032|3024|c|DustyLosAngeles|CC BY-SA 4.0
+portrait-of-ross|"Untitled" (Portrait of Ross in L.A) in the Art Institute of Chicago.jpg|3024|4032|c|Cduncanmiller|Public domain
+abaporu|Abaporu.jpg|8867|10288|e|Tarsila do Amaral|Public domain
+song-of-love|De Chirico's Love Song.jpg|1249|1535|e|Giorgio de Chirico|PD-US
+zojo-temple|Kawase Zôjôji.jpg|897|1350|c|Kawase Hasui|Public domain
+three-girls|Amrita Sher-Gil Group of Three Girls.jpg|2184|3007|c|Amrita Sher-Gil|Public domain
+nighthawks|Nighthawks by Edward Hopper 1942.jpg|6000|3274|c|Edward Hopper|Public domain
+hammershoi-interior|Vilhelm Hammershoi - Interieur mit Rueckenansicht einer Frau - 1903-1904 - Randers Kunstmuseum.jpg|2470|2955|c|Vilhelm Hammershøi|Public domain
+gismonda|Alphonse Mucha - Poster for Victorien Sardou's Gismonda starring Sarah Bernhardt - Original.jpg|3488|4794|c|Alphonse Mucha|Public domain
+shakuntala|Raja Ravi Varma - Mahabharata - Shakuntala.jpg|2598|4256|c|Raja Ravi Varma|Public domain
+pine-trees|Hasegawa Touhaku - Pine Trees - Google Art Project.jpg|20000|9238|c|Hasegawa Tōhaku|Public domain
+great-wave|冨嶽三十六景 神奈川沖浪裏-Under the Wave off Kanagawa (Kanagawa oki nami ura), also known as The Great Wave, from the series Thirty-six Views of Mount Fuji (Fugaku sanjūrokkei) MET DP141063.jpg|3863|2667|c|The Met|CC0
+blue-horses|Franz Marc - Die großen blauen Pferde 1911.jpg|2048|1171|c|Franz Marc|Public domain
+colorful-realm|Itō Jakuchū - Black rooster and nandin (Colorful Realm of Living Beings).jpg|1559|2695|c|Itō Jakuchū|Public domain
+schiele-physalis|Egon Schiele - Self-Portrait with Physalis - Google Art Project.jpg|3781|3062|c|Egon Schiele|Public domain
+gris-picasso|Juan Gris - Portrait of Pablo Picasso - Google Art Project.jpg|6221|7913|c|Juan Gris|Public domain
+simultaneous-windows|Robert Delaunay, 1912, Les Fenêtres simultanée sur la ville (Simultaneous Windows on the City), 40 x 46 cm, Kunsthalle Hamburg.jpg|1229|1335|c|Robert Delaunay|Public domain
+two-lovers|Reza Abbasi - Two Lovers (1630).jpg|4012|6088|c|Reza Abbasi|Public domain
+street-dresden|Kirchner - Street, Dresden, 1908, 12.1951.jpg|2000|1509|c|Ernst Ludwig Kirchner|Public domain
+irises-screens|Irises screen 2.jpg|3904|1636|c|Ogata Kōrin|Public domain
+america-invertida|Joaquín Torres García - América Invertida.jpg|726|768|c|Joaquín Torres-García|Public domain
+black-iris|Georgia O'Keeffe - Black Iris 1926 MET.jpg|4053|4848|c|Georgia O'Keeffe|Public domain
+unique-forms|Unique Forms of Continuity in Space MET DT6411.jpg|2978|3722|c|The Met|CC0
+the-waltz|La Valse de Camille Claudel (Musée Rodin, Paris) (51246445543).jpg|5304|7952|c|Jean-Pierre Dalbéra|CC BY 2.0
+hundred-horses|One Hundred Horses (part1).jpg|3204|2022|c|Giuseppe Castiglione|Public domain
+af-klint-adulthood|Hilma af Klint — The Ten Largest — Number 7 Adulthood.jpg|5286|7131|c|Hilma af Klint|Public domain
+the-thinker|Le Penseur Musée Rodin Paris S.1295.jpg|3899|5541|c|Musée Rodin|CC0

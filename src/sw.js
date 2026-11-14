@@ -4,7 +4,7 @@ const CACHE = `bw-${VERSION}`;
 const SHELL = [
   './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
-  './icons/icon-192.png', './icons/badge-96.png', '__DECK__', '__WORDS__',
+  './icons/icon-192.png', './icons/badge-96.png', '__DECK__', '__ART__', '__WORDS__',
 ];
 // Design Tinder photos (Wikimedia), kept across versions; the newest 150 stay
 const DESIGN = 'bw-design';

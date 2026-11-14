@@ -11,7 +11,7 @@
 // haven't reached yet stay hidden too, same as in the app.
 import { h, store } from './util.js';
 import { sheet, btn, toast } from './ui.js';
-import { loadDeck, LEVEL } from './design.js';
+import { loadDeck, loadArtDeck, LEVEL } from './design.js';
 import { TOTAL as HOUSE_PIECES } from './housepage.js';
 import { score as letterScore } from './letters.js';
 
@@ -70,28 +70,32 @@ function dataUrlBytes(s) {
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const slug = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'someone';
 
+// A Tinder game's swipes (Design or Art), with each card's name from its deck.
+async function swipesOf(getState, getDeck) {
+  const ds = await getState();
+  let byId = new Map();
+  if (ds?.mine?.length) try { byId = new Map((await getDeck()).editions.flat().map((c) => [c.id, c])); } catch { /* offline: card ids only */ }
+  const theirs = new Map((ds?.theirs || []).map((t) => [t.item, t.score]));
+  return ds && {
+    started: ds.started,
+    scale: LEVEL,
+    cards: (ds.mine || []).map((s) => {
+      const c = byId.get(s.item), them = theirs.has(s.item) ? theirs.get(s.item) : null;
+      return {
+        item: s.item, day: s.day, name: c?.name ?? null, by: c?.by ?? null, year: c?.year ?? null, kind: c?.kind ?? null, at: c?.at ?? null,
+        you: s.score, them, match: them != null && s.score > 0 && them > 0, photo: c?.source ?? null,
+      };
+    }),
+    waiting_for_you: ds.pending?.length || 0,
+  };
+}
+
 // The games: what's on the server, as readable as the app shows it. Each part is optional,
 // so a pocket that never opened a game (or an older server) still saves everything else.
 async function gatherGames(backend) {
-  const out = { design: null, house: null, letters: null };
-  try {
-    const ds = await backend.dsState();
-    let byId = new Map();
-    if (ds?.mine?.length) try { byId = new Map((await loadDeck()).editions.flat().map((c) => [c.id, c])); } catch { /* offline: card ids only */ }
-    const theirs = new Map((ds?.theirs || []).map((t) => [t.item, t.score]));
-    out.design = ds && {
-      started: ds.started,
-      scale: LEVEL,
-      cards: (ds.mine || []).map((s) => {
-        const c = byId.get(s.item), them = theirs.has(s.item) ? theirs.get(s.item) : null;
-        return {
-          item: s.item, day: s.day, name: c?.name ?? null, by: c?.by ?? null, year: c?.year ?? null, kind: c?.kind ?? null, at: c?.at ?? null,
-          you: s.score, them, match: them != null && s.score > 0 && them > 0, photo: c?.source ?? null,
-        };
-      }),
-      waiting_for_you: ds.pending?.length || 0,
-    };
-  } catch { /* no deck yet */ }
+  const out = { design: null, art: null, house: null, letters: null };
+  try { out.design = await swipesOf(() => backend.dsState(), loadDeck); } catch { /* no deck yet */ }
+  try { out.art = await swipesOf(() => backend.asState(), loadArtDeck); } catch { /* never opened, or an older server */ }
   try {
     const hq = await backend.hqState();
     const opt = (q, i) => (i == null ? null : q.options?.[i] ?? null);
@@ -163,6 +167,7 @@ export async function buildBackup(app, onProgress = () => {}) {
     today: dailies,
     planted,
     design: games.design,
+    art: games.art,
     house: games.house,
     letters: games.letters,
     notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. So do your person\'s swipes on cards you haven\'t swiped yet, the house questions waiting for you, and their Five Letters guesses on a day you haven\'t finished. Media files are in photos/, today/ and whispers/.',
@@ -172,6 +177,7 @@ export async function buildBackup(app, onProgress = () => {}) {
     days: dailies.length, photos: files.filter((f) => !f.name.startsWith('whispers/')).length,
     whispers: files.filter((f) => f.name.startsWith('whispers/')).length, missing,
     cards: games.design?.cards.length || 0,
+    art: games.art?.cards.length || 0,
     questions: (games.house?.you_asked.length || 0) + (games.house?.they_asked.length || 0),
     words: games.letters?.days.filter((d) => d.you?.done).length || 0,
   };
@@ -194,7 +200,7 @@ function readme(r, c) {
     `Worms: ${names}.`,
     '',
     `${c.moments} things you sent each other, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes.`,
-    r.design || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}.` : null,
+    r.design || r.art || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${c.art ? `, ${c.art} Art Tinder cards` : ''}${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}.` : null,
     '',
     'index.html   open it to read your pocket as a page (any phone or computer)',
     'pocket.json  the complete record, as data',
@@ -202,7 +208,7 @@ function readme(r, c) {
     'today/       Today photos, one per person per day',
     'whispers/    voice notes',
     '',
-    'The games are at the end of index.html, and under "design", "house" and "letters" in pocket.json.',
+    'The games are at the end of index.html, and under "design", "art", "house" and "letters" in pocket.json.',
     '',
     'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are in this file.',
     `Your pocket's code: ${r.pocket.code || '?'} (keep it between you two).`,
@@ -253,16 +259,16 @@ function gamesHtml(r, slot) {
   const me = esc(r.worms.find((w) => w.slot === slot)?.name || 'You'), them = esc(r.worms.find((w) => w.slot !== slot)?.name || 'Them');
   const dt = (s) => (s ? esc(new Date(String(s).length === 10 ? `${s}T12:00:00` : s).toDateString()) : '');
   const out = [];
-  const d = r.design;
-  if (d?.cards.length) {
+  for (const [title, d] of [['Design Tinder', r.design], ['Art Tinder', r.art]]) {
+    if (!d?.cards.length) continue;
     const both = d.cards.filter((c) => c.them != null), agree = both.filter((c) => Math.sign(c.you) === Math.sign(c.them)).length;
     const lvl = (v) => esc(d.scale?.[v] ?? v);
     const yr = (y) => (y == null ? '' : y < 0 ? ` · ${-y} BC` : ` · ${y}`);
-    out.push(`<h2>Design Tinder</h2><p class="sub">${d.cards.length} cards swiped since ${dt(d.started)}.${both.length ? ` You landed on the same side for ${agree} of the ${both.length} you've both swiped.` : ''}</p>`);
+    out.push(`<h2>${title}</h2><p class="sub">${d.cards.length} cards swiped since ${dt(d.started)}.${both.length ? ` You landed on the same side for ${agree} of the ${both.length} you've both swiped.` : ''}</p>`);
     for (const c of [...d.cards].reverse()) {
-      const title = c.name ? `<b>${esc(c.name)}</b>${c.by ? ` · ${esc(c.by)}` : ''}` : `<b>${esc(c.item)}</b>`;
+      const name = c.name ? `<b>${esc(c.name)}</b>${c.by ? ` · ${esc(c.by)}` : ''}` : `<b>${esc(c.item)}</b>`;
       const theirs = c.them != null ? ` · ${them}: ${lvl(c.them)}` : '';
-      out.push(`<div class="ev"><span class="who">${dt(c.day)}${c.kind ? ` · ${esc(c.kind)}` : ''}${yr(c.year)}</span><p>${title}${c.photo ? ` · <a href="${esc(c.photo)}">photo</a>` : ''}</p><p>${me}: ${lvl(c.you)}${theirs}${c.match ? ' · <b class="ok">a match</b>' : ''}</p></div>`);
+      out.push(`<div class="ev"><span class="who">${dt(c.day)}${c.kind ? ` · ${esc(c.kind)}` : ''}${yr(c.year)}</span><p>${name}${c.photo ? ` · <a href="${esc(c.photo)}">photo</a>` : ''}</p><p>${me}: ${lvl(c.you)}${theirs}${c.match ? ' · <b class="ok">a match</b>' : ''}</p></div>`);
     }
   }
   const ho = r.house;
@@ -305,7 +311,7 @@ export function backupSheet(app) {
     try {
       built = await buildBackup(app, (msg) => { status.textContent = msg; });
       const c = built.counts, mb = (built.size / 1048576).toFixed(built.size > 10485760 ? 0 : 1);
-      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
+      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.art ? `, ${c.art} Art Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
       go.hidden = true; saveBtn.hidden = false;
     } catch (err) {
       status.textContent = `Couldn't gather everything: ${String(err?.message || err).slice(0, 80)}. Try again.`;

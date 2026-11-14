@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync, rmSyn
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import { compileDeck } from './src/design/compile.mjs';
+import { compileArt } from './src/art/compile.mjs';
 
 const cfg = existsSync('config.json') ? JSON.parse(readFileSync('config.json', 'utf8')) : {};
 const OUT = 'docs';
@@ -30,6 +31,14 @@ const DECK_URL = `./design/deck.json?v=${DECK_V}`;
 writeFileSync(`${OUT}/design/deck.json`, deckJson);
 console.log(`built ${OUT}/design/ · v${DECK_V} · deck.json ${(deckJson.length / 1024).toFixed(0)}KB`);
 
+// Art Tinder: its deck (src/art/), the same shape
+mkdirSync(`${OUT}/art`, { recursive: true });
+const artJson = JSON.stringify(compileArt());
+const ART_V = createHash('sha1').update(artJson).digest('hex').slice(0, 8);
+const ART_URL = `./art/deck.json?v=${ART_V}`;
+writeFileSync(`${OUT}/art/deck.json`, artJson);
+console.log(`built ${OUT}/art/ · v${ART_V} · deck.json ${(artJson.length / 1024).toFixed(0)}KB`);
+
 // Five Letters: the words it accepts and its backup answers (src/letters/), as one JSON file of
 // five-letter words run together (g = guesses, a = answers)
 mkdirSync(`${OUT}/letters`, { recursive: true });
@@ -50,16 +59,17 @@ const res = await build({
     __VERSION__: '"dev"',
     __HOUSE__: JSON.stringify(`./house/view.js?v=${HOUSE_V}`),
     __DECK__: JSON.stringify(DECK_URL),
+    __ART__: JSON.stringify(ART_URL),
     __WORDS__: JSON.stringify(WORDS_URL),
   },
 });
 const js = res.outputFiles[0].text;
 const css = readFileSync('src/styles.css', 'utf8');
-const version = createHash('sha1').update(js + css + DECK_V + WORDS_V).digest('hex').slice(0, 8);
+const version = createHash('sha1').update(js + css + DECK_V + ART_V + WORDS_V).digest('hex').slice(0, 8);
 writeFileSync(`${OUT}/app.js`, js.replace('"dev"', JSON.stringify(version)));
 writeFileSync(`${OUT}/styles.css`, css);
 writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replaceAll('__VERSION__', version));
-writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL).replaceAll('__WORDS__', WORDS_URL));
+writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL).replaceAll('__ART__', ART_URL).replaceAll('__WORDS__', WORDS_URL));
 copyFileSync('src/manifest.webmanifest', `${OUT}/manifest.webmanifest`);
 writeFileSync(`${OUT}/.nojekyll`, '');
 // /deck/: a page to look through every Design Tinder card (reads design/deck.json, same photos as the app).
