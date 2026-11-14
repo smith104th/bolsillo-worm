@@ -970,7 +970,9 @@ body.dark .hp-title, body.dark .hp-count { color: #fff; }
 /* one card, opened from the done panel or the matches: the whole article */
 .dt-article .grabber, .dt-article .sheet-head { margin: 0 -20px; padding-left: 20px; padding-right: 20px; }
 .dt-article .sheet-head { padding-top: 4px; padding-bottom: 10px; }
-.dt-sheet-pic { margin: 0 -20px; overflow: hidden; } /* height set from the card's shape, so it never jumps; no gray box to flash */
+.dt-sheet-pic { position: relative; margin: 0 -20px; overflow: hidden; } /* height set from the card's shape, so it never jumps; no gray box to flash */
+/* More images (Google Images), a black tag in the photo's bottom-right corner: reads on light and dark photos */
+.dt-tag { position: absolute; right: 12px; bottom: 12px; padding: 9px 11px 8px; background: var(--ink); color: #fff; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; -webkit-touch-callout: none; }
 .dt-sheet-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* the article slides up on its own layer and eases in: starts slow, speeds up, settles softly at the top
    (Manu: the faster curves shot up). 0.6s, slower than the app's other sheets. */

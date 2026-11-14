@@ -570,7 +570,9 @@ export function DesignPage(app, root, { onBack } = {}) {
     }
     const ready = pic.decode ? pic.decode().catch(() => {}) : null;
     sheet('', [
-      h('div.dt-sheet-pic', { style: { height: `min(calc(min(100vw, 560px) * ${(c.h / c.w).toFixed(4)}), 58vh)` } }, pic), // the sheet's width (max 560) at the photo's shape, capped
+      h('div.dt-sheet-pic', { style: { height: `min(calc(min(100vw, 560px) * ${(c.h / c.w).toFixed(4)}), 58vh)` } }, pic, // the sheet's width (max 560) at the photo's shape, capped
+        // Manu: More images here too (results and stats both open this sheet), as a tag on the photo
+        h('a.dt-tag', { href: imagesUrl(c), target: '_blank', rel: 'noopener noreferrer' }, 'More images ↗')),
       h('h2.dt-name', c.name),
       h('p.dt-by', c.by),
       h('div.dt-verdicts', row('You', me), row(them(), me == null ? null : they, me == null)),
