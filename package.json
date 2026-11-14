@@ -7,7 +7,9 @@
     "test": "node supabase/test/schema.test.mjs",
     "test:sw": "node build.mjs && node test/sw.test.mjs docs/sw.js",
     "test:media": "node supabase/test/media.test.mjs",
-    "test:words": "node supabase/test/words.test.mjs"
+    "test:words": "node supabase/test/words.test.mjs",
+    "test:events": "node test/events.test.mjs",
+    "test:walk": "node build.mjs && node test/walk.test.mjs"
   },
   "author": "",
   "license": "ISC",
@@ -20,6 +22,7 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
     "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
     "sharp": "^0.35.5",
     "web-push": "^4.0.0"
   },

@@ -1,0 +1,50 @@
+name: Checks
+# Every push to dev or main: is docs/ the build of src/, do the database, service worker, functions and
+# phone-copy tests pass, and does the app open every page and game in ?demo without an error.
+# Push dev, wait for this to go green (about 3–4 minutes), then push main. It doesn't stop a deploy
+# (GitHub Pages and the Supabase job don't wait for it); it says whether to.
+on:
+  push: { branches: [dev, main] }
+  workflow_dispatch:
+permissions: { contents: read }
+concurrency: { group: 'checks-${{ github.ref }}', cancel-in-progress: true }
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - run: npm ci
+
+      - name: docs/ is the build of src/
+        run: |
+          node build.mjs
+          if [ -n "$(git status --porcelain -- docs)" ]; then
+            git status --short -- docs
+            echo "::error::docs/ doesn't match src/. Run node build.mjs and commit docs/."
+            exit 1
+          fi
+
+      - name: Database (schema.sql in PGlite)
+        run: node supabase/test/schema.test.mjs
+      - name: Service worker
+        run: node test/sw.test.mjs docs/sw.js
+      - name: What the phone keeps of the pocket
+        run: node test/events.test.mjs
+      - name: Media function
+        run: node supabase/test/media.test.mjs
+      - name: Words function
+        run: node supabase/test/words.test.mjs
+
+      - name: Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Walk the app (?demo, day and night)
+        run: node test/walk.test.mjs
+      - name: Screenshots of what failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with: { name: walk-screenshots, path: test-results/, if-no-files-found: ignore, retention-days: 14 }
