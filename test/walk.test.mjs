@@ -35,7 +35,11 @@ const showing = ([sel, re]) => {
   const el = document.querySelector(sel);
   if (!el) return `${sel} isn't there`;
   const r = el.getBoundingClientRect();
-  if (Math.abs(r.left) > 4 || r.width < 300) return `${sel} isn't on screen (left ${Math.round(r.left)}, width ${Math.round(r.width)})`;
+  // a game slides in with a CSS transition (games.js GameStack); with no GPU the house's first
+  // frames are so slow that the slide can lag far behind, so for games the end position the app
+  // set counts too
+  const slidIn = el.style.visibility === 'visible' && /^translate3d\(0(px)?,/.test(el.style.transform);
+  if (!slidIn && (Math.abs(r.left) > 4 || r.width < 300)) return `${sel} isn't on screen (left ${Math.round(r.left)}, width ${Math.round(r.width)})`;
   if (!new RegExp(re, 'i').test(el.innerText)) return `${sel} doesn't say /${re}/`;
   return true;
 };
