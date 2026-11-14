@@ -513,8 +513,9 @@ export function DesignPage(app, root, { onBack } = {}) {
         h('p', list.length ? `${agree} of the ${list.length} cards you've both swiped landed on the same side.` : `Once you and ${n} have both swiped a card, it lands here.`)),
       statsList(list),
       section('YOU BOTH LIKE', liked, 'Nothing yet. Keep swiping.'),
-      section('SPLIT', split, 'No disagreements yet.'),
+      // Manu: Split last, it's the most negative (both like, neither of you, then split)
       section('NEITHER OF YOU', neither, 'Nothing you both turned down yet.'),
+      section('SPLIT', split, 'No disagreements yet.'),
     ], { tall: true, quiet: true, className: 'dt-sheet', pullAnywhere: true });
   }
 
