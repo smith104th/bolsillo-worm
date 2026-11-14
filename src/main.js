@@ -23,13 +23,13 @@ import { DesignPage, ArtPage } from './design.js';
 import { LettersPage } from './letters.js';
 import { GamesPage, GameStack, GAMES_BOTTOM } from './games.js';
 import { cache, offlineError } from './cache.js';
+import { EVENT_CAP, COMPOST_H, trimEvents as keepEvents } from './events.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
 // Pocket, Shelf, Games. Soil, Garden & House, Design Tinder and Five Letters open from Games (Manu, Nov 12-13).
 const PAGE = { pocket: 0, shelf: 1, games: 2 };
 const DESIGN_BG = '#FFFFFF';
-const COMPOST_H = 72; // opened things settle into the soil after three days
 let backend, pocket, shelf, soil, design, art, house, letters, games, stack, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
 const params = new URLSearchParams(location.search);
@@ -121,10 +121,10 @@ function fatal(e) {
 }
 
 // ─────────────────────────────────────────────── state
-function applyData({ hole, members, events, fullLoadAt = null }, { fresh = true } = {}) {
+function applyData({ hole, members, events, capped = null, fullLoadAt = null }, { fresh = true } = {}) {
   S.hole = hole; S.members = members;
-  S.events = events.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  S.eventsCapped = events.length >= 500; // load() stops at 500; older ones come from backend.archive()
+  S.events = keepEvents(events); // newest EVENT_CAP + older things still in the pocket (events.js)
+  S.eventsCapped = capped ?? events.length >= EVENT_CAP; // older ones come from backend.archive()
   const mine = members.find((m) => m.user_id === backend.userId);
   if (mine) S.slot = mine.slot;
   S.syncedAt = newest(S.events) || S.syncedAt || null;
@@ -137,7 +137,7 @@ let saveTimer = 0;
 function saveCopy() {
   if (DEMO || !S.hole) return;
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => cache.set('data', { hole: S.hole, members: S.members, events: S.events.slice(0, 500), syncedAt: S.syncedAt, fullLoadAt: S.fullLoadAt }), 600);
+  saveTimer = setTimeout(() => cache.set('data', { hole: S.hole, members: S.members, events: keepEvents(S.events.slice()), syncedAt: S.syncedAt, fullLoadAt: S.fullLoadAt }), 600);
 }
 
 function pocketItems() {
@@ -356,8 +356,8 @@ async function doSync() {
   } catch (e) { if (!offlineError(e)) console.warn(e); /* offline: keep what we have */ }
 }
 function trimEvents() {
-  S.events.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  if (S.events.length > 500) { S.events.length = 500; S.eventsCapped = true; }
+  if (S.events.length > EVENT_CAP) S.eventsCapped = true;
+  keepEvents(S.events);
 }
 // the pocket is gone on the server (crawled out from another phone): start over
 async function leftPocket() { await cache.clear(); location.reload(); }

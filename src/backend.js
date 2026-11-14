@@ -1,8 +1,9 @@
 // Talks to Supabase: anonymous sign-in, RPCs, realtime presence + fingertips.
 import { createClient } from '@supabase/supabase-js';
+import { ITEM_KINDS, EVENT_CAP, mergeEvents, compostFrom } from './events.js';
 
 const EVENT_COLS = 'id,hole_id,from_slot,kind,payload,media_id,created_at,opened_at,kept,updated_at';
-const ARCHIVE_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
+const ARCHIVE_KINDS = ITEM_KINDS;
 
 export function supabaseBackend(cfg) {
   const sb = createClient(cfg.supabaseUrl, cfg.supabaseKey, {
@@ -105,14 +106,20 @@ export function supabaseBackend(cfg) {
       return userId;
     },
     get userId() { return userId; },
+    // the newest EVENT_CAP events, plus older things still in the pocket (unopened, or opened and
+    // not composted yet), so a note from days ago doesn't fall out behind a pile of kisses
     async load() {
-      const [h, m, e] = await Promise.all([
+      const items = () => sb.from('events').select(EVENT_COLS).in('kind', ITEM_KINDS).eq('kept', false).order('created_at', { ascending: false }).limit(200);
+      const [h, m, e, unopened, opened] = await Promise.all([
         sb.from('holes').select('*').maybeSingle(),
         sb.from('members').select('*').order('slot'),
-        sb.from('events').select(EVENT_COLS).order('created_at', { ascending: false }).limit(500),
+        sb.from('events').select(EVENT_COLS).order('created_at', { ascending: false }).limit(EVENT_CAP),
+        items().is('opened_at', null),
+        items().gt('opened_at', compostFrom()),
       ]);
-      for (const r of [h, m, e]) if (r.error) throw new Error(r.error.message);
-      return { hole: h.data, members: m.data || [], events: e.data || [] };
+      for (const r of [h, m, e, unopened, opened]) if (r.error) throw new Error(r.error.message);
+      const newest = e.data || [];
+      return { hole: h.data, members: m.data || [], events: mergeEvents(newest, unopened.data, opened.data), capped: newest.length >= EVENT_CAP };
     },
     // what changed since the phone last looked (new things, opens, keeps, pet counts), oldest first.
     // Comes back full (`more`) when there's too much to merge; the caller reloads instead.

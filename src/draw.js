@@ -243,7 +243,7 @@ export const TRINKETS = {
   candy: 'a candy', key: 'a tiny key',
 };
 // ── things that arrive through the hole ──────────────────────
-export const ITEM_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
+export { ITEM_KINDS } from './events.js';
 export const PAPERS = { white: '#FFFFFF', rosa: '#FCD3DC', celeste: '#CFE6FA', limon: '#F6F1A6' };
 
 export function itemRadius(kind) {

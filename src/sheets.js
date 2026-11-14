@@ -9,6 +9,7 @@ import { PROVIDERS } from './music.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { plantSheet, viewPhoto } from './soil.js';
 import { leaveSheet } from './shelf.js';
+import { ITEM_KINDS, windowEdge } from './events.js';
 import { sfx } from './feel.js';
 import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
 import { backupSheet, backupDue, lastBackup } from './backup.js';
@@ -290,12 +291,13 @@ function jarIcon(e) {
   }
   return h('span.jar-art');
 }
-const JAR_KINDS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
+const JAR_KINDS = ITEM_KINDS;
 export function jarSheet(app) {
   // starts with what's loaded, then pages back through everything (backend.archive)
   const all = app.S.events.filter((e) => JAR_KINDS.includes(e.kind));
   const seen = new Set(all.map((e) => e.id));
-  let oldest = all.length ? all[all.length - 1].created_at : null;
+  // page back from the end of the unbroken newest run, not from an older thing still in the pocket
+  let oldest = windowEdge(app.S.events);
   let done = !app.S.eventsCapped, loading = false;
   let filter = 'theirs';
   const grid = h('div.jar');
@@ -313,6 +315,7 @@ export function jarSheet(app) {
     try {
       const page = await app.backend.archive({ before: oldest, limit: 80 });
       for (const e of page) if (!seen.has(e.id)) { seen.add(e.id); all.push(e); }
+      all.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
       if (page.length) oldest = page[page.length - 1].created_at;
       if (page.length < 80) done = true;
       render();
