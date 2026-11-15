@@ -400,23 +400,27 @@ begin
 end $$;
 
 -- your partner's half only comes up once you've done yours
-create or replace function public.wh_dailies(p_limit int default 120)
+-- p_thumb_days: only the newest N days (from the pocket's today) come with their previews; null = every day.
+-- Today asks for 1 (it only shows today's photos; the phone keeps older previews), Soil and the zine for all.
+drop function if exists public.wh_dailies(int);
+create or replace function public.wh_dailies(p_limit int default 120, p_thumb_days int default null)
 returns table (day date,
                my_answer text, their_answer text, their_answered boolean,
                my_photo bigint, my_thumb text, their_photo bigint, their_thumb text, their_photographed boolean)
 language plpgsql stable security definer set search_path = public as $$
-declare m members;
+declare m members; t date;
 begin
   select * into m from members where user_id = auth.uid();
   if not found then raise exception 'no_hole'; end if;
+  t := wh_today(m.hole_id);
   return query
     select x.day,
       me.answer,
       case when me.answered_at is not null then th.answer end,
       th.answered_at is not null,
-      me.photo, me.thumb,
+      me.photo, case when p_thumb_days is null or x.day > t - p_thumb_days then me.thumb end,
       case when me.photographed_at is not null then th.photo end,
-      case when me.photographed_at is not null then th.thumb end,
+      case when me.photographed_at is not null and (p_thumb_days is null or x.day > t - p_thumb_days) then th.thumb end,
       th.photographed_at is not null
     from (select distinct dd.day from dailies dd where dd.hole_id = m.hole_id) x
     left join dailies me on me.hole_id = m.hole_id and me.day = x.day and me.slot = m.slot
@@ -1127,7 +1131,7 @@ revoke execute on function
   public.wh_create(text, jsonb, jsonb), public.wh_join(text, text, jsonb, jsonb), public.wh_reclaim(text, smallint),
   public.wh_leave(), public.wh_update_me(jsonb), public.wh_drop_push(smallint),
   public.wh_act(text, jsonb, text, text), public.wh_open(bigint, boolean), public.wh_set_reunion(date, text),
-  public.wh_daily(date, text, text, text, text), public.wh_dailies(int),
+  public.wh_daily(date, text, text, text, text), public.wh_dailies(int, int),
   public.wh_retunnel(uuid), public.wh_dig_km(uuid, smallint, double precision), public.wh_code(),
   public.wh_today(uuid), public.wh_plant(text), public.wh_unplant(date), public.wh_planted(),
   public.wh_stats(timestamptz, timestamptz), public.wh_seal(jsonb, jsonb, text, text), public.wh_unseal(bigint),
@@ -1138,7 +1142,7 @@ grant execute on function
   public.wh_create(text, jsonb, jsonb), public.wh_join(text, text, jsonb, jsonb), public.wh_reclaim(text, smallint),
   public.wh_leave(), public.wh_update_me(jsonb), public.wh_drop_push(smallint),
   public.wh_act(text, jsonb, text, text), public.wh_open(bigint, boolean), public.wh_set_reunion(date, text),
-  public.wh_daily(date, text, text, text, text), public.wh_dailies(int),
+  public.wh_daily(date, text, text, text, text), public.wh_dailies(int, int),
   public.wh_plant(text), public.wh_unplant(date), public.wh_planted(), public.wh_stats(timestamptz, timestamptz),
   public.wh_seal(jsonb, jsonb, text, text), public.wh_unseal(bigint)
 to authenticated;

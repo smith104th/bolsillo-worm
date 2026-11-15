@@ -59,11 +59,21 @@ export function dropSheet(app) {
 
 // ── today: one photo, one answer, buried until both
 export async function todaySheet(app) {
-  const body = h('div.today', h('p.small.muted', 'Digging…'));
+  const body = h('div.today');
   const s = sheet('Today', body, { tall: true });
-  const render = async () => {
-    let rows = [];
-    try { rows = await app.backend.dailies(); } catch (e) { body.replaceChildren(h('p', 'Couldn\'t reach the soil. Try again.')); return; }
+  // Opens from the rows on the phone, then the server's (src/dailies.js). Today only shows today's
+  // photos, so it only asks for today's previews. Whatever you've typed survives a redraw.
+  let draft = '', drawn = false;
+  const draw = (rows, state) => {
+    if (!rows) {
+      if (drawn) return; // keep what's on screen
+      body.replaceChildren(state === 'offline'
+        ? h('p.small.muted', 'No signal right now. Today shows up as soon as you\'re back.')
+        : h('p.small.muted', 'Digging…'));
+      return;
+    }
+    drawn = true;
+    const typing = document.activeElement?.closest?.('.today') === body && document.activeElement.tagName === 'TEXTAREA';
     const today = app.today();
     const t = rows.find((r) => r.day === today) || { day: today };
     const them = app.them()?.name || 'Them';
@@ -93,7 +103,7 @@ export async function todaySheet(app) {
       else if (t.their_photographed) toast('Post yours to dig theirs up.');
     });
 
-    const ans = h('textarea', { rows: 3, maxLength: 1000, placeholder: 'Your answer…', value: t.my_answer || '' });
+    const ans = h('textarea', { rows: 3, maxLength: 1000, placeholder: 'Your answer…', value: t.my_answer || draft, oninput: () => { draft = ans.value; } });
     const answerBox = t.my_answer
       ? h('div.answer.mine', h('span.who', 'You'), h('p', t.my_answer), theirReactions(app, { day: today, part: 'answer' }))
       : h('div.answer-form', ans, btn('Bury my answer', async (e) => {
@@ -102,7 +112,7 @@ export async function todaySheet(app) {
         try {
           const r = await app.backend.daily(today, { answer: ans.value.trim() });
           app.backend.nudge('daily', { part: 'answer', both: r.both });
-          render();
+          draft = ''; render();
         } catch { e.currentTarget.disabled = false; toast('Couldn\'t bury it. Try again.'); }
       }, 'primary'));
     const tA = { day: today, part: 'answer', about: 'answer' }, tP = { day: today, part: 'photo', about: 'photo of the day' };
@@ -126,10 +136,12 @@ export async function todaySheet(app) {
         h('button.soil-link', { type: 'button', onclick: () => { s.close(); app.openGame('soil'); } }, h('b', 'Soil'), h('span', layers ? `${layers} earlier question${layers > 1 ? 's' : ''}, answered together` : 'Every question you both answer')),
         h('button.plant-link', { type: 'button', onclick: () => plantSheet(app) }, h('b', '🌱'), h('span', `Plant a question for ${them}`))),
     ].filter(Boolean));
+    if (typing && !t.my_answer) { ans.focus(); ans.setSelectionRange(ans.value.length, ans.value.length); }
   };
+  const render = (first = false) => app.dailies.show(draw, { thumbDays: 1 }, { first });
   app.onDaily(() => { if (!s.el.isConnected) return false; render(); });
   app.onReact = (ev) => { if (s.el.isConnected && ev?.payload?.day) render(); };
-  render();
+  render(true);
 }
 
 const viewFull = (app, mediaId, thumb) => viewPhoto(app, mediaId, thumb, 'Today');

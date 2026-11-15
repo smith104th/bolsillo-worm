@@ -9,6 +9,7 @@
     "test:media": "node supabase/test/media.test.mjs",
     "test:words": "node supabase/test/words.test.mjs",
     "test:events": "node test/events.test.mjs",
+    "test:dailies": "node test/dailies.test.mjs",
     "test:walk": "node build.mjs && node test/walk.test.mjs"
   },
   "author": "",

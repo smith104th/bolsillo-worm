@@ -142,7 +142,13 @@ export function supabaseBackend(cfg) {
     setReunion: (on, note) => rpc('wh_set_reunion', { p_on: on, p_note: note }),
     daily: async (day, { answer = null, photo = null, mime = null, thumb = null }) =>
       rpc('wh_daily', { p_day: day, p_answer: answer, p_photo: await stash(photo, mime), p_mime: mime, p_thumb: thumb }),
-    dailies: (limit = 120) => rpc('wh_dailies', { p_limit: limit }),
+    // thumbDays: only the newest N days come with their previews (Today asks for 1). Until migration
+    // 020 is live the server doesn't know p_thumb_days; ask the old way then.
+    dailies: async (limit = 120, thumbDays = null) => {
+      if (!thumbDays) return rpc('wh_dailies', { p_limit: limit });
+      try { return await rpc('wh_dailies', { p_limit: limit, p_thumb_days: thumbDays }); }
+      catch (e) { if (/PGRST202|could not find the function|p_thumb_days/i.test(e.message)) return rpc('wh_dailies', { p_limit: limit }); throw e; }
+    },
     plant: (question) => rpc('wh_plant', { p_question: question }),
     unplant: (day) => rpc('wh_unplant', { p_day: day }),
     planted: () => rpc('wh_planted'),

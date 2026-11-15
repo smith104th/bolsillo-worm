@@ -66,10 +66,11 @@ const res = await build({
 const js = res.outputFiles[0].text;
 const css = readFileSync('src/styles.css', 'utf8');
 const version = createHash('sha1').update(js + css + DECK_V + ART_V + WORDS_V).digest('hex').slice(0, 8);
+const CSS_V = createHash('sha1').update(css).digest('hex').slice(0, 8); // the stylesheet's own version, so an update that only changes the app doesn't re-download it
 writeFileSync(`${OUT}/app.js`, js.replace('"dev"', JSON.stringify(version)));
 writeFileSync(`${OUT}/styles.css`, css);
-writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replaceAll('__VERSION__', version));
-writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__DECK__', DECK_URL).replaceAll('__ART__', ART_URL).replaceAll('__WORDS__', WORDS_URL));
+writeFileSync(`${OUT}/index.html`, readFileSync('src/index.html', 'utf8').replaceAll('styles.css?v=__VERSION__', `styles.css?v=${CSS_V}`).replaceAll('__VERSION__', version));
+writeFileSync(`${OUT}/sw.js`, readFileSync('src/sw.js', 'utf8').replaceAll('__VERSION__', version).replaceAll('__CSSV__', CSS_V).replaceAll('__DECK__', DECK_URL).replaceAll('__ART__', ART_URL).replaceAll('__WORDS__', WORDS_URL));
 copyFileSync('src/manifest.webmanifest', `${OUT}/manifest.webmanifest`);
 writeFileSync(`${OUT}/.nojekyll`, '');
 // /deck/: a page to look through every Design Tinder card (reads design/deck.json, same photos as the app).

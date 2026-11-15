@@ -109,6 +109,20 @@ const dailyEvents = await as(U.A, `select * from events where kind = 'daily' ord
 assert.equal(dailyEvents.length, 4);
 assert.equal(dailyEvents[3].payload.both, true);
 assert.equal((await as(U.A, 'select * from dailies')).length, 1, 'own daily rows only');
+// Today's call (Nov 14): only the newest p_thumb_days days come with previews; photo ids always do
+const yday2 = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+await as(U.A, 'select wh_daily($1, null, $2, $3, $4)', [yday2, 'data:image/jpeg;base64,AAAA', 'image/jpeg', 'thumbA2']);
+await as(U.B, 'select wh_daily($1, null, $2, $3, $4)', [yday2, 'data:image/jpeg;base64,BBBB', 'image/jpeg', 'thumbB2']);
+const [{ t: pocketToday }] = (await db.query(`select wh_today(hole_id)::text t from members where user_id = '${U.A}'`)).rows;
+const lite = await as(U.A, 'select day::text, my_thumb, their_thumb, my_photo, their_photo from wh_dailies(10, 1)');
+assert.ok(lite.length >= 2);
+for (const r of lite) {
+  assert.ok(r.my_photo && r.their_photo, 'photo ids always come');
+  if (r.day < pocketToday) { assert.equal(r.my_thumb, null); assert.equal(r.their_thumb, null); } else { assert.ok(r.my_thumb && r.their_thumb); }
+}
+const every = await as(U.A, 'select day::text, my_thumb, their_thumb from wh_dailies(10)');
+assert.deepEqual(every.find((r) => r.day === yday2), { day: yday2, my_thumb: 'thumbA2', their_thumb: 'thumbB2' });
+assert.equal((await as(U.A, 'select * from wh_dailies(10, null)')).length, every.length);
 
 // photos in R2: the media function makes the row, the app passes "media:<id>"
 const r2row = async (slot, key = crypto.randomUUID()) =>

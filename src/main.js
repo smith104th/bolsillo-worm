@@ -24,6 +24,7 @@ import { LettersPage } from './letters.js';
 import { GamesPage, GameStack, GAMES_BOTTOM } from './games.js';
 import { cache, offlineError } from './cache.js';
 import { EVENT_CAP, COMPOST_H, trimEvents as keepEvents } from './events.js';
+import { Dailies } from './dailies.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
@@ -73,6 +74,8 @@ const app = {
   dailyChanged: () => { for (const f of dailyFns) if (f() === false) dailyFns.delete(f); },
   onReact: null,
 };
+// Today's and Soil's rows, kept on the phone (src/dailies.js)
+app.dailies = Dailies(app, { demo: DEMO });
 
 // ─────────────────────────────────────────────── boot
 boot().catch((e) => fatal(e));

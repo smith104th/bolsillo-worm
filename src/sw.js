@@ -2,7 +2,7 @@
 const VERSION = '__VERSION__';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
-  './', './index.html', `./app.js?v=${VERSION}`, `./styles.css?v=${VERSION}`, './manifest.webmanifest',
+  './', './index.html', `./app.js?v=${VERSION}`, './styles.css?v=__CSSV__', './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
   './icons/icon-192.png', './icons/badge-96.png', '__DECK__', '__ART__', '__WORDS__',
 ];
@@ -38,8 +38,19 @@ function groupedText(kind, g, name) {
   return { title: `${who} knocked ${g.n} times`, body: 'Still thinking about you.' };
 }
 
+// A new version only downloads what changed (Manu, Nov 14: every update re-downloaded the decks and
+// the word list too). Files whose address carries their own content version (?v=…: the stylesheet,
+// both decks, the word list) are copied from the version before when it has them; the rest is fetched.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil((async () => {
+    const c = await caches.open(CACHE);
+    await Promise.all(SHELL.map(async (u) => {
+      const url = new URL(u, self.registration.scope).href;
+      const had = url.includes('?v=') ? await caches.match(url) : null;
+      return had ? c.put(url, had) : c.add(url);
+    }));
+    self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (e) => {

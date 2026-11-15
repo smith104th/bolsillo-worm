@@ -35,6 +35,8 @@ jobs:
         run: node test/sw.test.mjs docs/sw.js
       - name: What the phone keeps of the pocket
         run: node test/events.test.mjs
+      - name: Today and Soil rows on the phone
+        run: node test/dailies.test.mjs
       - name: Media function
         run: node supabase/test/media.test.mjs
       - name: Words function

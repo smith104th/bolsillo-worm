@@ -7,9 +7,12 @@ const scope = 'https://smith104th.github.io/bolsillo-worm/';
 const store = new Map();
 const caches = {
   async open(name) { if (!store.has(name)) store.set(name, new Map()); const m = store.get(name);
-    return { match: async (u) => (m.has(String(u)) ? new Response(m.get(String(u))) : undefined), put: async (u, r) => m.set(String(u.url || u), await r.text()), addAll: async () => {} }; },
+    return { match: async (u) => (m.has(String(u)) ? new Response(m.get(String(u))) : undefined), put: async (u, r) => m.set(String(u.url || u), await r.text()), addAll: async () => {},
+      add: async (u) => { const r = await net(String(u)); if (!r.ok) throw new Error('bad'); m.set(String(u), await r.text()); } }; },
   keys: async () => [...store.keys()], delete: async (k) => store.delete(k),
+  match: async (u) => { for (const m of store.values()) if (m.has(String(u))) return new Response(m.get(String(u))); },
 };
+let net = () => Promise.reject(new Error('offline'));
 let tray = [], badge = null, windows = [], opened = [], messages = [];
 const handlers = {};
 const self = {
@@ -23,7 +26,7 @@ const self = {
   addEventListener: (t, f) => { handlers[t] = f; },
   skipWaiting: () => {},
 };
-vm.runInNewContext(src, { self, caches, Response, URL, location: new URL(scope), fetch: () => Promise.reject(new Error('offline')), console });
+vm.runInNewContext(src, { self, caches, Response, URL, location: new URL(scope), fetch: (...a) => net(...a), console });
 const push = async (d) => { let p; handlers.push({ data: { json: () => d }, waitUntil: (x) => { p = x; } }); await p; };
 const click = async (n) => { let p; handlers.notificationclick({ notification: n, waitUntil: (x) => { p = x; } }); await p; };
 const state = async () => JSON.parse((await (await caches.open('bw-state')).match(new URL('./__bw-state', scope).href)?.then?.((r) => r.text())) || (await (async () => { const r = await (await caches.open('bw-state')).match(new URL('./__bw-state', scope).href); return r ? r.text() : '{}'; })()));
@@ -109,6 +112,22 @@ ok(tray.find((n) => n.tag === 'kiss').title === 'Your person sent you 2 kisses ð
 await caches.open('bw-old');
 let p; handlers.activate({ waitUntil: (x) => { p = x; } }); await p;
 ok(store.has('bw-state') && !store.has('bw-old'), 'activate keeps bw-state, drops old caches');
+
+// a new version only downloads what changed: files with their own ?v= come from the version before
+{
+  const shell = [...src.matchAll(/'(\.\/[^']*\?v=[^']+)'/g)].map((m) => new URL(m[1], scope).href);
+  ok(shell.length >= 4 && shell.some((u) => u.includes('styles.css?v=')) && shell.some((u) => u.includes('design/deck.json?v=')), 'stylesheet and decks carry their own versions');
+  const old = await caches.open('bw-previous');
+  for (const u of shell) await old.put(u, new Response('kept ' + u));
+  const got = [];
+  net = async (u) => { got.push(u); return new Response('fresh ' + u); };
+  let pi; handlers.install({ waitUntil: (x) => { pi = x; } }); await pi;
+  ok(!got.some((u) => shell.includes(u)), 'versioned files are not downloaded again');
+  ok(got.some((u) => u.includes('/app.js?v=')) && got.includes(scope), 'the app and the page are');
+  const now = [...store.keys()].find((k) => /^bw-[0-9a-f]{8}$/.test(k) || k === 'bw-__VERSION__');
+  ok(now && store.get(now).get(shell[0]) === 'kept ' + shell[0], 'copied into the new version\'s cache');
+  net = () => Promise.reject(new Error('offline'));
+}
 
 // a push with nothing readable still shows something
 let pp; handlers.push({ data: { json: () => { throw new Error('bad'); }, text: () => 'hi' }, waitUntil: (x) => { pp = x; } }); await pp;

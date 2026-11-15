@@ -20,9 +20,14 @@ export function SoilPage(app, root, { onBack } = {}) {
   const back = h('button.tab', { type: 'button', 'aria-label': 'Back', onclick: () => onBack?.() }, icon('back'), h('span.lbl', 'Back'));
   root.replaceChildren(scroll, print, h('div.hp-dock.soil-dock', h('div.tabbar.glass.hp-bar', back)));
 
-  async function load() {
-    try { rows = await app.backend.dailies(400); } catch { /* keep what we have */ }
-    render();
+  // Opens from the rows on the phone (src/dailies.js), then the server's; every day's previews.
+  let state = 'waiting';
+  const drafts = new Map(); // what you've typed, kept across redraws (by placeholder)
+  async function load(first = false) {
+    await app.dailies.show((r, st) => {
+      if (r) rows = r; else if (rows) return;
+      state = st; if (visible) render();
+    }, { limit: 400 }, { first: first && !rows });
   }
 
   function render() {
@@ -46,7 +51,7 @@ export function SoilPage(app, root, { onBack } = {}) {
       : h('div.s-form', ans, btn('Bury my answer', async (e) => {
         const v = ans.value.trim(); if (!v) return ans.focus();
         const b = e.currentTarget; b.disabled = true;
-        try { const r = await app.backend.daily(today, { answer: v }); app.backend.nudge('daily', { part: 'answer', both: r.both }); await load(); }
+        try { const r = await app.backend.daily(today, { answer: v }); app.backend.nudge('daily', { part: 'answer', both: r.both }); ans.value = ''; await load(); }
         catch { b.disabled = false; toast('Couldn\'t bury it. Try again.'); }
       }, 's-btn'));
     const theirs = t.their_answer
@@ -70,6 +75,7 @@ export function SoilPage(app, root, { onBack } = {}) {
         try {
           const day = String(await app.backend.plant(q)).slice(0, 10);
           app.backend.nudge('plant', { when: app.whenDay(day) });
+          seedIn.value = '';
           toast(`Planted. It comes up ${app.whenDay(day)}.`, { tone: 'love' });
           await app.loadPlanted(); render();
         } catch (err) { b.disabled = false; toast(/too_many/.test(err.message) ? 'Seven seeds in the ground already. Let one come up first.' : 'Couldn\'t plant it. Try again.'); }
@@ -98,14 +104,21 @@ export function SoilPage(app, root, { onBack } = {}) {
           h('div', h('span.s-who', 'You'), h(`p${r.my_answer ? '' : '.none'}`, r.my_answer || 'No answer'), pic(r.my_photo, r.my_thumb, 'Your')),
           h('div', h('span.s-who', them), h(`p${r.their_answer ? '' : '.none'}`, r.their_answer || (r.their_answered ? 'Buried. You never dug it up.' : 'No answer')), pic(r.their_photo, r.their_thumb, them)))));
     }
-    if (!past.length) earlier.push(h('p.s-note', rows ? 'Every question you both answer settles here, newest on top.' : 'Digging…'));
+    if (!past.length) earlier.push(h('p.s-note', rows ? 'Every question you both answer settles here, newest on top.'
+      : state === 'offline' ? 'No signal right now. Everything you\'ve answered shows up as soon as you\'re back.' : 'Digging…'));
     out.push(h('section.s-earlier', earlier));
 
     const foot = h('footer.s-foot', btn('Print our year', () => zineSheet(app), 's-btn'), h('p.s-note', 'A half-letter zine of every question, photo and note from the year.'));
     // what's new sits on white; everything that came before stays green
     const [header, todaySec, plantSec, earlierSec] = out;
     const y = scroll.scrollTop;
+    const focused = document.activeElement?.closest?.('.soil-scroll') === scroll ? document.activeElement.placeholder : null;
+    for (const ta of scroll.querySelectorAll('textarea')) drafts.set(ta.placeholder, ta.value);
     scroll.replaceChildren(h('div.s-top', header, todaySec, plantSec), h('div.s-bottom', earlierSec, foot));
+    for (const ta of scroll.querySelectorAll('textarea')) {
+      if (drafts.get(ta.placeholder)) ta.value = drafts.get(ta.placeholder);
+      if (ta.placeholder === focused) { ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }
     scroll.scrollTop = y;
   }
 
@@ -113,7 +126,7 @@ export function SoilPage(app, root, { onBack } = {}) {
   return {
     // seeds get re-dealt whenever either of you plants or digs up: refresh them on
     // every visit too (loadPlanted fires onDaily, which re-renders)
-    show() { visible = true; render(); load(); app.loadPlanted(); },
+    show() { visible = true; render(); load(true); app.loadPlanted(); },
     hide() { visible = false; },
     refresh() { if (visible) load(); },
   };
