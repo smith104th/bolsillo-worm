@@ -1,0 +1,90 @@
+name: Restore test
+# Proves the backups can be brought back (Manu, Nov 14: "should we be making copies or backups?").
+# Takes the newest daily backup from R2, restores it into a throwaway local Supabase database on the
+# runner (nothing live is touched), then checks it: the same pockets and members as live, rows in every
+# table, the app's own functions answer as a member, and every photo the database points to is in R2.
+# Monthly, by hand (Actions → Restore test → Run workflow), and when this file changes.
+on:
+  schedule: [{ cron: '41 9 3 * *' }]   # the 3rd of each month
+  workflow_dispatch:
+  push: { branches: [main, dev], paths: ['.github/workflows/restore-test.yml', 'supabase/restore-check.sql'] }
+permissions: { contents: read }
+concurrency: { group: restore-test }
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      BUCKET: bolsillo-worm
+      LOCAL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Database connection (live, read only)
+        env: { PW: '${{ secrets.SUPABASE_DB_PASSWORD }}' }
+        run: |
+          enc=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["PW"].strip(), safe=""))')
+          url="postgresql://postgres.kgoxwpmefkpmmlsgyyau:${enc}@aws-1-us-west-2.pooler.supabase.com:5432/postgres"
+          echo "::add-mask::$url"; echo "DB_URL=$url" >> "$GITHUB_ENV"
+      - name: psql (newest)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client >/dev/null
+          psql --version
+      - name: Newest backup from R2
+        run: |
+          set -euo pipefail
+          ep="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          day=$(aws s3 ls "s3://$BUCKET/backups/daily/" --endpoint-url "$ep" | awk '{print $4}' | grep -oE 'pocket-[0-9-]+' | sort | tail -1 | sed 's/pocket-//')
+          [ -n "$day" ] || { echo "::error::No backups in R2"; exit 1; }
+          for f in pocket auth; do aws s3 cp "s3://$BUCKET/backups/daily/$f-$day.sql.gz" . --endpoint-url "$ep" --only-show-errors; done
+          ls -la ./*.gz; echo "DAY=$day" >> "$GITHUB_ENV"
+          aws s3 ls "s3://$BUCKET/media/" --recursive --endpoint-url "$ep" | awk '{print $4}' | sort > r2-media.txt
+          echo "$(wc -l < r2-media.txt) files under media/ in R2"
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - name: Throwaway Supabase database (same Postgres major as live)
+        run: |
+          set -euo pipefail
+          major=$(psql "$DB_URL" -Atc "show server_version_num" | cut -c1-2)
+          echo "live is Postgres $major"
+          mkdir -p /tmp/scratch && cd /tmp/scratch
+          supabase init --force </dev/null >/dev/null
+          sed -i "s/^major_version = .*/major_version = $major/" supabase/config.toml
+          # only the database and auth (auth creates the auth tables the backup's sign-ins go into)
+          supabase start -x realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+          psql "$LOCAL" -Atc "select version()"
+      - name: Restore
+        run: |
+          set -euo pipefail
+          gunzip -c "auth-$DAY.sql.gz" | psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction
+          gunzip -c "pocket-$DAY.sql.gz" | psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction
+          echo "restored the backup of $DAY"
+      - name: Check it against live
+        run: |
+          set -euo pipefail
+          q="select json_object_agg(t, n) from (
+               select 'holes' t, count(*) n from public.holes union all select 'members', count(*) from public.members
+               union all select 'events', count(*) from public.events union all select 'media', count(*) from public.media
+               union all select 'dailies', count(*) from public.dailies union all select 'design_swipes', count(*) from public.design_swipes
+               union all select 'art_swipes', count(*) from public.art_swipes union all select 'sealed', count(*) from public.sealed
+               union all select 'auth_users', count(*) from auth.users) x"
+          echo "live:     $(psql "$DB_URL" -Atc "$q")"
+          echo "restored: $(psql "$LOCAL" -Atc "$q")"
+          # the backup has every pocket and member that live had the day it was taken (a pocket made later
+          # that day may be missing, one deleted since may still be there)
+          lo=$(psql "$DB_URL" -Atc "select (select count(*) from public.holes where created_at < date '$DAY')||','||(select count(*) from public.members where joined_at < date '$DAY')")
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -At -v lo="$lo" -f supabase/restore-check.sql
+          # every photo and whisper the backup points to is in R2
+          psql "$LOCAL" -Atc "select r2 from public.media where r2 is not null order by 1" > db-media.txt
+          missing=$(comm -23 db-media.txt r2-media.txt | wc -l)
+          echo "$(wc -l < db-media.txt) files in the backup, $missing missing from R2"
+          [ "$missing" -eq 0 ] || { comm -23 db-media.txt r2-media.txt | head; echo "::error::$missing files missing from R2"; exit 1; }
+          echo "### Restore test: the backup of $DAY restores and checks out" >> "$GITHUB_STEP_SUMMARY"

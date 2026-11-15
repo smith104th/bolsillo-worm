@@ -1,0 +1,73 @@
+name: Vault
+# A second copy outside Cloudflare (Manu, Nov 14): every week, every photo and whisper file from R2 and
+# the newest database backup go into the private repo smith104th/bolsillo-worm-vault. If the Cloudflare
+# account ever went away, the vault plus a restore (supabase/BACKUPS.md) brings everything back.
+# Needs the repo secret VAULT_TOKEN: a fine-grained GitHub token with Contents read and write on the
+# vault repo only. Until it's there, the job says so and stops without failing.
+on:
+  schedule: [{ cron: '17 10 * * 0' }]   # Sundays
+  workflow_dispatch:
+  push: { branches: [main], paths: ['.github/workflows/vault.yml'] }
+permissions: { contents: read }
+concurrency: { group: vault }
+jobs:
+  vault:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      BUCKET: bolsillo-worm
+      HAS_TOKEN: ${{ secrets.VAULT_TOKEN != '' }}
+    steps:
+      - name: Is the vault set up?
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::warning::No VAULT_TOKEN secret yet, so nothing was copied (see the top of vault.yml)"
+      - uses: actions/checkout@v4
+        if: env.HAS_TOKEN == 'true'
+        with: { repository: smith104th/bolsillo-worm-vault, token: '${{ secrets.VAULT_TOKEN }}', path: vault, fetch-depth: 1 }
+      - name: Copy from R2
+        if: env.HAS_TOKEN == 'true'
+        run: |
+          set -euo pipefail
+          ep="https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          # photos and whispers: only files the vault doesn't have yet come down
+          aws s3 sync "s3://$BUCKET/media/" vault/media/ --endpoint-url "$ep" --only-show-errors
+          # the newest database backup; git keeps every week's version in the vault's history
+          day=$(aws s3 ls "s3://$BUCKET/backups/daily/" --endpoint-url "$ep" | awk '{print $4}' | grep -oE 'pocket-[0-9-]+' | sort | tail -1 | sed 's/pocket-//')
+          [ -n "$day" ] || { echo "::error::No backups in R2"; exit 1; }
+          mkdir -p vault/database
+          for f in pocket auth; do aws s3 cp "s3://$BUCKET/backups/daily/$f-$day.sql.gz" "vault/database/$f.sql.gz" --endpoint-url "$ep" --only-show-errors; done
+          echo "$day" > vault/database/DAY
+          # the vault has every file R2 has
+          aws s3 ls "s3://$BUCKET/media/" --recursive --endpoint-url "$ep" | awk '{print $4}' | sed 's#^media/##' | sort > r2.txt
+          (cd vault/media && ls -1 | sort) > vault.txt
+          missing=$(comm -23 r2.txt vault.txt | wc -l)
+          [ "$missing" -eq 0 ] || { echo "::error::$missing files didn't make it into the vault"; exit 1; }
+          echo "FILES=$(wc -l < vault.txt)" >> "$GITHUB_ENV"; echo "DAY=$day" >> "$GITHUB_ENV"
+          cat > vault/README.md <<'EOF'
+          # Bolsillo Worm vault
+
+          A second copy of everything, outside Cloudflare, kept up to date every Sunday by
+          `.github/workflows/vault.yml` in smith104th/bolsillo-worm. Private: only this account can see it.
+
+          - `media/`: every photo and whisper file, named by its key in R2 (the database's `media.r2`
+            column says which is which and its type).
+          - `database/pocket.sql.gz` and `database/auth.sql.gz`: the newest daily database backup
+            (`database/DAY` says which day). Every earlier week is in this repo's history.
+
+          To bring everything back: supabase/BACKUPS.md in smith104th/bolsillo-worm.
+          EOF
+      - name: Save
+        if: env.HAS_TOKEN == 'true'
+        run: |
+          cd vault
+          git add -A
+          if git diff --cached --quiet; then echo "nothing new this week"; exit 0; fi
+          git -c user.name="Bolsillo Worm" -c user.email="vault@users.noreply.github.com" commit -q -m "Backup of $DAY, $FILES photo and whisper files"
+          git push -q
+          echo "### Vault: backup of $DAY and $FILES photo and whisper files saved" >> "$GITHUB_STEP_SUMMARY"
