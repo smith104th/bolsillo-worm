@@ -33,6 +33,7 @@ const PAGE = { pocket: 0, shelf: 1, games: 2 };
 const DESIGN_BG = '#FFFFFF';
 let backend, pocket, shelf, soil, design, art, house, letters, games, stack, pager;
 let pendingGo = null; // from a tapped notification: #go=shelf, today, soil, us
+let safeProbe = null; // read by fitTop() at the start of boot(), so declared up here (TDZ)
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || !String(CONFIG.supabaseUrl).startsWith('https');
 
@@ -81,6 +82,7 @@ app.dailies = Dailies(app, { demo: DEMO });
 boot().catch((e) => fatal(e));
 
 async function boot() {
+  fitTop(); window.addEventListener('resize', fitTop);
   if ('serviceWorker' in navigator && !DEMO) navigator.serviceWorker.register('./sw.js').catch(() => {});
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); window.__bwInstallPrompt = e; });
@@ -427,7 +429,6 @@ function updateSky() {
 }
 
 // env(safe-area-inset-top) in px: 0 under a solid status bar, 20+ under a see-through one
-let safeProbe = null;
 function safeTop() {
   if (!safeProbe) {
     safeProbe = h('div', { 'aria-hidden': 'true' });
@@ -435,6 +436,11 @@ function safeTop() {
     document.body.append(safeProbe);
   }
   return safeProbe.getBoundingClientRect().height;
+}
+// iOS blurs the top of a home-screen app that has a see-through status bar (iOS 26.1+), over the page.
+// There, html.top-blur adds room (--clear-t) so text starts below the blur. Landscape has no status bar.
+function fitTop() {
+  document.documentElement.classList.toggle('top-blur', isIOS() && isStandalone() && safeTop() > 0);
 }
 
 // Safari tints its bars from the page edges: match whatever screen is showing

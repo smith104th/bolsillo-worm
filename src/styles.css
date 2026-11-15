@@ -6,7 +6,8 @@
   --ink: #0B0B0C; --ink-2: #6E6E73; --ink-3: #A1A1A6; --line: #ECECEE; --fill: #F2F2F5; --white: #FFFFFF;
   --pink: #FF2D55; --green: #34C759;
   --yellow: #F6E46E; --lime: #E4F152; --aqua: #A6E5EE; --sky: #B6DBFF; --lilac: #D8CEFF; --peach: #FFCBAE; --rose: #FFC9DC; --mint: #B9F0D2;
-  --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px);
+  /* --clear-t: room under iOS's own blur at the top of the home-screen app (see html.top-blur) */
+  --safe-t: calc(env(safe-area-inset-top, 0px) + var(--clear-t, 0px)); --safe-b: env(safe-area-inset-bottom, 0px);
   --sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
   --mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
@@ -15,6 +16,11 @@
 [hidden] { display: none !important; }
 html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }
 html { background-color: #6FBEFF; }
+/* iPhone home-screen app with the see-through status bar (installs before Nov 12): since iOS 26.1 iOS
+   draws a soft blur over the status bar and about 40pt below it, on top of the page, where nothing on
+   the page can go over it. Everything that sits at the top (the pocket's name, time and weather, page
+   headers, toasts, tall sheets) moves down just past it, and the blur stays over the sky (Manu, Nov 15). */
+html.top-blur { --clear-t: 32px; }
 body { background: transparent; color: var(--ink); font: 400 16px/1.4 var(--sans); letter-spacing: -0.01em; -webkit-font-smoothing: antialiased; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea { -webkit-user-select: text; user-select: text; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }

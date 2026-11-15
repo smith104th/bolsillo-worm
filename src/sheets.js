@@ -39,7 +39,7 @@ export function feedSheet(app) {
     h('div.foods', Object.entries(FOODS).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(a bite of|a bit of|some|an?) /, ''))))),
     btn([icon('mist'), ' Mist them'], () => { s.close(); app.mist(); }, 'primary wide'),
     h('p.small.muted.center', 'Stroke the worm to pet it. Tap its head to boop.'),
-  ]);
+  ], { pullAnywhere: true });
 }
 
 export function dropSheet(app) {
@@ -54,13 +54,13 @@ export function dropSheet(app) {
     tile('song', 'Song', 'something to listen to', composeSong),
     tile('later', 'For later', 'open when… or on a date', (a) => leaveSheet(a)),
     tile('knock', 'Knock', 'thinking of you', () => app.knock()),
-  ));
+  ), { pullAnywhere: true });
 }
 
 // ── today: one photo, one answer, buried until both
 export async function todaySheet(app) {
   const body = h('div.today');
-  const s = sheet('Today', body, { tall: true });
+  const s = sheet('Today', body, { tall: true, pullAnywhere: true });
   // Opens from the rows on the phone, then the server's (src/dailies.js). Today only shows today's
   // photos, so it only asks for today's previews. Whatever you've typed survives a redraw.
   let draft = '', drawn = false;
@@ -253,7 +253,7 @@ export function usSheet(app) {
       btn('🌱 Soil', () => { closeAllSheets(); app.openGame('soil'); }, 'ghost'),
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
-  ].filter(Boolean), { tall: true, className: 'us-sheet' });
+  ].filter(Boolean), { tall: true, className: 'us-sheet', pullAnywhere: true });
 }
 const stat = (n, one, many) => h('div.stat', h('b', String(n)), h('span', n === 1 ? one : many));
 

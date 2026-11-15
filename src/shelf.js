@@ -88,7 +88,7 @@ export function Shelf(app, root) {
   function render() {
     const them = app.them()?.name || 'them';
     const sealedForMe = list(app, 'for', 'when').length + list(app, 'for', 'date').length;
-    meta.textContent = view === 'for' ? (sealedForMe ? `${sealedForMe} SEALED FOR YOU` : 'YOUR SHELF') : `WHAT YOU LEFT ${them.toUpperCase()}`;
+    meta.textContent = view === 'for' ? (sealedForMe ? `${sealedForMe} SEALED FOR YOU` : 'OUR NOTES AND DOODLES') : `WHAT YOU LEFT ${them.toUpperCase()}`;
     const bands = CATS.map((c) => {
       const items = list(app, view, c.key);
       const ready = c.key === 'date' && view === 'for' ? items.filter((e) => daysUntil(app, e.payload.on) <= 0).length : 0;
