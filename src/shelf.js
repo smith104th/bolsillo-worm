@@ -1,6 +1,6 @@
 // The shelf: one swipe from the pocket. Wooden planks on the same sky, holding
 // "open when…" envelopes, photos that open on a date, and the things you kept.
-import { h, ago, prettyDay, seeded } from './util.js';
+import { h, ago, prettyDay, seeded, store } from './util.js';
 import { sheet, btn, toast, segmented, icon } from './ui.js';
 import { makeSky, SKY, PAPERS, TRINKETS, renderStrokes } from './draw.js';
 import { Worm, heart } from './worm.js';
@@ -9,6 +9,7 @@ import { photoFromFile, pickImage } from './media.js';
 import { sfx, buzz } from './feel.js';
 import { envelopeIcon, boxIcon, glyphTile, GLYPH_COLORS, trinketEmoji, recordIcon } from './icons.js';
 import { PROVIDERS } from './music.js';
+import { ITEM_KINDS, windowEdge } from './events.js';
 
 const INK = '#26324D';
 export const WHEN_PRESETS = ['you\'re sad', 'you can\'t sleep', 'you miss me', 'you need a laugh', 'you had a bad day', 'it\'s your birthday', 'you need a hug', 'you\'re proud of yourself'];
@@ -90,11 +91,13 @@ export function Shelf(app, root) {
     const sealedForMe = list(app, 'for', 'when').length + list(app, 'for', 'date').length;
     meta.textContent = view === 'for' ? (sealedForMe ? `${sealedForMe} SEALED FOR YOU` : 'OUR NOTES AND DOODLES') : `WHAT YOU LEFT ${them.toUpperCase()}`;
     const bands = CATS.map((c) => {
-      const items = list(app, view, c.key);
+      const items = c.key === 'archive' ? archived(app, view) : list(app, view, c.key);
       const ready = c.key === 'date' && view === 'for' ? items.filter((e) => daysUntil(app, e.payload.on) <= 0).length : 0;
+      // the phone only holds the newest things; the Archive's count comes from the server when it can
+      const n = c.key === 'archive' ? Math.max(items.length, counts?.[view] || 0) : items.length;
       return h('button.band', { type: 'button', style: { '--bg': c.bg, '--fg': c.fg }, onclick: () => categorySheet(app, view, c.key, () => render()) },
         h('span.band-name', c.name),
-        h('span.band-side', ready ? h('span.band-ready', `${ready} ready`) : null, h('span.band-count', String(items.length))));
+        h('span.band-side', ready ? h('span.band-ready', `${ready} ready`) : null, h('span.band-count', String(n))));
     });
     content.replaceChildren(decor(), h('div.bands', { style: { '--last': CATS[CATS.length - 1].bg } }, bands));
   }
@@ -108,7 +111,7 @@ export function Shelf(app, root) {
 
   return {
     render, setSky, setView,
-    show() { render(); roamer?.start(); },
+    show() { render(); roamer?.start(); refreshCounts(app).then((changed) => { if (changed) render(); }); },
     hide() { roamer?.stop(); },
   };
 }
@@ -244,20 +247,19 @@ function list(app, view, key) {
     case 'when': return all.filter((e) => e.kind === 'later' && e.payload?.mode === 'when' && !e.opened_at).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
     case 'date': return all.filter((e) => e.kind === 'later' && e.payload?.mode === 'date' && !e.opened_at).sort((a, b) => (ready(b) - ready(a)) || (a.payload.on > b.payload.on ? 1 : -1));
     case 'kept': return all.filter((e) => e.kept && e.kind !== 'later').sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-    case 'archive': return all.filter((e) => e.kind === 'later' && e.opened_at).sort((a, b) => (a.opened_at < b.opened_at ? 1 : -1));
   }
   return [];
 }
 const SUBS = {
-  for: { when: (t) => `${t} left these for later. Open one when it's true.`, date: () => 'Photos and notes that only open on their day.', kept: () => 'What you kept from your pocket.', archive: () => 'Everything you have opened.' },
-  from: { when: (t) => `Sealed on ${t}'s shelf until it's true.`, date: (t) => `Locked on ${t}'s shelf until their day.`, kept: (t) => `What ${t} kept from you.`, archive: (t) => `What ${t} has opened.` },
+  for: { when: (t) => `${t} left these for later. Open one when it's true.`, date: () => 'Photos and notes that only open on their day.', kept: () => 'What you kept from your pocket.', archive: (t) => `Everything from ${t} you've opened, letters and capsules too.` },
+  from: { when: (t) => `Sealed on ${t}'s shelf until it's true.`, date: (t) => `Locked on ${t}'s shelf until their day.`, kept: (t) => `What ${t} kept from you.`, archive: (t) => `Everything you've sent ${t}. The ones still waiting in ${t}'s pocket say so.` },
 };
 const EMPTY = {
-  for: { when: (t) => `Nothing sealed for you yet. When ${t} leaves an "open when" letter, it waits here.`, date: (t) => `No time capsules yet. When ${t} locks a photo or note to a date, it waits here.`, kept: () => 'Nothing kept yet. Open something in your pocket and tap Keep it.', archive: () => 'Nothing opened yet. Letters and capsules move here once you open them.' },
-  from: { when: (t) => `Nothing waiting for ${t}.`, date: (t) => `No time capsules waiting for ${t}.`, kept: (t) => `${t} hasn't kept anything yet.`, archive: (t) => `${t} hasn't opened anything yet.` },
+  for: { when: (t) => `Nothing sealed for you yet. When ${t} leaves an "open when" letter, it waits here.`, date: (t) => `No time capsules yet. When ${t} locks a photo or note to a date, it waits here.`, kept: () => 'Nothing kept yet. Open something in your pocket and tap Keep it.', archive: () => 'Nothing opened yet. Everything lands here once you open it.' },
+  from: { when: (t) => `Nothing waiting for ${t}.`, date: (t) => `No time capsules waiting for ${t}.`, kept: (t) => `${t} hasn't kept anything yet.`, archive: (t) => `Nothing sent yet. What you send ${t} lands here.` },
 };
 
-function card(app, e, onChange) {
+function card(app, e, onChange, { archive = false } = {}) {
   const p = e.payload || {};
   let art, title, meta, tone = '', badge = null;
   if (e.kind === 'later' && p.mode === 'when') {
@@ -272,12 +274,18 @@ function card(app, e, onChange) {
     art = keptIcon(e); if (!art) return null;
     title = e.kind === 'trinket' ? cap((TRINKETS[p.what] || 'something').replace(/^an? /, '')) : { note: 'Note', photo: p.caption || 'Polaroid', doodle: 'Doodle', whisper: 'Whisper', wiggle: cap(p.label) || 'Wiggle', song: p.title || 'Song' }[e.kind];
     meta = short(e.created_at);
+    if (archive) {
+      const waiting = e.from_slot === app.slot() && !e.opened_at;
+      meta = waiting ? 'Unopened' : dayLabel(app.dayOf(e.created_at));
+      if (waiting) tone = '.waiting';
+    }
   }
   return h('button.c-card', { type: 'button', onclick: () => { buzz(8); if (e.kind === 'later') openLater(app, e, onChange); else openItem(app, app.asItem(e)); } },
     h('div.c-icon', art, badge), h('div.c-foot', h('b', title), h(`span${tone}`, meta)));
 }
 
 function categorySheet(app, view, key, onChange) {
+  if (key === 'archive') return archiveSheet(app, view, onChange);
   const them = app.them()?.name || 'them';
   const c = CATS.find((x) => x.key === key);
   const grid = h('div.c-grid');
@@ -292,6 +300,108 @@ function categorySheet(app, view, key, onChange) {
   };
   render();
   return sheet(view === 'from' && key !== 'kept' && key !== 'archive' ? `${c.name} · for ${them}` : c.name, [h('p.c-sub', SUBS[view][key](them)), grid], { tall: true, quiet: true, className: 'cat-sheet' });
+}
+
+// ── the archive: everything, once it's opened (Manu, Nov 15: the Jar moved in here) ──
+// For you: what they sent you that you've opened, letters and capsules included.
+// From you: everything you sent through the pocket (marked while it's still unopened in theirs),
+// plus your letters and capsules they've opened. Your unopened letters stay in their own bands.
+// The phone holds the newest 500 events; older things page in from the server, 80 at a time.
+const older = new Map(); // id → event paged in from backend.archive()
+let olderEdge, olderDone = false, olderLoading = null;
+let counts = store('archiveCounts') || null, countsAt = 0;
+const archivedAt = (e) => (e.kind === 'later' ? e.opened_at : e.created_at) || e.created_at;
+
+function archived(app, view) {
+  const me = app.slot();
+  const byId = new Map();
+  for (const e of app.S.shelf.values()) byId.set(e.id, e);
+  for (const e of older.values()) byId.set(e.id, e);
+  for (const e of app.S.events) {
+    if (!ITEM_KINDS.includes(e.kind)) continue;
+    byId.set(e.id, e); // the freshest copy wins
+    if (olderEdge !== undefined) older.set(e.id, e); // keep it once paging has started, in case the phone trims it
+  }
+  const ours = (e) => (view === 'from' ? e.from_slot === me : e.from_slot !== me);
+  const inside = (e) => (e.kind === 'later' ? !!e.opened_at : ITEM_KINDS.includes(e.kind) && (view === 'from' || !!e.opened_at));
+  return [...byId.values()].filter((e) => ours(e) && inside(e)).sort((a, b) => (archivedAt(a) < archivedAt(b) ? 1 : -1));
+}
+
+// the next page of older things; resolves to false when there's nothing more
+function loadOlder(app) {
+  if (olderLoading) return olderLoading;
+  if (olderEdge === undefined) {
+    olderEdge = windowEdge(app.S.events);
+    for (const e of app.S.events) if (ITEM_KINDS.includes(e.kind)) older.set(e.id, e);
+    if (!app.S.eventsCapped || !olderEdge) olderDone = true; // the phone already has everything
+  }
+  if (olderDone) return Promise.resolve(false);
+  olderLoading = app.backend.archive({ before: olderEdge, limit: 80 }).then((page) => {
+    for (const e of page) if (!older.has(e.id)) older.set(e.id, e);
+    if (page.length) olderEdge = page[page.length - 1].created_at;
+    if (page.length < 80) olderDone = true;
+    return true;
+  }).finally(() => { olderLoading = null; });
+  return olderLoading;
+}
+
+// the band's number, from the server at most once a minute; true if it changed
+async function refreshCounts(app) {
+  if (!app.backend.archiveCounts || Date.now() - countsAt < 60000) return false;
+  countsAt = Date.now();
+  try {
+    const c = await app.backend.archiveCounts(app.slot());
+    if (!c || (counts && c.for === counts.for && c.from === counts.from)) return false;
+    counts = c; store('archiveCounts', c);
+    return true;
+  } catch { countsAt = 0; return false; }
+}
+
+const monthName = (app, d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', d.slice(0, 4) === app.today().slice(0, 4) ? { month: 'long', timeZone: 'UTC' } : { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+function archiveSheet(app, view, onChange) {
+  const them = app.them()?.name || 'them';
+  const months = h('div.a-months');
+  const more = btn('Show older', () => fill(true), 'ghost wide');
+  const foot = h('div.a-more', more);
+  let drawn = '', filling = false;
+  const render = () => {
+    const items = archived(app, view);
+    foot.hidden = olderDone;
+    if (`${items.length}:${olderDone}` === drawn) return; // nothing new: leave the cards (and their scroll) alone
+    drawn = `${items.length}:${olderDone}`;
+    if (!items.length) { months.replaceChildren(olderDone ? h('p.c-empty', EMPTY[view].archive(them)) : h('p.c-empty', 'Looking…')); return; }
+    const groups = [];
+    for (const e of items) {
+      const d = app.dayOf(archivedAt(e)), k = d.slice(0, 7);
+      if (groups[groups.length - 1]?.k !== k) groups.push({ k, d, list: [] });
+      groups[groups.length - 1].list.push(e);
+    }
+    months.replaceChildren(...groups.map((g) => h('section.a-month',
+      h('h3.a-month-name', monthName(app, g.d)),
+      h('div.c-grid', g.list.map((e) => card(app, e, () => { drawn = ''; render(); onChange?.(); }, { archive: true })).filter(Boolean)))));
+  };
+  // keep paging while the bottom is in view (a page of 80 can hold only a few of one side's things)
+  const nearBottom = () => s.card.scrollTop + s.card.clientHeight > s.card.scrollHeight - 600;
+  async function fill(force = false) {
+    if (filling) return;
+    filling = true; more.disabled = true; more.textContent = 'Looking…';
+    try {
+      while (!olderDone && s.el.isConnected && (force || nearBottom())) {
+        force = false;
+        await loadOlder(app);
+        render();
+      }
+    } catch { toast('Couldn\'t reach the older things.'); }
+    filling = false; more.disabled = false; more.textContent = 'Show older';
+    render();
+  }
+  const s = sheet('Archive', [h('p.c-sub', SUBS[view].archive(them)), months, foot], { tall: true, quiet: true, className: 'cat-sheet' });
+  render();
+  let raf = 0;
+  s.card.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (nearBottom()) fill(); }); }, { passive: true });
+  setTimeout(() => fill(), 400); // after the slide
+  return s;
 }
 
 // ── opening something from the shelf ───────────────────────

@@ -193,6 +193,19 @@ export function supabaseBackend(cfg) {
       if (error) throw new Error(error.message);
       return data || [];
     },
+    // how many things the shelf's Archive holds on each side (the phone only has the newest events)
+    // for: what they sent you that you've opened, letters included. from: everything you sent
+    // through the pocket, plus your letters and capsules they've opened.
+    async archiveCounts(slot) {
+      const kinds = `kind.in.(${ARCHIVE_KINDS.join(',')})`;
+      const count = (q) => q.then(({ count: n, error }) => { if (error) throw new Error(error.message); return n || 0; });
+      const all = () => sb.from('events').select('id', { count: 'exact', head: true });
+      const [mine, theirs] = await Promise.all([
+        count(all().eq('from_slot', slot).or(`${kinds},and(kind.eq.later,opened_at.not.is.null)`)),
+        count(all().neq('from_slot', slot).not('opened_at', 'is', null).or(`${kinds},kind.eq.later`)),
+      ]);
+      return { from: mine, for: theirs };
+    },
     // every event in the pocket, oldest first (for "Save everything")
     async allEvents() {
       const out = [], page = 1000;

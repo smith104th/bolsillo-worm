@@ -279,6 +279,14 @@ export function mockBackend() {
       for (const e of events) if (e.created_at >= from && e.created_at < to) { const k = e.kind + ':' + e.from_slot; m.set(k, (m.get(k) || 0) + (e.payload?.n || 1)); }
       return [...m].map(([k, n]) => ({ kind: k.split(':')[0], from_slot: +k.split(':')[1], n }));
     },
+    async archiveCounts(slot) {
+      const kinds = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'];
+      const n = (f) => events.filter(f).length;
+      return {
+        from: n((e) => e.from_slot === slot && (kinds.includes(e.kind) || (e.kind === 'later' && e.opened_at))),
+        for: n((e) => e.from_slot !== slot && e.opened_at && (kinds.includes(e.kind) || e.kind === 'later')),
+      };
+    },
     async archive({ before = null, after = null, limit = 80 } = {}) {
       return events.filter((e) => ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'].includes(e.kind) && (!before || e.created_at < before) && (!after || e.created_at >= after))
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, limit).map((e) => ({ ...e }));

@@ -1,15 +1,12 @@
-// The paper slips: feed, drop, today, us, peek, settings, the jar.
+// The paper slips: feed, drop, today, us, peek, settings.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
-import { sheet, btn, icon, toast, field, segmented, confirmBox, closeAllSheets } from './ui.js';
-import { FOODS, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS, renderStrokes } from './draw.js';
+import { sheet, btn, icon, toast, field, segmented, confirmBox } from './ui.js';
+import { FOODS, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
 import { COLORS, PATTERNS, ACCESSORIES, cmFor, segsFor, lengthBlurb, fmtCm } from './worm.js';
-import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeSong, openItem, titleFor, trinketArt, reactRow, theirReactions } from './compose.js';
-import { envelopeIcon, glyphTile, GLYPH_COLORS, recordIcon } from './icons.js';
-import { PROVIDERS } from './music.js';
+import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeSong, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { plantSheet, viewPhoto } from './soil.js';
 import { leaveSheet } from './shelf.js';
-import { ITEM_KINDS, windowEdge } from './events.js';
 import { sfx } from './feel.js';
 import { canPasskey, savePasskey, hasBackupFor, passkeyError } from './passkey.js';
 import { backupSheet, backupDue, lastBackup } from './backup.js';
@@ -248,9 +245,8 @@ export function usSheet(app) {
     h('div.card.two', wormCard(me, myCm, true), wormCard(them, theirCm, false)),
     countCard,
     stats,
-    h('div.btn-grid.four',
-      btn([icon('jar'), ' Jar'], () => jarSheet(app), 'ghost'),
-      btn('🌱 Soil', () => { closeAllSheets(); app.openGame('soil'); }, 'ghost'),
+    // the Jar moved into the shelf's Archive, and Soil has its place on the Games page (Manu, Nov 15)
+    h('div.btn-grid.two',
       btn('My worm', () => editWorm(app), 'ghost'),
       btn([icon('gear'), ' Settings'], () => settingsSheet(app), 'ghost')),
   ].filter(Boolean), { tall: true, className: 'us-sheet', pullAnywhere: true });
@@ -282,60 +278,6 @@ export function peekSheet(app) {
   ], { onClose: () => pv?.stop() });
   let pv; requestAnimationFrame(() => { pv = wormPreview(cv, me?.worm || {}, { segs: segsFor(cmFor(me?.love)) }); pv.worm.marks = []; });
   return s;
-}
-
-// ── the jar: everything that ever came through
-// Same icons as the pocket and the shelf (src/icons.js).
-function jarIcon(e) {
-  const p = e.payload || {};
-  const art = (svg) => h('span.jar-art', { html: svg });
-  switch (e.kind) {
-    case 'photo': return p.thumb ? h('img', { src: p.thumb, alt: '' }) : h('span.jar-art');
-    case 'note': return art(envelopeIcon(p.paper, { open: !!e.opened_at, size: 64 }));
-    case 'whisper': return art(glyphTile('wave', GLYPH_COLORS.whisper, 54));
-    case 'wiggle': return art(glyphTile('sine', GLYPH_COLORS.wiggle, 54));
-    case 'song': return art(recordIcon({ cover: p.cover, accent: PROVIDERS[p.provider]?.accent, size: 60 }));
-    case 'trinket': return h('span.jar-art', trinketArt(p.what, 40));
-    case 'doodle': {
-      const c = h('canvas', { width: 88, height: 88 }); const x = c.getContext('2d'); x.scale(2, 2); renderStrokes(x, p.strokes || [], 44, 1);
-      return h('span.jar-art', h('span.jar-doodle', c));
-    }
-  }
-  return h('span.jar-art');
-}
-const JAR_KINDS = ITEM_KINDS;
-export function jarSheet(app) {
-  // starts with what's loaded, then pages back through everything (backend.archive)
-  const all = app.S.events.filter((e) => JAR_KINDS.includes(e.kind));
-  const seen = new Set(all.map((e) => e.id));
-  // page back from the end of the unbroken newest run, not from an older thing still in the pocket
-  let oldest = windowEdge(app.S.events);
-  let done = !app.S.eventsCapped, loading = false;
-  let filter = 'theirs';
-  const grid = h('div.jar');
-  const more = btn('Show older', () => loadMore(), 'ghost small');
-  const render = () => {
-    const list = all.filter((e) => (filter === 'theirs' ? e.from_slot !== app.slot() : filter === 'mine' ? e.from_slot === app.slot() : e.kept));
-    grid.replaceChildren(...(list.length ? list.map((e) => h('button.jar-item', { type: 'button', onclick: () => openItem(app, app.asItem(e)) },
-      jarIcon(e),
-      h('span.small', titleFor(e).replace(/^An? /, '').replace('Something they found', 'found')), h('span.mono.tiny', ago(e.created_at)))) : [h('p.muted', done ? 'Empty.' : 'Nothing here yet. Older things are below.')]));
-    more.hidden = done;
-  };
-  async function loadMore() {
-    if (loading || done) return;
-    loading = true; more.disabled = true; more.textContent = 'Looking…';
-    try {
-      const page = await app.backend.archive({ before: oldest, limit: 80 });
-      for (const e of page) if (!seen.has(e.id)) { seen.add(e.id); all.push(e); }
-      all.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-      if (page.length) oldest = page[page.length - 1].created_at;
-      if (page.length < 80) done = true;
-      render();
-    } catch { toast('Couldn\'t reach the older things.'); }
-    loading = false; more.disabled = false; more.textContent = 'Show older';
-  }
-  sheet('The jar', [segmented({ theirs: 'From them', mine: 'From you', kept: 'Kept' }, filter, (k) => { filter = k; render(); }), grid, h('div.row.jar-more', more)], { tall: true });
-  render();
 }
 
 export function editWorm(app) {

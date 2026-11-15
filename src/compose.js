@@ -178,7 +178,7 @@ export function composeWiggle(app) {
   ]);
 }
 
-// Found things are Apple emoji everywhere (pocket, picker, shelf, jar, zine).
+// Found things are Apple emoji everywhere (pocket, picker, shelf, archive, zine).
 export function trinketArt(kind, size = 64) {
   return h('span.temoji', { style: { fontSize: `${size}px` } }, trinketEmoji(kind));
 }
@@ -340,7 +340,7 @@ export function openItem(app, it) {
     app.shelfChanged({ ...it, kept: it.kept });
     app.refreshPocket();
   };
-  const stash = btn('Put in the jar', () => { app.stash(it.id); s.close(); }, 'ghost');
+  const stash = btn('Put in the archive', () => { app.stash(it.id); s.close(); }, 'ghost');
   const about = { note: 'note', doodle: 'doodle', photo: 'polaroid', whisper: 'whisper', wiggle: 'wiggle', song: 'song', trinket: 'found thing' }[it.kind];
   const target = { to: it.id, about };
   const s = sheet(titleFor(it), [...body, meta, it.mine ? theirReactions(app, target) : reactRow(app, target), h('div.row', keepBtn, it.mine ? null : stash)], { onClose, quiet: true });
