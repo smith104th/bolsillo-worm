@@ -65,7 +65,10 @@ jobs:
         run: |
           set -euo pipefail
           gunzip -c "auth-$DAY.sql.gz" | psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction
-          gunzip -c "pocket-$DAY.sql.gz" | psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction
+          # a new Supabase project already has the public schema; the backup would create it again
+          gunzip -c "pocket-$DAY.sql.gz" | sed '/^CREATE SCHEMA public;$/d' | psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction
+          # the backup leaves out who may call what (--no-privileges); schema.sql puts it back (it's re-runnable)
+          psql "$LOCAL" -q -v ON_ERROR_STOP=1 --single-transaction -f supabase/schema.sql
           echo "restored the backup of $DAY"
       - name: Check it against live
         run: |

@@ -13,7 +13,10 @@ begin
     then raise exception 'members without their sign-in'; end if;
   if (select count(*) from public.events) = 0 then raise exception 'no events'; end if;
   if (select count(*) from public.dailies) = 0 then raise exception 'no dailies'; end if;
-  raise notice 'pockets, members, sign-ins and events are there';
+  if has_function_privilege('authenticated', 'public.wh_reseed(uuid)', 'execute')
+     or has_function_privilege('anon', 'public.wh_dailies(int, int)', 'execute')
+    then raise exception 'restored functions are open to the wrong roles'; end if;
+  raise notice 'pockets, members, sign-ins and events are there; private helpers stay locked';
 end $$;
 
 -- the app's own functions answer, as each member of the pocket with the most events
