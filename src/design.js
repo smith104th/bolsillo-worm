@@ -71,7 +71,10 @@ export function dealOrder(deck, seed, group = (c) => GROUP[c.kind]) {
 // things"). They're still in the order, marked retired, so days already dealt don't change. From
 // RETIRE_FROM on, days are dealt from the rest of the order without them. A pocket that starts later
 // never meets them.
-const RETIRE_FROM = '2026-11-15'; // moved from Nov 14: the change wasn't live yet and Nov 14's cards were already being played
+// Nov 14 bonus (migration 019): the deck's start moved back a day, so the cards dealt before the
+// cutover now end on Nov 13 and the cutover moves with them (Nov 15 -> Nov 14). Same cards, same
+// order; today gets what Nov 15 would have dealt.
+const RETIRE_FROM = '2026-11-14';
 export function dealtDay(order, started, i) {
   const cut = Math.max(0, dayNumber(RETIRE_FROM) - dayNumber(started));
   if (i < cut) return order.slice(i * PER_DAY, (i + 1) * PER_DAY);
