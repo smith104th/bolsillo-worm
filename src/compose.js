@@ -13,11 +13,11 @@ export function composeNote(app) {
   let paper = 'white';
   const ta = h('textarea.handwriting', { maxLength: 600, rows: 7, placeholder: 'Write something for their pocket…' });
   const card = h('div.paper-card', { style: { background: PAPERS[paper] } }, ta);
-  const count = h('span.small.muted', '0 / 600');
+  const count = h('span.small.muted.counter', '0 / 600');
   ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / 600`; });
   const s = sheet('A note', [
     segmented({ white: 'White', rosa: 'Rosa', celeste: 'Celeste', limon: 'Limón' }, paper, (k) => { paper = k; card.style.background = PAPERS[k]; }),
-    card, h('div.row.between', count, btn('Fold it and drop it', async (e) => {
+    card, h('div.row.between.send-row', count, btn('Fold it and drop it', async (e) => {
       const text = ta.value.trim(); if (!text) return ta.focus();
       busy(e.currentTarget, true);
       if (await app.send('note', { text, paper }, { preview: text.slice(0, 90) })) s.close(); else busy(e.currentTarget, false);

@@ -30,6 +30,9 @@ h1, h2, h3 { margin: 0; font-weight: 600; }
 .row { display: flex; gap: 8px; align-items: center; } .row.between { justify-content: space-between; } .row.wrap { flex-wrap: wrap; }
 .row > input { flex: 1; min-width: 0; }
 .row > .btn { flex: 1; }
+/* a letter counter next to a send button: the button keeps its own size while you type (Manu, Nov 15) */
+.send-row > .btn { flex: 0 0 auto; }
+.counter { font-variant-numeric: tabular-nums; }
 .btn { white-space: nowrap; }
 .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .btn-grid .btn { min-height: 46px; padding: 0 10px; font-size: 14px; gap: 5px; }

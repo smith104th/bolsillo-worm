@@ -39,7 +39,7 @@ const errText = (e) => {
 export function questionsSheet(app, ctx) {
   const them = app.them()?.name || 'them';
   const body = h('div.hq');
-  const s = sheet('Questions', body, { tall: true });
+  const s = sheet('Questions', body, { tall: true, pullAnywhere: true });
 
   function render() {
     const st = ctx.state();
@@ -169,7 +169,7 @@ function composeSheet(app, ctx, after) {
       s.close();
     } catch (e) { toast(errText(e)); save.disabled = false; }
   }, 'primary wide');
-  const s = sheet('Write a question', h('div.hq', h('div.hq-segs', segs), prompts, ta, choiceBox, ynBox, save), { tall: true });
+  const s = sheet('Write a question', h('div.hq', h('div.hq-segs', segs), prompts, ta, choiceBox, ynBox, save), { tall: true, pullAnywhere: true });
   paint();
   setTimeout(() => ta.focus(), 350);
   return s;

@@ -111,7 +111,7 @@ export function HousePage(app, root, { onEdge, onBack, onSky } = {}) {
       h('span.hs-label', 'VIEW'), views,
       h('span.hs-label', 'FLOORS'), h('div.hs-row', floorBtns),
       h('span.hs-label', 'TIME OF DAY'), h('div.hs-row.hs-sun', h('div.hs-clock', time, where), slider, now),
-    ));
+    ), { pullAnywhere: true });
     paint();
   }
 

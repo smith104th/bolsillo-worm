@@ -142,7 +142,7 @@ export async function viewPhoto(app, mediaId, thumb, title = 'Photo of the day')
 export function plantSheet(app) {
   const them = app.them()?.name || 'them';
   const ta = h('textarea', { rows: 3, maxLength: 200, placeholder: `Ask ${them} something…` });
-  const count = h('span.small.muted', '0 / 200');
+  const count = h('span.small.muted.counter', '0 / 200');
   ta.addEventListener('input', () => { count.textContent = `${ta.value.length} / 200`; });
   const seeds = h('div.seeds');
   const renderSeeds = () => {
@@ -158,7 +158,7 @@ export function plantSheet(app) {
   const s = sheet('Plant a question', [
     h('p.small.muted', `It comes up as your question of the day on the next free day. ${them} won't see it until then, and you both answer it like any other.`),
     h('div.paper-card', { style: { background: '#FFFFFF' } }, ta),
-    h('div.row.between', count, btn('Plant it', async (e) => {
+    h('div.row.between.send-row', count, btn('Plant it', async (e) => {
       const q = ta.value.trim();
       if (q.length < 3) return ta.focus();
       const b = e.currentTarget; b.disabled = true;
