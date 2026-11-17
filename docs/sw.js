@@ -1,8 +1,8 @@
 // Bolsillo Worm service worker: keeps the pocket working offline and delivers buzzes.
-const VERSION = 'b412f40a';
+const VERSION = '9b1bed00';
 const CACHE = `bw-${VERSION}`;
 const SHELL = [
-  './', './index.html', `./app.js?v=${VERSION}`, './styles.css?v=4d66896d', './manifest.webmanifest',
+  './', './index.html', `./app.js?v=${VERSION}`, './styles.css?v=9fdfb0f0', './manifest.webmanifest',
   './fonts/geist.woff2', './fonts/geist-mono.woff2',
   './icons/icon-192.png', './icons/badge-96.png', './design/deck.json?v=dd9b4510', './art/deck.json?v=3a0de739', './letters/words.json?v=b3c255e1',
 ];
@@ -26,7 +26,7 @@ const ITEMS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'
 // Repeat kisses, reactions and knocks fold into one notification with a count.
 const GROUPED = ['kiss', 'react', 'knock'];
 // Where a tap on the notification takes you.
-const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house', letters: 'letters' };
+const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house', letters: 'letters', dial: 'dial' };
 
 const lastEmoji = (t) => (String(t || '').match(/(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}\p{Emoji_Modifier}]*)\s*$/u) || [])[1] || null;
 

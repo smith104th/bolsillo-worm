@@ -46,7 +46,7 @@ const showing = ([sel, re]) => {
 const sheetOpen = () => (document.querySelectorAll('.sheet').length ? true : 'no sheet opened');
 const tap = (label) => `(() => { const b = [...document.querySelectorAll('#dock button')].find((x) => x.textContent.trim().toLowerCase().startsWith('${label}')); if (!b) throw new Error('no ${label} tab'); b.click(); })()`;
 
-const GAMES = [['soil', 'Soil'], ['design', 'Design Tinder'], ['art', 'Art Tinder'], ['letters', 'Five Letters'], ['house', 'Garden']];
+const GAMES = [['soil', 'Soil'], ['design', 'Design Tinder'], ['art', 'Art Tinder'], ['letters', 'Five Letters'], ['dial', 'The Dial'], ['house', 'Garden']];
 
 async function walk(browser, label, query, { tabs }) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });

@@ -1014,7 +1014,7 @@ body.dark #screen-games .shelf-head { color: var(--ink); }
 .band-pair .band.game.half { flex: 1 1 0; min-width: 0; min-height: 0; border-top: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; padding-right: 14px; }
 .band-pair .band.game.half + .band-bar + .band.game.half { padding-left: 20px; }
 .band-bar { flex: none; width: 1px; align-self: stretch; background: rgba(11,11,12,0.12); }
-#screen-soil, #screen-design, #screen-art, #screen-house, #screen-letters { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
+#screen-soil, #screen-design, #screen-art, #screen-house, #screen-letters, #screen-dial { z-index: 3; transform: translate3d(100%,0,0); visibility: hidden; box-shadow: -12px 0 40px rgba(10,10,40,0.14); }
 body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !important; }
 
 /* ── Five Letters (Manu, Nov 13): Design Tinder's page with Wordle's colors (Manu: blue and pink made it
@@ -1114,3 +1114,76 @@ body.in-game .pager-dots { opacity: 0 !important; pointer-events: none !importan
 .fl-ex { margin: 0 0 18px; --t: 40px; }
 .fl-ex p { margin: 8px 0 0; font: 400 15px/1.35 var(--sans); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .fl-tile.pop, .fl-tile.show, .fl-row.shake, .fl-row.win .fl-tile, .fl-done.in { animation: none; } }
+
+/* ── The Dial (Manu, Nov 16): Five Letters' page. A half-circle dial on neutral gray; the target in the
+   pink and red pair (2, 3, 4 from the edge in), the scale's ends in aqua and yellow, the needle in ink. */
+#screen-dial { overflow: hidden; background: #fff; color: var(--ink); display: flex; flex-direction: column; --rule: 1px solid rgba(11,11,12,0.12); }
+.dl-head { position: relative; flex: none; padding: calc(var(--safe-t) + 12px) 22px 0; }
+.dl-body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.dl-foot { height: calc(38px + var(--safe-b)); padding: 0 22px var(--safe-b); }
+.dl-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 22px; }
+.dl-panel.in { animation: fl-fade 0.4s ease-out; }
+.dl-mid { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; padding: 16px 0 4px; }
+.dl-empty { align-items: center; justify-content: center; padding-bottom: 40px; }
+.dl-empty p { margin: 0; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.dl-empty .dt-exit { margin-top: 26px; }
+.dl-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 18px; margin-bottom: 10px; font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.dl-label > span:first-child { color: var(--ink); }
+.dl-label > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-swap { flex: none; margin: -10px 0; padding: 10px 0 10px 12px; font: inherit; letter-spacing: inherit; text-transform: uppercase; color: #D90042; }
+.dl-swap:disabled { opacity: 0.4; }
+.dl-clue { margin: 0; font: 700 40px/1.02 var(--sans); letter-spacing: -0.045em; color: var(--ink); overflow-wrap: anywhere; }
+.dl-clue.long { font-size: 30px; line-height: 1.06; letter-spacing: -0.035em; }
+.dl-clue.longer { font-size: 23px; line-height: 1.12; letter-spacing: -0.02em; }
+.dl-input { width: 100%; margin: 0; padding: 2px 0 8px; border: 0; border-radius: 0; border-bottom: 2px solid var(--ink); background: transparent; color: var(--ink); font: 700 32px/1.1 var(--sans); letter-spacing: -0.04em; outline: none; }
+.dl-input, .dl-input:focus { box-shadow: none; }
+.dl-input::placeholder { color: var(--ink-3); }
+.dl-stage { width: 100%; margin-top: 22px; touch-action: none; }
+.dl-dial { display: block; width: 100%; height: auto; aspect-ratio: 360 / 190; overflow: visible; }
+.dl-dial.live { cursor: grab; outline: none; }
+.dl-face { fill: #F2F2F7; }
+.dl-ticks line { stroke: rgba(11,11,12,0.2); stroke-width: 2; stroke-linecap: round; }
+.dl-band.b2 { fill: #FFC8D7; }
+.dl-band.b3 { fill: #FF7096; }
+.dl-band.b4 { fill: #D90042; }
+.dl-num { font: 600 13px var(--mono); text-anchor: middle; dominant-baseline: central; fill: #fff; }
+.dl-num.b2 { fill: #D90042; }
+.dl-needle { transform-box: view-box; transform-origin: 180px 172px; transition: transform 0.18s ease-out; }
+.dl-needle.snap { transition: none; }
+.dl-needle line { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; }
+.dl-needle circle { fill: var(--ink); }
+.dl-needle circle.dl-hub { fill: #fff; }
+.dl-ends { display: flex; margin: 8px 4.44% 0; }
+.dl-end { flex: 1 1 0; min-width: 0; padding: 11px 12px 10px; font: 800 14px/1.1 var(--sans); letter-spacing: -0.01em; text-transform: uppercase; overflow-wrap: anywhere; }
+.dl-end.lo { background: #A3E6EC; color: #1546A8; text-align: left; }
+.dl-end.hi { background: #FFD84A; color: var(--ink); text-align: right; }
+.dl-note { margin: 14px 0 0; font: 400 15px/1.35 var(--sans); color: var(--ink-2); }
+.dl-act { flex: none; display: flex; padding: 12px 0 14px; }
+.dl-act .dt-wide { flex: 1; margin: 0; }
+.dl-act .dt-wide:disabled { opacity: 0.5; }
+.dl-score { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+.dl-score.in { animation: dl-pop 0.36s cubic-bezier(.3,.7,.4,1.4) both; }
+@keyframes dl-pop { from { opacity: 0; transform: scale(0.9) translateY(6px); } }
+.dl-pts { font: 600 72px/0.86 var(--sans); letter-spacing: -0.06em; color: var(--ink); }
+.dl-pts.bull { color: #D90042; }
+.dl-pts-side { display: flex; flex-direction: column; gap: 6px; }
+.dl-pts-l { font: 500 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.dl-verdict { font: 600 22px/1.1 var(--sans); letter-spacing: -0.03em; color: var(--ink); }
+
+/* stats: a green hero with yellow type, every round with its little dial */
+.dl-hero { background: #0F7A4E; color: #FFD84A; }
+.dl-hero p { color: #FFD84A; }
+.dl-rounds { display: flex; flex-direction: column; }
+.dl-round { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(11,11,12,0.08); text-align: left; }
+.dl-round:last-child { border-bottom: 0; }
+.dl-round-dial .dl-dial { width: 64px; }
+.dl-round-dial .dl-num { display: none; }
+.dl-round-mid { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.dl-round-k { font: 500 10px/1.2 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-round-c { font: 600 17px/1.2 var(--sans); letter-spacing: -0.02em; color: var(--ink); overflow-wrap: anywhere; }
+.dl-round-p { font: 600 30px/1 var(--sans); letter-spacing: -0.04em; color: var(--ink); }
+.dl-round-p.bull { color: #D90042; }
+.dl-round-sheet { padding-top: 4px; }
+.dl-how { margin: 0 0 16px; font: 400 17px/1.4 var(--sans); color: var(--ink); }
+.dl-how-dial { margin: 4px 0 20px; }
+@media (prefers-reduced-motion: reduce) { .dl-panel.in, .dl-score.in { animation: none; } .dl-needle { transition: none; } }

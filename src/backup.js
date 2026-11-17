@@ -1,5 +1,5 @@
 // "Save everything": one .zip with every note, answer, photo, song and voice note
-// in the pocket, plus the games (Design Tinder swipes, the house and its questions, Five Letters),
+// in the pocket, plus the games (Design Tinder swipes, the house and its questions, Five Letters, The Dial),
 // so a server failure can't erase your history.
 //   pocket.json   everything, as data (the full record)
 //   index.html    a page you can open anywhere, no app needed
@@ -92,8 +92,8 @@ async function swipesOf(getState, getDeck) {
 
 // The games: what's on the server, as readable as the app shows it. Each part is optional,
 // so a pocket that never opened a game (or an older server) still saves everything else.
-async function gatherGames(backend) {
-  const out = { design: null, art: null, house: null, letters: null };
+async function gatherGames(backend, slot) {
+  const out = { design: null, art: null, house: null, letters: null, dial: null };
   try { out.design = await swipesOf(() => backend.dsState(), loadDeck); } catch { /* no deck yet */ }
   try { out.art = await swipesOf(() => backend.asState(), loadArtDeck); } catch { /* never opened, or an older server */ }
   try {
@@ -121,6 +121,13 @@ async function gatherGames(backend) {
       });
     out.letters = days.length ? { days } : null;
   } catch { /* never played */ }
+  try {
+    // The Dial: every finished round (a round still out isn't finished, and its target may be theirs to keep)
+    const dl = await backend.dlState();
+    const rounds = (dl.past || []).map((x) => ({ clue_by: x.giver === slot ? 'you' : 'them', scale: [x.lo, x.hi], clue: x.clue,
+      target_percent: x.target / 10, guess_percent: x.guess / 10, points: x.points, at: x.guessed_at || x.at })).reverse();
+    out.dial = rounds.length ? { rounds, points: rounds.reduce((t, x) => t + (x.points || 0), 0) } : null;
+  } catch { /* never played, or an older server */ }
   return out;
 }
 
@@ -133,7 +140,7 @@ export async function buildBackup(app, onProgress = () => {}) {
   let dailies = []; try { dailies = await backend.dailies(100000); } catch { /* none yet */ }
   let planted = []; try { planted = await backend.planted(); } catch { /* none */ }
   dailies = dailies.map((d) => ({ ...d, question: app.questionFor?.(d.day)?.q || null })).sort((a, b) => (a.day < b.day ? -1 : 1));
-  const games = await gatherGames(backend);
+  const games = await gatherGames(backend, slot);
 
   // full-size media: photos and whispers from events, both of you from Today
   const jobs = [];
@@ -170,6 +177,7 @@ export async function buildBackup(app, onProgress = () => {}) {
     art: games.art,
     house: games.house,
     letters: games.letters,
+    dial: games.dial,
     notes: 'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are here. So do your person\'s swipes on cards you haven\'t swiped yet, the house questions waiting for you, and their Five Letters guesses on a day you haven\'t finished. Media files are in photos/, today/ and whispers/.',
   };
   const counts = {
@@ -180,6 +188,7 @@ export async function buildBackup(app, onProgress = () => {}) {
     art: games.art?.cards.length || 0,
     questions: (games.house?.you_asked.length || 0) + (games.house?.they_asked.length || 0),
     words: games.letters?.days.filter((d) => d.you?.done).length || 0,
+    rounds: games.dial?.rounds.length || 0,
   };
   const stamp = exportedAt.slice(0, 10);
   files.unshift(
@@ -200,7 +209,7 @@ function readme(r, c) {
     `Worms: ${names}.`,
     '',
     `${c.moments} things you sent each other, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes.`,
-    r.design || r.art || r.house || r.letters ? `Games: ${c.cards} Design Tinder cards swiped${c.art ? `, ${c.art} Art Tinder cards` : ''}${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}.` : null,
+    r.design || r.art || r.house || r.letters || r.dial ? `Games: ${c.cards} Design Tinder cards swiped${c.art ? `, ${c.art} Art Tinder cards` : ''}${r.house ? `, the house at ${r.house.pieces} of ${r.house.of} pieces, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}${c.rounds ? `, ${c.rounds} rounds of The Dial` : ''}.` : null,
     '',
     'index.html   open it to read your pocket as a page (any phone or computer)',
     'pocket.json  the complete record, as data',
@@ -208,7 +217,7 @@ function readme(r, c) {
     'today/       Today photos, one per person per day',
     'whispers/    voice notes',
     '',
-    'The games are at the end of index.html, and under "design", "art", "house" and "letters" in pocket.json.',
+    'The games are at the end of index.html, and under "design", "art", "house", "letters" and "dial" in pocket.json.',
     '',
     'Sealed letters you haven\'t opened yet stay sealed: only their envelopes are in this file.',
     `Your pocket's code: ${r.pocket.code || '?'} (keep it between you two).`,
@@ -299,6 +308,14 @@ function gamesHtml(r, slot) {
       out.push(`<div class="ev"><span class="who">${dt(d.day)}${d.round > 1 ? ' · bonus word' : ''}${src}</span><p><b>${d.word ? esc(d.word.toUpperCase()) : 'Today\'s word (you haven\'t played it yet)'}</b></p>${grid(me, d.you, d.word)}${grid(them, d.them, d.word)}</div>`);
     }
   }
+  const dl = r.dial;
+  if (dl?.rounds.length) {
+    out.push(`<h2>The Dial</h2><p class="sub">${dl.rounds.length} ${dl.rounds.length === 1 ? 'round' : 'rounds'}, ${dl.points} points together. A bullseye is 4, then 3, then 2.</p>`);
+    for (const x of [...dl.rounds].reverse()) {
+      const giver = x.clue_by === 'you' ? me : them, guesser = x.clue_by === 'you' ? them : me;
+      out.push(`<div class="ev"><span class="who">${dt(x.at)} · ${giver}'s clue</span><p>${esc(x.scale[0])} → ${esc(x.scale[1])}: <b>“${esc(x.clue)}”</b></p><p>The target at ${x.target_percent}%, ${guesser} turned the dial to ${x.guess_percent}% · <b class="${x.points ? 'ok' : 'miss'}">${x.points} ${x.points === 1 ? 'point' : 'points'}</b></p></div>`);
+    }
+  }
   return out.length ? `<h1 class="sec" id="games">The games</h1>\n${out.join('\n')}` : '';
 }
 
@@ -311,7 +328,7 @@ export function backupSheet(app) {
     try {
       built = await buildBackup(app, (msg) => { status.textContent = msg; });
       const c = built.counts, mb = (built.size / 1048576).toFixed(built.size > 10485760 ? 0 : 1);
-      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.art ? `, ${c.art} Art Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
+      status.textContent = `${c.moments} things you sent, ${c.days} days of Today, ${c.photos} photos, ${c.whispers} voice notes${c.cards ? `, ${c.cards} Design Tinder cards` : ''}${c.art ? `, ${c.art} Art Tinder cards` : ''}${c.questions ? `, ${c.questions} house questions` : ''}${c.words ? `, ${c.words} Five Letters words` : ''}${c.rounds ? `, ${c.rounds} rounds of The Dial` : ''} · ${mb} MB.${c.missing ? ` ${c.missing} couldn't be fetched.` : ''}`;
       go.hidden = true; saveBtn.hidden = false;
     } catch (err) {
       status.textContent = `Couldn't gather everything: ${String(err?.message || err).slice(0, 80)}. Try again.`;

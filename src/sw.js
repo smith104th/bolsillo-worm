@@ -26,7 +26,7 @@ const ITEMS = ['note', 'doodle', 'photo', 'whisper', 'wiggle', 'song', 'trinket'
 // Repeat kisses, reactions and knocks fold into one notification with a count.
 const GROUPED = ['kiss', 'react', 'knock'];
 // Where a tap on the notification takes you.
-const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house', letters: 'letters' };
+const WHERE = { later: 'shelf', unsealed: 'shelf-from', daily: 'today', plant: 'soil', reunion: 'us', house: 'house', hq: 'house', letters: 'letters', dial: 'dial' };
 
 const lastEmoji = (t) => (String(t || '').match(/(\p{Extended_Pictographic}[️‍\p{Extended_Pictographic}\p{Emoji_Modifier}]*)\s*$/u) || [])[1] || null;
 
