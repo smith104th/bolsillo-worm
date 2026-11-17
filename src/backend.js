@@ -247,12 +247,6 @@ export function supabaseBackend(cfg) {
       }
       return { moved: total, left: null };
     },
-    // The Dial: the round you have out, theirs (the target hidden until it's guessed), the finished ones, totals
-    dlState: () => rpc('wh_dial_state'),
-    dlDeal: (lo, hi) => rpc('wh_dial_deal', { p_lo: lo, p_hi: hi }),
-    dlCard: (id, lo, hi) => rpc('wh_dial_card', { p_id: id, p_lo: lo, p_hi: hi }),
-    dlClue: (id, clue) => rpc('wh_dial_clue', { p_id: id, p_clue: clue }),
-    dlGuess: (id, guess) => rpc('wh_dial_guess', { p_id: id, p_guess: guess }),
     async vapidKey() {
       const { data, error } = await sb.functions.invoke('nudge', { body: { kind: 'vapid' } });
       if (error || !data?.publicKey) throw new Error(error?.message || 'no push key');

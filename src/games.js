@@ -10,14 +10,13 @@ import { buzz } from './feel.js';
 import { roam } from './shelf.js';
 
 export const GAMES_BOTTOM = '#FFFFFF';
-// Design Tinder after the first two (Manu); Five Letters joined at the end (Nov 13), then The Dial (Nov 16). Art Tinder
+// Design Tinder after the first two (Manu); Five Letters joined at the end (Nov 13). Art Tinder
 // (Nov 14) shares Design Tinder's row: "Design", a bar, "Art" (Manu), each half opening its own game.
 export const GAMES = [
   { id: 'soil', name: 'Soil' },
   { id: 'house', name: 'Garden & House' },
   { id: 'design', name: 'Design', pair: { id: 'art', name: 'Art' } },
   { id: 'letters', name: 'Five Letters' },
-  { id: 'dial', name: 'The Dial' }, // Nov 16
 ];
 const ALL = GAMES.flatMap((g) => (g.pair ? [g, g.pair] : [g]));
 

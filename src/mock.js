@@ -1,8 +1,7 @@
 // Demo mode (?demo): a pretend partner so you can play without pairing.
-import { rand, pick, dayIn, hash, clamp } from './util.js';
+import { rand, pick, dayIn, hash } from './util.js';
 import { loadDeck, loadArtDeck, dealOrder, dealtDay, artDealtDay, artGroup } from './design.js';
 import { loadWords, backupWord } from './letters.js';
-import { pointsFor } from './dial.js';
 
 export function mockBackend() {
   const now = () => new Date().toISOString();
@@ -19,7 +18,6 @@ export function mockBackend() {
   const ds = { started: null, swipes: [new Map(), new Map()] }; // Design Tinder: your swipes, Luz's
   const as = { started: null, swipes: [new Map(), new Map()] }; // Art Tinder, the same
   const fl = { days: new Map(), games: [new Map(), new Map()], seeded: false }; // Five Letters: day → word; each of you: day → game
-  const dl = { rounds: [], seeded: false, id: 500, next: 0 }; // The Dial: every round, yours (giver 0) and Luz's (giver 1)
   let on = {};
   let present = true;
   const theirSlot = () => 1;
@@ -132,45 +130,6 @@ export function mockBackend() {
       on.live?.(touching ? { t: 'f', x: 0.5 + Math.cos(a) * 0.25, y: 0.45 + Math.sin(a * 1.3) * 0.2, d: 1 } : { t: 'f', d: 0 });
     }, 70);
     setInterval(() => { present = Math.random() < 0.7; on.presence?.(present ? { 0: [{ slot: 0 }], 1: [{ slot: 1 }] } : { 0: [{ slot: 0 }] }); }, 30000);
-  }
-
-
-  // The Dial in the demo: seven rounds already played, and Luz has a clue waiting for you. Give her one
-  // and she turns the dial a few seconds later (you watch the needle move); guess hers and she sends another.
-  function seedDial() {
-    if (dl.seeded) return;
-    dl.seeded = true;
-    const ago = (hrs) => new Date(Date.now() - hrs * 3600000).toISOString();
-    const past = [
-      [0, 'Cold', 'Hot', 'a sauna', 905, 880], [1, 'Underrated', 'Overrated', 'brunch', 760, 820],
-      [0, 'Ugly', 'Beautiful', 'a pigeon', 330, 250], [1, 'Bad gift', 'Great gift', 'socks', 380, 395],
-      [0, 'Very New York', 'Very Buenos Aires', 'dinner at 11pm', 920, 870], [1, 'Tiny inconvenience', 'Total disaster', 'losing your keys', 520, 610],
-      [0, 'Feels like a slap', 'Feels like a hug', 'a voice note', 800, 790],
-    ];
-    past.forEach(([giver, lo, hi, clue, target, guess], i) => {
-      const at = ago((past.length - i) * 20);
-      dl.rounds.push({ id: ++dl.id, giver, lo, hi, clue, target, guess, points: pointsFor(target, guess), at, clued_at: at, guessed_at: at });
-    });
-    dl.rounds.push({ id: ++dl.id, giver: 1, lo: 'Cold', hi: 'Hot', clue: 'soup', target: 820, guess: null, points: null, at: ago(2), clued_at: ago(2), guessed_at: null });
-  }
-  const dlView = (r) => (!r ? null : r.giver !== 0 && !r.clued_at ? { id: r.id, giver: r.giver, at: r.at }
-    : { ...r, target: r.giver === 0 || r.guessed_at ? r.target : null });
-  const dlOpen = (g) => dl.rounds.find((r) => r.giver === g && !r.guessed_at) || null;
-  const LUZ_CLUES = [['Bad superpower', 'Great superpower', 'talking to pigeons', 240], ['Sweet', 'Savory', 'dulce de leche', 70],
-    ['Normal', 'Weird', 'pineapple on pizza', 640], ['Lukewarm take', 'Hot take', 'cats are better', 700], ['Worst chore', 'Best chore', 'folding laundry', 450]];
-  // Luz turns the dial on your clue: the needle wanders over, then she locks it in
-  function luzGuesses(r) {
-    const aim = clamp(r.target + Math.round((Math.random() - 0.45) * 160), 0, 1000);
-    let v = 500, n = 0;
-    const tick = setInterval(() => {
-      n++;
-      v += (aim - v) * 0.12 + Math.sin(n / 3) * 14;
-      on.live?.({ t: 'dial', id: r.id, v: Math.round(clamp(v, 0, 1000)) });
-      if (n < 45) return;
-      clearInterval(tick);
-      r.guess = aim; r.points = pointsFor(r.target, aim); r.guessed_at = now();
-      on.live?.({ t: 'dial', ev: 'guess', id: r.id });
-    }, 80);
   }
 
   // Design Tinder in the demo: the deck started two days ago. You swiped the first day; Luz has
@@ -419,35 +378,6 @@ export function mockBackend() {
     },
     async flWords() { return { ready: false, got: [], missing: [] }; },
     async hqDelete(qid) { const i = hq.findIndex((x) => x.id === qid && x.from_slot === 0 && !x.answered_at); if (i >= 0) hq.splice(i, 1); },
-    async dlState() {
-      seedDial();
-      const done = dl.rounds.filter((r) => r.guessed_at).sort((a, b) => b.id - a.id);
-      const totals = [0, 1].map((g) => { const x = done.filter((r) => r.giver === g); return { giver: g, rounds: x.length, points: x.reduce((t, r) => t + r.points, 0), bulls: x.filter((r) => r.points === 4).length }; }).filter((t) => t.rounds);
-      return { slot: 0, mine: dlView(dlOpen(0)), theirs: dlView(dlOpen(1)), past: done.map(dlView), totals };
-    },
-    async dlDeal(lo, hi) {
-      seedDial();
-      let r = dlOpen(0);
-      if (!r) { r = { id: ++dl.id, giver: 0, lo, hi, clue: null, target: 30 + Math.floor(Math.random() * 941), guess: null, points: null, at: now(), clued_at: null, guessed_at: null }; dl.rounds.push(r); }
-      return dlView(r);
-    },
-    async dlCard(rid, lo, hi) { const r = dlOpen(0); if (!r || r.id !== rid) throw new Error('no_round'); if (r.clued_at) throw new Error('clued'); r.lo = lo; r.hi = hi; return dlView(r); },
-    async dlClue(rid, clue) {
-      const r = dlOpen(0); if (!r || r.id !== rid) throw new Error('no_round');
-      if (!r.clued_at) { r.clue = clue; r.clued_at = now(); setTimeout(() => luzGuesses(r), 4000); }
-      return dlView(r);
-    },
-    async dlGuess(rid, guess) {
-      const r = dlOpen(1); if (!r || r.id !== rid) throw new Error('no_round');
-      r.guess = guess; r.points = pointsFor(r.target, guess); r.guessed_at = now();
-      setTimeout(() => {
-        if (dlOpen(1)) return;
-        const [lo, hi, clue, target] = LUZ_CLUES[dl.next++ % LUZ_CLUES.length];
-        dl.rounds.push({ id: ++dl.id, giver: 1, lo, hi, clue, target, guess: null, points: null, at: now(), clued_at: now(), guessed_at: null });
-        on.live?.({ t: 'dial', ev: 'clue' });
-      }, 9000);
-      return dlView(r);
-    },
     async nudge() {},
     connect(holeId, slot, handlers) { on = handlers; setTimeout(() => { on.status?.('SUBSCRIBED'); on.presence?.({ 0: [{ slot: 0 }], 1: [{ slot: 1 }] }); }, 300); },
     async track() {},

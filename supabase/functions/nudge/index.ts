@@ -76,14 +76,6 @@ function compose(kind: string, me: any, extra: any = {}) {
         ? { title: `${n} finished ${extra.bonus ? "the bonus word" : "Five Letters"}`, body: `${extra.solved ? `In ${extra.n}.` : "No luck this time."} Your grids are side by side.` }
         : { title: extra.solved ? `${n} got ${what} in ${extra.n}` : `${n} didn't get ${what}`, body: `Your turn. ${n}'s grid stays hidden till you've played.` };
     }
-    case "dial": {
-      const clue = extra.clue ? `“${extra.clue}”` : "your clue";
-      if (extra.part === "clue") return { title: `${n} gave you a clue 🎯`, body: `${extra.clue ? `“${extra.clue}”` : "A clue"}, somewhere between ${extra.lo ?? "one end"} and ${extra.hi ?? "the other"}. Turn the dial.` };
-      const p = Number(extra.points) || 0;
-      return p === 4 ? { title: `${n} hit the bullseye 🎯`, body: `On ${clue}. 4 points. Your turn to give another.` }
-        : p ? { title: `${n} turned the dial: ${p} points`, body: `On ${clue}. Your turn to give another.` }
-          : { title: `${n} turned the dial`, body: `No points on ${clue} this time. Your turn to give another.` };
-    }
     default:        return { title: "Something moved in your pocket", body: `From ${n}.` };
   }
 }
