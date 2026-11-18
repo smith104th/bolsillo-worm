@@ -273,8 +273,10 @@ canvas.doodle-pad { background: #fff; border-radius: 24px; box-shadow: 0 0 0 1px
 .ink.eraser svg { width: 17px; height: 17px; }
 .polaroid { background: #fff; padding: 10px 10px 12px; border-radius: 26px; box-shadow: 0 14px 40px rgba(10,10,40,0.16), 0 0 0 1px var(--line); align-self: center; width: min(100%, 340px); }
 .polaroid.empty .polaroid-img { background: var(--fill); color: var(--ink-3); }
-.polaroid-img { aspect-ratio: 1; background: #E9E9EE; border-radius: 18px; display: grid; place-items: center; overflow: hidden; }
-.polaroid-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.polaroid-img { position: relative; aspect-ratio: 1; background: #E9E9EE; border-radius: 18px; display: grid; place-items: center; overflow: hidden; }
+/* Pinned to the frame: in the grid, a tall photo grew its row past the square and sat top-aligned, so the
+   full-size photo jumped down from the centered preview when it loaded (Manu, Nov 17). */
+.polaroid-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .polaroid input.handwriting { margin-top: 10px; text-align: center; font-size: 17px; }
 .polaroid .caption { margin: 12px 0 2px; font: 500 17px/1.2 var(--sans); }
 .rec { position: relative; display: grid; place-items: center; height: 160px; }

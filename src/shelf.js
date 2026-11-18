@@ -299,7 +299,7 @@ function categorySheet(app, view, key, onChange) {
     if (!cards.length) grid.prepend(h('p.c-empty', EMPTY[view][key](them)));
   };
   render();
-  return sheet(view === 'from' && key !== 'kept' && key !== 'archive' ? `${c.name} · for ${them}` : c.name, [h('p.c-sub', SUBS[view][key](them)), grid], { tall: true, quiet: true, className: 'cat-sheet' });
+  return sheet(view === 'from' && key !== 'kept' && key !== 'archive' ? `${c.name} · for ${them}` : c.name, [h('p.c-sub', SUBS[view][key](them)), grid], { tall: true, quiet: true, className: 'cat-sheet', pullAnywhere: true });
 }
 
 // ── the archive: everything, once it's opened (Manu, Nov 15: the Jar moved in here) ──
@@ -396,7 +396,7 @@ function archiveSheet(app, view, onChange) {
     filling = false; more.disabled = false; more.textContent = 'Show older';
     render();
   }
-  const s = sheet('Archive', [h('p.c-sub', SUBS[view].archive(them)), months, foot], { tall: true, quiet: true, className: 'cat-sheet' });
+  const s = sheet('Archive', [h('p.c-sub', SUBS[view].archive(them)), months, foot], { tall: true, quiet: true, className: 'cat-sheet', pullAnywhere: true });
   render();
   let raf = 0;
   s.card.addEventListener('scroll', () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { if (nearBottom()) fill(); }); }, { passive: true });
@@ -428,7 +428,7 @@ export function openLater(app, e, onChange) {
   const body = h('div.later-body');
   const from = mine ? `You left this for ${them} · ${prettyDay(app.dayOf(e.created_at))}` : `From ${them} · left ${prettyDay(app.dayOf(e.created_at))}`;
   const target = { to: e.id, about: p.mode === 'when' ? 'envelope' : 'time capsule' };
-  const s = sheet(title, [art, body, h('p.meta', from)], { quiet: true });
+  const s = sheet(title, [art, body, h('p.meta', from)], { quiet: true, pullAnywhere: true });
 
   const reveal = async (animate) => {
     try {
@@ -528,7 +528,7 @@ export function leaveSheet(app, { mode = 'when' } = {}) {
     h('div.row', btn([icon('cam'), ' Camera'], () => pick(true), 'ghost'), btn('Add a photo', () => pick(false), 'ghost')),
     photoBox, caption,
     seal,
-  ]);
+  ], { pullAnywhere: true });
   drawPreview();
   if (m === 'date') { whenBox.hidden = true; dateBox.hidden = false; papers.hidden = true; }
   return s;
