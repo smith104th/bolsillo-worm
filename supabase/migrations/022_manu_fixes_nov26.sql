@@ -22,7 +22,8 @@ begin
   if n <> 1 then raise exception 'expected to fix Manu''s latest house answer, would change %', n; end if;
 end $$;
 
--- 2. Soil: Manu's answer to yesterday's question (Nov 25), which he missed.
+-- 2. Soil: Manu's answer to yesterday's question (Nov 25), which he missed. Only the pocket he
+--    shares with Vio (there are other test pockets).
 do $$
 declare n int;
 begin
@@ -31,6 +32,7 @@ begin
          'Throwing away all my football shirts from when I was a kid.', now()
   from public.members m
   where m.name !~* '^\s*vio'
+    and m.hole_id in (select v.hole_id from public.members v where v.name ~* '^\s*vio')
   on conflict (hole_id, day, slot) do update
      set answer = excluded.answer, answered_at = coalesce(public.dailies.answered_at, excluded.answered_at)
    where public.dailies.answer is null;
