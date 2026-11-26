@@ -1,8 +1,9 @@
 // The paper slips: feed, drop, today, us, peek, settings.
 import { h, ago, hoursSince, prettyDay, fmtDistance, store, dayNumber, isIOS, isStandalone, timeIn } from './util.js';
 import { sheet, btn, icon, toast, field, segmented, confirmBox } from './ui.js';
-import { FOODS, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
-import { COLORS, PATTERNS, ACCESSORIES, cmFor, segsFor, lengthBlurb, fmtCm } from './worm.js';
+import { FOODS, foods, foodName, drawFood, TRINKETS, KISS_NAMES, KISS_EMOJI, REACTIONS } from './draw.js';
+import { wornAcc } from './together.js';
+import { COLORS, PATTERNS, ACCESSORIES, accessories, cmFor, segsFor, lengthBlurb, fmtCm } from './worm.js';
 import { composeNote, composeDoodle, composePhoto, composeWhisper, composeWiggle, composeSong, reactRow, theirReactions } from './compose.js';
 import { wormPreview, fmtCode } from './onboarding.js';
 import { plantSheet, viewPhoto } from './soil.js';
@@ -33,7 +34,7 @@ export function feedSheet(app) {
   const s = sheet(`Feed ${w.name || 'them'}`, [
     h('div.meters', careLine('Fed', them?.fed_at, 20, 'hungry'), careLine('Misted', them?.misted_at, 18, 'dry'), careLine('Petted', them?.petted_at, 12, 'lonely')),
     h('h3', 'Pick a crumb'),
-    h('div.foods', Object.entries(FOODS).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(a bite of|a bit of|some|an?) /, ''))))),
+    h('div.foods', Object.entries(foods()).map(([k, label]) => h('button.food', { type: 'button', onclick: () => { s.close(); app.feed(k); } }, foodCanvas(k), h('span', label.replace(/^(a bite of|a bit of|a slice of|some|an?) /, ''))))),
     btn([icon('mist'), ' Mist them'], () => { s.close(); app.mist(); }, 'primary wide'),
     h('p.small.muted.center', 'Stroke the worm to pet it. Tap its head to boop.'),
   ], { pullAnywhere: true });
@@ -282,17 +283,21 @@ export function peekSheet(app) {
 
 export function editWorm(app) {
   const d = { ...(app.me()?.worm || {}) };
+  // during the visit the worm wears the vueltiao (together.js): show that as picked, and only
+  // save a new pick (with accAt, so it wins over the costume) if they tap one
+  const savedAcc = d.acc; let accTouched = false;
+  d.acc = wornAcc(d);
   const cv = h('canvas.preview');
   const nameIn = h('input', { value: d.name || '', maxLength: 24 });
   let pv;
   const chips = (obj, key) => {
     const wrap = h('div.chips');
-    for (const [k, label] of Object.entries(obj)) wrap.append(h(`button.chip${d[key] === k ? '.on' : ''}`, { type: 'button', onclick: (e) => { d[key] = k; [...wrap.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(d); } }, label));
+    for (const [k, label] of Object.entries(obj)) wrap.append(h(`button.chip${d[key] === k ? '.on' : ''}`, { type: 'button', onclick: (e) => { d[key] = k; if (key === 'acc') { accTouched = true; d.accAt = Date.now(); } [...wrap.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(d); } }, label));
     return wrap;
   };
   const swatches = h('div.swatches', Object.entries(COLORS).map(([k, c]) => h(`button.swatch${d.color === k ? '.on' : ''}`, { type: 'button', style: { background: c.body }, onclick: (e) => { d.color = k; [...swatches.children].forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); pv.set(d); } })));
-  const s = sheet('Your worm', [cv, field('Name', nameIn), h('div.field', h('span.field-label', 'Color'), swatches), h('div.field', h('span.field-label', 'Pattern'), chips(PATTERNS, 'pattern')), h('div.field', h('span.field-label', 'Wearing'), chips(ACCESSORIES, 'acc')),
-    btn('Save', async () => { d.name = nameIn.value.trim() || d.name; try { await app.backend.updateMe({ worm: d }); app.me().worm = d; app.pocket.setMyWorm(d, cmFor(app.me().love)); toast('Saved. They\'ll see the new look.'); s.close(); } catch { toast('Couldn\'t save.'); } }, 'primary')],
+  const s = sheet('Your worm', [cv, field('Name', nameIn), h('div.field', h('span.field-label', 'Color'), swatches), h('div.field', h('span.field-label', 'Pattern'), chips(PATTERNS, 'pattern')), h('div.field', h('span.field-label', 'Wearing'), chips(accessories(), 'acc')),
+    btn('Save', async () => { d.name = nameIn.value.trim() || d.name; if (!accTouched) d.acc = savedAcc; try { await app.backend.updateMe({ worm: d }); app.me().worm = d; app.pocket.setMyWorm(d, cmFor(app.me().love)); toast('Saved. They\'ll see the new look.'); s.close(); } catch { toast('Couldn\'t save.'); } }, 'primary')],
   { onClose: () => pv?.stop() });
   requestAnimationFrame(() => { pv = wormPreview(cv, d); });
 }

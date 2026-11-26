@@ -25,6 +25,7 @@ import { GamesPage, GameStack, GAMES_BOTTOM } from './games.js';
 import { cache, offlineError } from './cache.js';
 import { EVENT_CAP, COMPOST_H, trimEvents as keepEvents } from './events.js';
 import { Dailies } from './dailies.js';
+import { together, seen } from './together.js';
 
 const S = { hole: null, members: [], events: [], slot: 0, online: false, weather: null, planted: new Map(), shelf: new Map(), stashed: new Set(store('stashed') || []) };
 const dailyFns = new Set();
@@ -42,7 +43,7 @@ const app = {
   get backend() { return backend; },
   get pocket() { return pocket; },
   me: () => S.members.find((m) => m.slot === S.slot),
-  them: () => S.members.find((m) => m.slot !== S.slot),
+  them: () => seen(S.members.find((m) => m.slot !== S.slot)), // in Medellín during the visit (together.js)
   slot: () => S.slot,
   today: () => dayIn(S.members.find((m) => m.slot === 0)?.place?.tz || 'UTC'),
   dayOf: (iso) => dayIn(S.members.find((m) => m.slot === 0)?.place?.tz || 'UTC', new Date(iso)),
@@ -234,12 +235,14 @@ function enterPocket(data, { fromCache = false } = {}) {
   refreshPocket();
   pocket.start();
   updateAsleep();
+  applyTogether(true);
 
   backend.connect(S.hole.id, S.slot, realtime);
   if (store('motion') || !(window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission)) enableMotion(false);
 
   setInterval(() => { if (!document.hidden) backend.updateMe({}).catch(() => {}); }, 120000);
   setInterval(() => { updateSky(); renderHeader(); updateAsleep(); refreshNeeds(); if (!document.hidden) markSeen(); }, 30000);
+  setInterval(() => applyTogether(false), 5000);
   window.addEventListener('pagehide', markSeen);
   loadWeather(); setInterval(loadWeather, 20 * 60000);
   document.addEventListener('visibilitychange', onVisible);
@@ -553,13 +556,13 @@ function renderHeader() {
   const them = app.them(), lab = $('#label');
   if (!them) { lab.replaceChildren(h('div.hd-meta', h('span.dot'), 'AN EMPTY POCKET'), h('div.hd-name', 'Bolsillo'), h('div.hd-sub', 'Your person isn\'t here yet')); return; }
   const w = S.weather;
-  const status = S.online ? ['here', 'here now'] : S.asleep ? ['sleep', 'asleep'] : ['', 'away'];
+  const status = S.online ? ['here', 'here now'] : together() ? ['here', 'same pocket'] : S.asleep ? ['sleep', 'asleep'] : ['', 'away'];
   const meta = [timeIn(them.place?.tz), them.place?.city, w ? `${Math.round(w.temp)}°C ${weatherWord[w.kind] || ''}`.trim() : null].filter(Boolean).join(' · ');
   lab.replaceChildren(...[
     h('div.hd-meta', meta),
     h('div.hd-name', them.worm?.name || 'Worm'),
     h('div.hd-sub', h(`span.dot${status[0] ? '.' + status[0] : ''}`), `${them.name}'s worm · ${status[1]}`),
-    S.online ? null : callInBtn(them),
+    S.online || together() ? null : callInBtn(them),
   ].filter(Boolean));
 }
 // when they're not in the pocket: a little button to buzz them over
@@ -663,7 +666,7 @@ function kiss(level) {
   if (level >= 4) buzz([20, 40, 20, 40, 60]);
 }
 
-const feedNudge = throttle((food) => backend.nudge('feed', { food: FOODS[food] }), 3600 * 1000);
+const feedNudge = throttle((food) => backend.nudge('feed', { food: foodName(food) }), 3600 * 1000);
 function feed(kind) {
   pocket.dropFood(kind);
   act('feed', { food: kind });
@@ -779,7 +782,7 @@ const realtime = {
     const online = !!state[String(1 - S.slot)]?.length;
     if (online !== S.online) {
       S.online = online;
-      pocket.setLive(online && !!app.them());
+      pocket.setLive((online || together()) && !!app.them());
       if (online && app.them()) { toast(`${app.them().name} is in the pocket. Touch fingertips.`, { tone: 'love' }); buzz([15, 50, 15]); sfx.chime(); }
       updateAsleep(); renderHeader();
     }
@@ -857,6 +860,25 @@ function beingKissed(name, level) {
 function celebrateTunnel(p) {
   toast(`You dug all the way through. ${p.km ? Number(p.km).toLocaleString() + ' km of tunnel.' : ''}`, { tone: 'love', ms: 6000 });
   pocket.burst('heart', pocket.W / 2, pocket.H / 2, 30); pocket.flash = 1; sfx.knot(); buzz([40, 60, 40, 60, 200]);
+}
+
+// ─────────────────────────────────────────────── Medellín (together.js)
+// From noon on Nov 26 until the visit ends both worms share the pocket and both headers say
+// Medellín. Checked on open and every 5 s, so noon arrives on its own while the app is open.
+let wasTogether = null;
+function applyTogether(first) {
+  const on = together();
+  if (on === wasTogether) return;
+  const opening = wasTogether === false || (first && on && !store('togetherSeen'));
+  wasTogether = on;
+  if (!pocket) return;
+  pocket.setLive((S.online || on) && !!app.them());
+  S.weather = null; loadWeather();
+  updateSky(); updateAsleep(); renderHeader();
+  if (on && opening) {
+    store('togetherSeen', true);
+    setTimeout(() => { toast(`Same pocket. Welcome to Medellín, ${app.them()?.name || 'you two'}.`, { tone: 'love', ms: 6000 }); buzz([15, 50, 15, 50, 30]); sfx.chime(); pocket.skyBurst('heart', 14); }, 1400);
+  }
 }
 
 // ─────────────────────────────────────────────── weather on their side

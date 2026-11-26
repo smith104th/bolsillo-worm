@@ -1,6 +1,6 @@
 // Getting into the pocket: who you are, what your worm looks like, where you are, who you're paired with.
 import { h, $, isIOS, isStandalone, store, myTz, rand } from './util.js';
-import { Worm, COLORS, PATTERNS, ACCESSORIES, DEFAULT_DESIGN } from './worm.js';
+import { Worm, COLORS, PATTERNS, ACCESSORIES, accessories, DEFAULT_DESIGN } from './worm.js';
 import { makeSky } from './draw.js';
 import { btn, field, icon, toast, sheet } from './ui.js';
 import { canPasskey, restoreWithPasskey, passkeyError } from './passkey.js';
@@ -159,7 +159,7 @@ export async function onboard(backend, { code: presetCode } = {}) {
       field('Worm name', nameIn),
       h('div.field', h('span.field-label', 'Color'), swatches),
       h('div.field', h('span.field-label', 'Pattern'), chips(PATTERNS, 'pattern')),
-      h('div.field', h('span.field-label', 'Wearing'), chips(ACCESSORIES, 'acc')),
+      h('div.field', h('span.field-label', 'Wearing'), chips(accessories(), 'acc')),
       btn('Next', next, 'primary'),
     );
     requestAnimationFrame(() => { pv = wormPreview(cv, draft.worm); });

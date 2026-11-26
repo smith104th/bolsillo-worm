@@ -3,6 +3,7 @@
 // Everything from them falls in from the top; everything you send flies up and out.
 import { Worm, heart, star, segsFor } from './worm.js';
 import { makeSky, drawItem, drawFood, itemRadius, SKY } from './draw.js';
+import { colombiaOn } from './together.js';
 import { preloadIcons } from './icons.js';
 import { dab, drawEmoji } from './brush.js';
 import { KISS_EMOJI } from './draw.js';
@@ -754,7 +755,7 @@ export class Pocket {
     x.beginPath(); x.ellipse(bx, by, 19, 15, 0, 0, 7); x.fill();
     x.strokeStyle = '#26324D'; x.lineWidth = 1.3; x.stroke();
     x.translate(bx, by);
-    if (w.bubble.need === 'food') drawFood(x, pick(['medialuna']), 8);
+    if (w.bubble.need === 'food') drawFood(x, colombiaOn() ? 'arepa' : 'medialuna', 8);
     else { x.fillStyle = '#3BA4FF'; x.beginPath(); x.moveTo(0, -9); x.bezierCurveTo(7, 0, 6, 8, 0, 8); x.bezierCurveTo(-6, 8, -7, 0, 0, -9); x.fill(); }
     x.restore();
   }

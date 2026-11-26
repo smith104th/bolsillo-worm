@@ -2,6 +2,7 @@
 import { clamp, rand, hash } from './util.js';
 import { mixHex } from './draw.js';
 import { dab, band, drawEmoji } from './brush.js';
+import { colombiaOn, wornAcc } from './together.js';
 
 export const COLORS = {
   lombriz: { label: 'Rosa',    body: '#F2A1A6', dark: '#DE6B72', light: '#FCD6D3', saddle: '#EA8A91', spot: '#E0606A', nose: '#E04A4F' },
@@ -20,6 +21,8 @@ export const ACCESSORIES = {
   none: 'Nothing', cap: 'Cap', beanie: 'Beanie', bow: 'Bow', glasses: 'Glasses', mustache: 'Mustache',
   flower: 'Daisy', tophat: 'Top hat', pearls: 'Pearls', headphones: 'Headphones', crown: 'Crown', scarf: 'Scarf',
 };
+// the list the pickers show: the sombrero vueltiao joins from noon on Nov 26 (together.js)
+export const accessories = () => (colombiaOn() ? { ...ACCESSORIES, vueltiao: 'Vueltiao' } : ACCESSORIES);
 export const DEFAULT_DESIGN = { name: '', color: 'lombriz', pattern: 'rings', acc: 'none' };
 
 // Worms stay small and cute (Manu, Nov 10: "a 16-inch worm is like a snake"). Length is in
@@ -339,7 +342,8 @@ export class Worm {
       drawEmoji(ctx, '💋', p.x + nx * k.side * R * 0.35, p.y + ny * k.side * R * 0.35, R * k.s * 0.9, k.rot * 0.6);
     }
 
-    if (this.design.acc === 'pearls' || this.design.acc === 'scarf') this.neckwear(ctx);
+    const worn = wornAcc(this.design);
+    if (worn === 'pearls' || worn === 'scarf') this.neckwear(ctx);
     this.face(ctx, C);
     ctx.restore();
   }
@@ -368,7 +372,7 @@ export class Worm {
     if (this.gaze) { const ga = Math.atan2(this.gaze.y - h0.y, this.gaze.x - h0.x); lx = Math.cos(ga) * R * 0.2; ly = Math.sin(ga) * R * 0.14; }
     const side = Math.cos(hd) >= 0 ? 1 : -1;
     const ink = '#2B1D1F';
-    const acc = this.design.acc;
+    const acc = wornAcc(this.design);
     ctx.save();
     ctx.translate(h0.x, h0.y);
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
@@ -454,6 +458,27 @@ export class Worm {
       ctx.save(); ctx.translate(R * 0.55, -R * 0.78);
       for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2 + this.t * 0.2; dab(ctx, '#FFFBF2', Math.cos(a) * R * 0.22, Math.sin(a) * R * 0.22, R * 0.15); }
       dab(ctx, '#F2B632', 0, 0, R * 0.13);
+      ctx.restore();
+    } else if (acc === 'vueltiao') {
+      // sombrero vueltiao: a wide cream brim and a low crown, both striped in black
+      const cream = '#F1E3BC', black = '#1F1A16';
+      ctx.save(); ctx.translate(0, -R * 0.74); ctx.rotate(side * -0.08);
+      ctx.fillStyle = cream; ctx.beginPath(); ctx.ellipse(0, 0, R * 1.12, R * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = black; ctx.lineWidth = R * 0.06;
+      for (const k of [0.94, 0.74]) { ctx.beginPath(); ctx.ellipse(0, 0, R * 1.12 * k, R * 0.26 * k, 0, 0, Math.PI * 2); ctx.stroke(); }
+      const cw = R * 0.5, ch = R * 0.62;
+      ctx.fillStyle = cream; ctx.beginPath();
+      ctx.moveTo(-cw, 0); ctx.lineTo(-cw * 0.82, -ch); ctx.quadraticCurveTo(0, -ch * 1.18, cw * 0.82, -ch); ctx.lineTo(cw, 0);
+      ctx.quadraticCurveTo(0, R * 0.12, -cw, 0); ctx.fill();
+      ctx.fillStyle = black;
+      for (const [y0, hh] of [[-ch * 0.22, 0.13], [-ch * 0.62, 0.11]]) {
+        const w0 = cw * (1 - 0.18 * (-y0 / ch));
+        ctx.fillRect(-w0, y0 - R * hh / 2, w0 * 2, R * hh);
+      }
+      // the little zigzag between the bands
+      ctx.strokeStyle = black; ctx.lineWidth = R * 0.04; ctx.beginPath();
+      for (let i = 0; i <= 6; i++) { const xx = -cw * 0.82 + (i / 6) * cw * 1.64, yy = -ch * 0.42 + (i % 2 ? -1 : 1) * R * 0.05; i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      ctx.stroke();
       ctx.restore();
     } else if (acc === 'headphones') {
       dab(ctx, '#EDBE3F', -R * 1.0, R * 0.02, R * 0.26); dab(ctx, '#EDBE3F', R * 1.0, R * 0.02, R * 0.26);

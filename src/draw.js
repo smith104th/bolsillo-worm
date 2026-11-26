@@ -3,6 +3,7 @@ import { seeded, hash } from './util.js';
 import { drawEmoji } from './brush.js';
 import { envelopeImage, iconShadow, noShadow, roundRect, drawGlyphTile, trinketEmoji, drawRecord } from './icons.js';
 import { PROVIDERS } from './music.js';
+import { FOOD_SET, colombiaOn } from './together.js';
 
 
 // ── light-wash denim, flat color + woven texture ─────────────
@@ -158,14 +159,25 @@ export function lipsSVG(color = '#C41E3A') {
 }
 
 // ── food ─────────────────────────────────────────────────────
-export const FOODS = {
-  medialuna: 'a medialuna crumb', alfajor: 'a bite of alfajor', frutilla: 'a strawberry',
-  manzana: 'an apple peel', galletita: 'a cookie crumb', arroz: 'a bit of white rice',
-  empanada: 'an empanada corner', hoja: 'a fresh leaf', pochoclo: 'some popcorn',
+// Two menus. 'classic' (Buenos Aires snacks) is archived since Nov 26; 'colombia' is on from noon
+// that day. Switch back with FOOD_SET in together.js. Every set keeps its names so old feed
+// messages still read right.
+export const FOOD_SETS = {
+  classic: {
+    medialuna: 'a medialuna crumb', alfajor: 'a bite of alfajor', frutilla: 'a strawberry',
+    manzana: 'an apple peel', galletita: 'a cookie crumb', arroz: 'a bit of white rice',
+    empanada: 'an empanada corner', hoja: 'a fresh leaf', pochoclo: 'some popcorn',
+  },
+  colombia: {
+    arepa: 'a bite of arepa', bunuelo: 'a buñuelo', pandebono: 'a pandebono', patacon: 'a patacón',
+    empanadaco: 'an empanada', mango: 'a slice of mango biche', bocadillo: 'a bit of bocadillo',
+    oblea: 'a bite of oblea', granadilla: 'some granadilla',
+  },
 };
-// Foods that were retired keep their names so old feed messages still read right.
+export const foods = () => FOOD_SETS[FOOD_SET === 'colombia' && colombiaOn() ? 'colombia' : 'classic'];
+export const FOODS = FOOD_SETS.classic; // kept for old imports
 const RETIRED_FOODS = { banana: 'a bit of banana', cafe: 'coffee grounds' };
-export const foodName = (k) => FOODS[k] || RETIRED_FOODS[k] || 'a crumb';
+export const foodName = (k) => FOOD_SETS.colombia[k] || FOOD_SETS.classic[k] || RETIRED_FOODS[k] || 'a crumb';
 export function drawFood(x, kind, s = 10) {
   x.save();
   switch (kind) {
@@ -215,6 +227,82 @@ export function drawFood(x, kind, s = 10) {
     case 'hoja':
       leafShape(x, s * 1.2, '#6DAA4F', '#4E8536');
       break;
+    // ── Colombia
+    case 'arepa': {
+      // a white corn arepa off the grill: pale disc, toasted marks, a pat of butter melting
+      x.fillStyle = '#F3E6C2'; x.strokeStyle = '#D9BF84'; x.lineWidth = Math.max(0.6, s * 0.08);
+      x.beginPath(); x.arc(0, 0, s, 0, 7); x.fill(); x.stroke();
+      x.fillStyle = 'rgba(160,104,40,0.55)'; for (const [a, b, r] of [[-0.4, -0.3, 0.2], [0.35, 0.05, 0.24], [-0.05, 0.45, 0.17], [0.4, -0.5, 0.12]]) { x.beginPath(); x.ellipse(a * s, b * s, r * s, r * s * 0.7, 0.5, 0, 7); x.fill(); }
+      x.fillStyle = '#FFE27A'; x.beginPath(); x.ellipse(-s * 0.05, -s * 0.08, s * 0.3, s * 0.22, -0.3, 0, 7); x.fill();
+      break;
+    }
+    case 'bunuelo': {
+      // a round golden buñuelo with a shiny side
+      const g = x.createRadialGradient(-s * 0.35, -s * 0.35, s * 0.1, 0, 0, s);
+      g.addColorStop(0, '#F7C566'); g.addColorStop(0.7, '#D9922F'); g.addColorStop(1, '#B06E1E');
+      x.fillStyle = g; x.beginPath(); x.arc(0, 0, s, 0, 7); x.fill();
+      x.fillStyle = 'rgba(120,70,20,0.35)'; for (const [a, b] of [[0.3, 0.3], [-0.2, 0.5], [0.5, -0.1], [0.05, 0.05]]) { x.beginPath(); x.arc(a * s, b * s, s * 0.07, 0, 7); x.fill(); }
+      x.fillStyle = 'rgba(255,245,215,0.75)'; x.beginPath(); x.ellipse(-s * 0.38, -s * 0.42, s * 0.22, s * 0.13, -0.6, 0, 7); x.fill();
+      break;
+    }
+    case 'pandebono': {
+      // a puffy cheese bread, cracked on top
+      x.fillStyle = '#EDB45A'; x.beginPath(); x.arc(0, s * 0.08, s * 0.98, 0, 7); x.fill();
+      x.fillStyle = '#F6D58F'; x.beginPath(); x.arc(-s * 0.08, -s * 0.06, s * 0.78, 0, 7); x.fill();
+      x.strokeStyle = '#C98A33'; x.lineWidth = Math.max(0.7, s * 0.09); x.lineCap = 'round';
+      x.beginPath(); x.moveTo(-s * 0.45, -s * 0.15); x.quadraticCurveTo(-s * 0.05, -s * 0.35, s * 0.4, -s * 0.05); x.stroke();
+      x.beginPath(); x.moveTo(-s * 0.1, -s * 0.24); x.lineTo(s * 0.05, s * 0.18); x.stroke();
+      break;
+    }
+    case 'patacon': {
+      // a flattened fried plantain: wobbly golden disc with crinkled edges
+      x.fillStyle = '#E4AE3C'; x.beginPath();
+      for (let k = 0; k <= 14; k++) { const a = (k / 14) * Math.PI * 2, r = s * (0.92 + ((k * 37) % 5) * 0.03); k ? x.lineTo(Math.cos(a) * r, Math.sin(a) * r) : x.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+      x.closePath(); x.fill();
+      x.fillStyle = '#F4CF6B'; x.beginPath(); x.arc(0, 0, s * 0.62, 0, 7); x.fill();
+      x.fillStyle = 'rgba(170,110,30,0.5)'; for (const [a, b] of [[-0.3, -0.2], [0.25, 0.25], [0.2, -0.35], [-0.25, 0.3]]) { x.beginPath(); x.arc(a * s, b * s, s * 0.08, 0, 7); x.fill(); }
+      x.fillStyle = '#FFFFFF'; for (const [a, b] of [[-0.1, 0.05], [0.35, -0.05], [-0.4, 0.1]]) x.fillRect(a * s, b * s, Math.max(1, s * 0.07), Math.max(1, s * 0.07));
+      break;
+    }
+    case 'empanadaco': {
+      // the yellow corn kind, fried crisp, crimped with a fork
+      x.fillStyle = '#E9A62B'; x.beginPath(); x.arc(0, s * 0.3, s, Math.PI, 0); x.closePath(); x.fill();
+      x.fillStyle = '#F6C653'; x.beginPath(); x.arc(0, s * 0.3, s * 0.78, Math.PI, 0); x.closePath(); x.fill();
+      x.strokeStyle = '#B9771D'; x.lineWidth = Math.max(0.6, s * 0.06);
+      for (let k = 0; k <= 8; k++) { const a = Math.PI + (k / 8) * Math.PI; x.beginPath(); x.moveTo(Math.cos(a) * s * 0.82, s * 0.3 + Math.sin(a) * s * 0.82); x.lineTo(Math.cos(a) * s * 0.98, s * 0.3 + Math.sin(a) * s * 0.98); x.stroke(); }
+      break;
+    }
+    case 'mango': {
+      // a slice of green mango biche with salt and a squeeze of lime
+      x.fillStyle = '#9CC93E'; x.beginPath(); x.moveTo(-s, s * 0.5); x.quadraticCurveTo(-s * 0.2, -s * 1.1, s, -s * 0.2); x.quadraticCurveTo(s * 0.2, s * 0.3, -s, s * 0.5); x.fill();
+      x.fillStyle = '#E4F08F'; x.beginPath(); x.moveTo(-s * 0.75, s * 0.36); x.quadraticCurveTo(-s * 0.15, -s * 0.75, s * 0.78, -s * 0.16); x.quadraticCurveTo(s * 0.1, s * 0.2, -s * 0.75, s * 0.36); x.fill();
+      x.fillStyle = '#FFFFFF'; for (let k = 0; k < 7; k++) x.fillRect((Math.sin(k * 2.1) * 0.5 - 0.05) * s, (Math.cos(k * 1.3) * 0.25 - 0.15) * s, Math.max(1, s * 0.07), Math.max(1, s * 0.07));
+      break;
+    }
+    case 'bocadillo': {
+      // guava paste: a deep red block on its bijao leaf
+      leafShape(x, s * 1.15, '#4E9A45', '#367532');
+      x.fillStyle = '#B21E3A'; x.beginPath(); x.roundRect ? x.roundRect(-s * 0.55, -s * 0.32, s * 1.1, s * 0.64, s * 0.1) : x.rect(-s * 0.55, -s * 0.32, s * 1.1, s * 0.64); x.fill();
+      x.fillStyle = 'rgba(255,170,180,0.55)'; x.fillRect(-s * 0.45, -s * 0.25, s * 0.5, s * 0.09);
+      break;
+    }
+    case 'oblea': {
+      // a round wafer with arequipe peeking out the side
+      x.fillStyle = '#A9622A'; x.beginPath(); x.ellipse(0, s * 0.16, s, s * 0.42, 0, 0, 7); x.fill();
+      x.fillStyle = '#F4E5C3'; x.beginPath(); x.ellipse(0, 0, s, s * 0.42, 0, 0, 7); x.fill();
+      x.strokeStyle = '#D8C29A'; x.lineWidth = Math.max(0.5, s * 0.05);
+      for (let k = -2; k <= 2; k++) { x.beginPath(); x.moveTo(k * s * 0.32 - s * 0.15, -s * 0.34); x.lineTo(k * s * 0.32 + s * 0.15, s * 0.34); x.stroke(); }
+      break;
+    }
+    case 'granadilla': {
+      // half a granadilla: orange shell, grey seeds in clear pulp
+      x.fillStyle = '#F08A24'; x.beginPath(); x.arc(0, 0, s, 0, 7); x.fill();
+      x.fillStyle = '#FBE7B8'; x.beginPath(); x.arc(0, 0, s * 0.82, 0, 7); x.fill();
+      x.fillStyle = '#C9C9B4'; x.beginPath(); x.arc(0, 0, s * 0.7, 0, 7); x.fill();
+      x.fillStyle = '#4A4A3A'; for (let k = 0; k < 12; k++) { const a = k * 2.4, r = s * (0.18 + (k % 3) * 0.16); x.beginPath(); x.ellipse(Math.cos(a) * r, Math.sin(a) * r, s * 0.1, s * 0.07, a, 0, 7); x.fill(); }
+      x.fillStyle = 'rgba(255,255,255,0.6)'; x.beginPath(); x.arc(-s * 0.3, -s * 0.3, s * 0.12, 0, 7); x.fill();
+      break;
+    }
     case 'pochoclo': {
       // one puffy popped kernel: creamy lobes, a toasted hull peeking out
       const lobes = [[-0.42, 0.1, 0.5], [0.4, 0.14, 0.48], [0, -0.38, 0.52], [-0.12, 0.34, 0.44], [0.26, -0.12, 0.4]];
