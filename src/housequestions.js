@@ -100,10 +100,18 @@ export function questionsSheet(app, ctx) {
     return card;
   }
 
-  // ── the ones you wrote
+  // Answered lists show only the latest; "See more" opens the rest (stays open while the sheet is up).
+  const open = { mine: false, theirs: false };
+  function more(key, rest, label) {
+    if (!rest.length) return null;
+    if (open[key]) return [...rest, h('button.hq-more', { type: 'button', onclick: () => { open[key] = false; render(); } }, 'See less')];
+    return h('button.hq-more', { type: 'button', onclick: () => { open[key] = true; render(); } }, label);
+  }
+
+  // ── the ones you wrote: the latest one they answered, the rest (waiting ones too) behind See more
   function yours(st) {
     if (!st.mine.length) return h('div.hq-list', h('h3', 'Yours'), h('p.hq-empty', `Write ${them} a few. They answer one a day.`));
-    return h('div.hq-list', h('h3', 'Yours'), st.mine.map((q) => {
+    const row = (q) => {
       const status = !q.answered_at ? h('span.hq-pill.wait', 'Waiting')
         : q.correct ? h('span.hq-pill.right', `${them} got it`)
           : h('span.hq-pill.wrong', `${them} said “${q.options[q.picked]}”`);
@@ -112,17 +120,25 @@ export function questionsSheet(app, ctx) {
         try { await app.backend.hqDelete(q.id); await ctx.reload(); render(); } catch (err) { toast(errText(err)); }
       } }, icon('close')) : null;
       return h('div.hq-row', h('div.hq-row-main', h('p', q.question), h('span.hq-meta', `${q.kind === 'yesno' ? 'Yes or no' : 'Multiple choice'} · “${q.options[q.answer]}”`), status), take);
-    }));
+    };
+    const latest = st.mine.filter((q) => q.answered_at).sort((a, b) => (a.answered_at < b.answered_at ? 1 : -1))[0];
+    const first = latest || st.mine[0];
+    const rest = st.mine.filter((q) => q !== first);
+    const waiting = rest.filter((q) => !q.answered_at).length;
+    const label = `See ${rest.length} more${waiting ? ` · ${waiting} waiting` : ''}`;
+    return h('div.hq-list', h('h3', 'Yours'), row(first), more('mine', rest.map(row), label));
   }
 
-  // ── the ones you answered
+  // ── the ones you answered: the latest, the rest behind See more
   function theirs(st) {
     if (!st.theirs.length) return null;
     const right = st.theirs.filter((q) => q.correct).length;
-    return h('div.hq-list', h('h3', `${them}'s`), h('p.hq-empty', `You got ${right} of ${st.theirs.length}.`), st.theirs.slice(0, 20).map((q) =>
-      h('div.hq-row', h('div.hq-row-main', h('p', q.question),
-        h('span.hq-meta', q.correct ? `“${q.options[q.answer]}”` : `You said “${q.options[q.picked]}” · it was “${q.options[q.answer]}”`),
-        h(`span.hq-pill.${q.correct ? 'right' : 'wrong'}`, q.correct ? 'Right' : 'Not this time')))));
+    const row = (q) => h('div.hq-row', h('div.hq-row-main', h('p', q.question),
+      h('span.hq-meta', q.correct ? `“${q.options[q.answer]}”` : `You said “${q.options[q.picked]}” · it was “${q.options[q.answer]}”`),
+      h(`span.hq-pill.${q.correct ? 'right' : 'wrong'}`, q.correct ? 'Right' : 'Not this time')));
+    const [first, ...rest] = st.theirs;
+    return h('div.hq-list', h('h3', `${them}'s`), h('p.hq-empty', `You got ${right} of ${st.theirs.length}.`), row(first),
+      more('theirs', rest.map(row), `See ${rest.length} more`));
   }
 
   render();
